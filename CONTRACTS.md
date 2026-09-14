@@ -1,4 +1,4 @@
-# Papier — Cross-Repo Contracts (source of truth)
+# DOZO — Cross-Repo Contracts (source of truth)
 
 Frozen interfaces shared by the Android app, redirect server, and merchant dashboard.
 Treat this file as **read-only**. To change a contract: update this file first, then update
@@ -12,9 +12,9 @@ _Last synced from code on 2026-09-13. The workspace is a single monorepo at `/Us
 
 | Workstream | Path | Owns |
 | --- | --- | --- |
-| App | `/Users/malicky/l/DOZO/papier` | `app/**`, `mockpay/**`, `scripts/dx8000_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
-| Server | `/Users/malicky/l/DOZO/papier-redirect-server` | entire directory |
-| Dashboard | `/Users/malicky/l/DOZO/papier-dashboard` | entire directory |
+| App | `/Users/malicky/l/DOZO/DOZO-App` | `app/**`, `mockpay/**`, `scripts/dx8000_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
+| Server | `/Users/malicky/l/DOZO/DOZO-Server` | entire directory |
+| Dashboard | `/Users/malicky/l/DOZO/DOZO-Dashboard` | entire directory |
 | Contract & docs | `/Users/malicky/l/DOZO` (repo root) | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |
 | Docs | Papier Obsidian vault (`obsidian` CLI, vault name `Papier`) | vault notes |
 
@@ -95,7 +95,7 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 
 ## 5. Android intent contract
 
-- **Activity:** `com.example.papier/.MainActivity`, `exported=true`, `launchMode=singleTop`, portrait, `configChanges` locked. Handoff uses `startActivityForResult`; relaunch arrives via `onNewIntent`.
+- **Activity:** `com.example.dozo/.MainActivity`, `exported=true`, `launchMode=singleTop`, portrait, `configChanges` locked. Handoff uses `startActivityForResult`; relaunch arrives via `onNewIntent`.
 - **Actions:** `com.fiserv.intent.action.TRANSACTION_COMPLETE` / `TRANSACTION_CANCELED` / `TRANSACTION_REFUSED`; `com.ingenico.dx8000.action.TRANSACTION_APPROVED` / `TRANSACTION_CANCELED` / `TRANSACTION_REFUSED`.
 - **Extras:** `status` (`APPROVED`/`CANCELED`/`REFUSED`, case-insensitive), `merchant_id`, `terminal_id`, `transaction_id`, `amount_cents` (int), `review_url`, `reason`.
 - **Status precedence:** `status` wins; otherwise the action maps; blank → action-based fallback.
@@ -106,7 +106,7 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 
 ---
 
-## 6. Android prefs contract (`papier_prefs`, SharedPreferences)
+## 6. Android prefs contract (`dozo_prefs`, SharedPreferences)
 
 | Key | Type | Default | Range/notes |
 | --- | --- | --- | --- |
@@ -135,7 +135,7 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 ## 8. Dashboard contract
 
 - Env `VITE_API_BASE_URL` (default `http://130.162.185.144:3000`); token entered on the login screen.
-- `localStorage` keys: `papier.dashboard.apiBaseUrl`, `papier.dashboard.apiToken`.
+- `localStorage` keys: `dozo.dashboard.apiBaseUrl`, `dozo.dashboard.apiToken`.
 - Consumes: `/health`, `/api/merchants`, `/merchants/:id/terminals|summary|scans`, `PUT /merchants/:id/google-place-id`, `POST /api/terminals/claim`, `/api/terminals/offline`.
 - **Gap:** `registers` and `adopt` endpoints exist on the server but are not yet consumed by the dashboard.
 
@@ -152,7 +152,7 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 | Service | Var | Default |
 | --- | --- | --- |
 | Server | `PORT` | `3000` |
-| Server | `DB_PATH` | `./data/papier.db` (`/data/papier.db` in Docker) |
+| Server | `DB_PATH` | `./data/dozo.db` (`/data/dozo.db` in Docker) |
 | Server | `REDIRECT_DOMAIN` | `http://localhost:3000` |
 | Server | `GOOGLE_REVIEW_BASE` | `https://search.google.com/local/writereview` |
 | Server | `API_TOKEN` | `dev-placeholder-token` |

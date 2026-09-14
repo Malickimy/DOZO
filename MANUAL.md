@@ -1,4 +1,4 @@
-# Papier — Hands-On Manual
+# DOZO — Hands-On Manual
 
 A practical guide to everything built so far: what each piece does, how to run it, and copy-paste flows to see the whole system work end to end.
 
@@ -8,16 +8,16 @@ A practical guide to everything built so far: what each piece does, how to run i
 
 | Piece | Location | What it is |
 | --- | --- | --- |
-| Android app | `/Users/malicky/l/DOZO/papier` | Terminal app (`com.example.papier`): shows the review QR after an approved sale, returns a result code. |
-| Mock payment app | `/Users/malicky/l/DOZO/papier` (`:mockpay`) | Fake Polcard/Fiserv app to drive the terminal via `startActivityForResult`. |
-| Redirect server | `/Users/malicky/l/DOZO/papier-redirect-server` | Node/Fastify/SQLite: logs scans, 302s to Google, pairing, config, dashboard API. |
-| Merchant dashboard | `/Users/malicky/l/DOZO/papier-dashboard` | Vite + React + TS web portal: pair terminals, set Place ID, view scan counts. |
+| Android app | `/Users/malicky/l/DOZO/DOZO-App` | Terminal app (`com.example.dozo`): shows the review QR after an approved sale, returns a result code. |
+| Mock payment app | `/Users/malicky/l/DOZO/DOZO-App` (`:mockpay`) | Fake Polcard/Fiserv app to drive the terminal via `startActivityForResult`. |
+| Redirect server | `/Users/malicky/l/DOZO/DOZO-Server` | Node/Fastify/SQLite: logs scans, 302s to Google, pairing, config, dashboard API. |
+| Merchant dashboard | `/Users/malicky/l/DOZO/DOZO-Dashboard` | Vite + React + TS web portal: pair terminals, set Place ID, view scan counts. |
 | VPS | `ubuntu@130.162.185.144:3000` | Deployed redirect server. API token `dev-placeholder-token`. |
 
 Mental model:
 
 ```
-Payment app ──startActivityForResult──▶ Papier app ──QR──▶ Customer scans
+Payment app ──startActivityForResult──▶ DOZO app ──QR──▶ Customer scans
                                               │                    │
                                               │                    ▼
                                               │            Redirect server  /r/{terminal_id}
@@ -53,7 +53,7 @@ adb devices -l              # expect emulator-5554
 ### Run locally
 
 ```bash
-cd /Users/malicky/l/DOZO/papier-redirect-server
+cd /Users/malicky/l/DOZO/DOZO-Server
 npm install
 SEED_DEMO=true npm start          # http://localhost:3000, seeds demo data
 npm test                          # 43 tests
@@ -105,7 +105,7 @@ CORS is enabled for the dashboard; `OPTIONS` preflight is unauthenticated.
 ### Deploy to the VPS
 
 ```bash
-cd /Users/malicky/l/DOZO/papier-redirect-server
+cd /Users/malicky/l/DOZO/DOZO-Server
 ./scripts/deploy.sh --dry-run      # preview
 ./scripts/deploy.sh                # rsync + docker compose up -d --build
 ```
@@ -114,18 +114,18 @@ cd /Users/malicky/l/DOZO/papier-redirect-server
 
 ```bash
 rsync -az --exclude node_modules --exclude data --exclude .git --exclude .env \
-  /Users/malicky/l/DOZO/papier-redirect-server/ ubuntu@130.162.185.144:~/papier-redirect-server/
+  /Users/malicky/l/DOZO/DOZO-Server/ ubuntu@130.162.185.144:~/dozo-server/
 ssh ubuntu@130.162.185.144 '
-  cd ~/papier-redirect-server
-  docker compose cp src/. papier-redirect:/app/src
-  docker commit $(docker compose ps -q papier-redirect) papier-redirect-server:local
+  cd ~/dozo-server
+  docker compose cp src/. dozo-server:/app/src
+  docker commit $(docker compose ps -q dozo-server) dozo-server:local
   docker compose up -d --force-recreate'
 ```
 
 ### Smoke test
 
 ```bash
-cd /Users/malicky/l/DOZO/papier-redirect-server
+cd /Users/malicky/l/DOZO/DOZO-Server
 ./scripts/smoke.sh                                   # defaults to the VPS
 BASE_URL=http://127.0.0.1:3000 ./scripts/smoke.sh     # local
 # from the app repo:
@@ -139,7 +139,7 @@ scripts/dx8000_server_check
 ### Build & install
 
 ```bash
-cd /Users/malicky/l/DOZO/papier
+cd /Users/malicky/l/DOZO/DOZO-App
 ./scripts/dx8000_clean_deploy        # clean build + adb install -r
 # or
 ./gradlew :app:assembleDebug && adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
@@ -185,10 +185,10 @@ scripts/dx8000_trigger_intent --refused  --poc --txn TXN-R --amount 750 --reason
 
 ```bash
 scripts/mockpay_deploy        # builds + installs :mockpay
-adb shell am start -n com.example.papier.mockpay/.MockPayActivity
+adb shell am start -n com.example.dozo.mockpay/.MockPayActivity
 ```
 
-Tap **Approve / Cancel / Refuse**; Papier is launched and returns a result code, shown on screen and logged:
+Tap **Approve / Cancel / Refuse**; DOZO is launched and returns a result code, shown on screen and logged:
 
 ```bash
 adb logcat -d -s MockPay
@@ -210,7 +210,7 @@ adb logcat -d -s MockPay
 Check what the app stored:
 
 ```bash
-adb -s emulator-5554 shell run-as com.example.papier cat shared_prefs/papier_prefs.xml
+adb -s emulator-5554 shell run-as com.example.dozo cat shared_prefs/dozo_prefs.xml
 ```
 
 ### Adopt an existing register
@@ -227,9 +227,9 @@ When a bank swaps a DX8000, the new unit has a new ID. In Settings → **Adopt e
     -H "X-Api-Token: dev-placeholder-token" -H "Content-Type: application/json" \
     -d '{"display_timeout_seconds":20}'
   ```
-  Tap **Sync now** and confirm `display_timeout_seconds` in `papier_prefs.xml`.
+  Tap **Sync now** and confirm `display_timeout_seconds` in `dozo_prefs.xml`.
 
-### Configuration keys (`papier_prefs`)
+### Configuration keys (`dozo_prefs`)
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -258,7 +258,7 @@ The release APK is currently unsigned — add a keystore before real distributio
 ## 4. Merchant dashboard
 
 ```bash
-cd /Users/malicky/l/DOZO/papier-dashboard
+cd /Users/malicky/l/DOZO/DOZO-Dashboard
 npm install
 npm run dev        # http://localhost:5173
 npm run build
@@ -280,7 +280,7 @@ Then: **Test connection** → pick merchant `demo-merchant` → see terminals, s
 ```bash
 dx8000_boot
 scripts/dx8000_clean_deploy
-adb shell am force-stop com.example.papier
+adb shell am force-stop com.example.dozo
 scripts/dx8000_trigger_intent --approved --terminal DEMOTERM01 --txn TXN-E2E --amount 2499
 sleep 5
 scripts/dx8000_verify_qr --expect http://130.162.185.144:3000/r/DEMOTERM01   # PASS
@@ -291,7 +291,7 @@ curl -sS -i -A "DemoPhone/1.0" http://130.162.185.144:3000/r/DEMOTERM01 | head -
 
 ```bash
 scripts/mockpay_deploy
-adb shell am start -n com.example.papier.mockpay/.MockPayActivity
+adb shell am start -n com.example.dozo.mockpay/.MockPayActivity
 # tap Approve / Cancel / Refuse, then:
 adb logcat -d -s MockPay | tail
 ```
@@ -326,7 +326,7 @@ adb logcat -d -s MockPay | tail
 
 ## 7. Troubleshooting
 
-- **`java.net.SocketException: socket failed: EPERM`** in the app — stale install state. `adb uninstall com.example.papier` then reinstall; check `papier_prefs.xml`.
+- **`java.net.SocketException: socket failed: EPERM`** in the app — stale install state. `adb uninstall com.example.dozo` then reinstall; check `dozo_prefs.xml`.
 - **`dx8000_verify_qr` FAIL, no QR** — capture too early (QR renders ~3s after trigger); canceled/refused never show a QR, so FAIL is expected there.
 - **`reason` truncated after the first word** — device-shell quoting; use `dx8000_trigger_intent`, or single-quote the whole `adb shell "am start …"` command.
 - **Pairing stays "pending"** — it only becomes `claimed` after `POST /api/terminals/claim` (the dashboard does this).
