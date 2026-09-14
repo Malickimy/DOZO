@@ -18,7 +18,7 @@ COPY scripts ./scripts
 RUN mkdir -p /data && chown -R node:node /data
 USER node
 ENV PORT=3000 \
-    DB_PATH=/data/papier.db \
+    DB_PATH=/data/dozo.db \
     REDIRECT_DOMAIN=http://localhost:3000 \
     GOOGLE_REVIEW_BASE=https://search.google.com/local/writereview
 EXPOSE 3000

@@ -1,6 +1,6 @@
 const DEFAULTS = {
   PORT: '3000',
-  DB_PATH: './data/papier.db',
+  DB_PATH: './data/dozo.db',
   REDIRECT_DOMAIN: 'http://localhost:3000',
   GOOGLE_REVIEW_BASE: 'https://search.google.com/local/writereview',
   API_TOKEN: 'dev-placeholder-token',

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# deploy.sh - Deploy the Papier redirect server to a remote host over SSH.
+# deploy.sh - Deploy the DOZO redirect server to a remote host over SSH.
 #
 # rsyncs the project (excluding node_modules, data, .git and .env) to
 # $REMOTE_DIR on $SERVER_HOST, then runs `docker compose up -d --build` and
@@ -12,7 +12,7 @@
 #
 # Environment overrides:
 #   SERVER_HOST   ssh target         (default: ubuntu@130.162.185.144)
-#   REMOTE_DIR    remote project dir (default: ~/papier-redirect-server)
+#   REMOTE_DIR    remote project dir (default: ~/dozo-server)
 #   SSH           ssh binary         (default: ssh)
 #   RSYNC         rsync binary       (default: rsync)
 #   DRY_RUN       "1" to print only  (default: 0)
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 SERVER_HOST="${SERVER_HOST:-ubuntu@130.162.185.144}"
-REMOTE_DIR="${REMOTE_DIR:-~/papier-redirect-server}"
+REMOTE_DIR="${REMOTE_DIR:-~/dozo-server}"
 SSH="${SSH:-ssh}"
 RSYNC="${RSYNC:-rsync}"
 DRY_RUN="${DRY_RUN:-0}"
@@ -39,7 +39,7 @@ container with docker compose.
 
 Environment overrides:
   SERVER_HOST   ssh target         (default: ubuntu@130.162.185.144)
-  REMOTE_DIR    remote project dir (default: ~/papier-redirect-server)
+  REMOTE_DIR    remote project dir (default: ~/dozo-server)
   SSH           ssh binary         (default: ssh)
   RSYNC         rsync binary       (default: rsync)
   DRY_RUN       "1" to print only  (default: 0)

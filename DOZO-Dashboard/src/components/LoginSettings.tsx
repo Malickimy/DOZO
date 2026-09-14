@@ -57,7 +57,7 @@ export function LoginSettings({ initial, onSave, onCancel }: LoginSettingsProps)
   return (
     <div className="auth">
       <form className="card auth__card" onSubmit={handleSubmit}>
-        <h1 className="auth__title">Papier Merchant Dashboard</h1>
+        <h1 className="auth__title">DOZO Merchant Dashboard</h1>
         <p className="auth__subtitle">
           Link terminals to a Google Place ID and watch scan volume. Reviews can’t be
           attributed, so scans are the metric.

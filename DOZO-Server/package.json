@@ -1,8 +1,8 @@
 {
-  "name": "papier-redirect-server",
+  "name": "dozo-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Standalone redirect + pairing server for the Papier Android app (scan logging, debounce, Google review redirect).",
+  "description": "Standalone redirect + pairing server for the DOZO Android app (scan logging, debounce, Google review redirect).",
   "type": "module",
   "engines": {
     "node": ">=20"

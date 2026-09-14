@@ -1,10 +1,10 @@
-# Papier Redirect Server
+# DOZO Redirect Server
 
-Standalone redirect + pairing server for the **Papier** Android app on Ingenico
+Standalone redirect + pairing server for the **DOZO** Android app on Ingenico
 AXIUM DX8000 terminals.
 
 After an approved sale the app shows a QR code. The QR **never** encodes the raw
-Google review URL. It encodes a Papier URL:
+Google review URL. It encodes a DOZO URL:
 
 ```
 {REDIRECT_DOMAIN}/r/{terminal_id}
@@ -54,7 +54,7 @@ curl -i http://localhost:3000/r/DEMOTERM01
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP listen port |
-| `DB_PATH` | `./data/papier.db` | SQLite file (`:memory:` supported) |
+| `DB_PATH` | `./data/dozo.db` | SQLite file (`:memory:` supported) |
 | `REDIRECT_DOMAIN` | `http://localhost:3000` | Public base used to build `redirect_url` |
 | `GOOGLE_REVIEW_BASE` | `https://search.google.com/local/writereview` | Google endpoint (no query string) |
 | `API_TOKEN` | `dev-placeholder-token` | Shared token guarding `/api/*` |
@@ -149,12 +149,12 @@ Timestamps are stored as UTC ISO-8601 strings (`2026-01-01T00:00:00.000Z`).
 ## Docker
 
 ```bash
-docker build -t papier-redirect-server .
+docker build -t dozo-server .
 docker run --rm -p 3000:3000 \
   -e API_TOKEN=change-me \
   -e SEED_DEMO=true \
-  -v papier-data:/data \
-  papier-redirect-server
+  -v dozo-data:/data \
+  dozo-server
 ```
 
 Or:
@@ -163,10 +163,10 @@ Or:
 docker compose up --build
 ```
 
-The SQLite file lives at `/data/papier.db` in the image (mount a volume).
+The SQLite file lives at `/data/dozo.db` in the image (mount a volume).
 `docker-compose.yml` reads `.env` via `env_file` (copy `.env.production.example`)
-and overrides `DB_PATH` to `/data/papier.db` so the DB lands on the
-`papier-data` named volume.
+and overrides `DB_PATH` to `/data/dozo.db` so the DB lands on the
+`dozo-data` named volume.
 
 ## Deployment
 
@@ -193,7 +193,7 @@ $EDITOR .env        # set REDIRECT_DOMAIN and a strong API_TOKEN
 ./scripts/smoke.sh           # BASE_URL defaults to the public host
 ```
 
-`deploy.sh` creates `~/papier-redirect-server` on the host, uploads the project
+`deploy.sh` creates `~/dozo-server` on the host, uploads the project
 (excluding `node_modules`, `data`, `.git` and `.env`), then builds and starts the
 container. It never uses `rsync --delete`, so remote `data/` and `.env` are
 preserved; a missing remote `.env` is created from `.env.production.example`
@@ -203,7 +203,7 @@ executing them.
 By hand on the VPS instead:
 
 ```bash
-git clone <repo> ~/papier-redirect-server && cd ~/papier-redirect-server
+git clone <repo> ~/dozo-server && cd ~/dozo-server
 cp .env.production.example .env && $EDITOR .env
 docker compose up -d --build
 docker compose ps
@@ -217,7 +217,7 @@ Re-run `./scripts/deploy.sh`; it rebuilds the image and restarts the container.
 
 ```bash
 ssh ubuntu@130.162.185.144
-cd ~/papier-redirect-server
+cd ~/dozo-server
 docker compose logs -f --tail=200
 docker compose ps
 ```
@@ -228,7 +228,7 @@ There is no "create merchant" API; merchants are seeded directly into SQLite.
 
 - On boot: set `SEED_DEMO=true` in `.env`, then `docker compose up -d --build`.
 - One-off against a running container:
-  `docker compose exec papier-redirect node scripts/seed.js`
+  `docker compose exec dozo-server node scripts/seed.js`
 - Bare Node: `SEED_DEMO=true npm start` or `npm run seed`
 
 This inserts merchant `demo-merchant` (public sample Place ID) and terminal

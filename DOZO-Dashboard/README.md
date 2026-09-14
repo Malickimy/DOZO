@@ -1,10 +1,10 @@
-# Papier Merchant Dashboard
+# DOZO Merchant Dashboard
 
-Web dashboard for **Papier** — a QR review-prompt product for Ingenico AXIUM
+Web dashboard for **DOZO** — a QR review-prompt product for Ingenico AXIUM
 DX8000 terminals.
 
 Terminals are paired to a merchant, and every QR scan is logged by the
-[redirect server](../papier-redirect-server). This dashboard is where a merchant
+[redirect server](../DOZO-Server). This dashboard is where a merchant
 links their terminals to a Google Place ID and watches **scan volume per
 terminal**.
 
@@ -49,11 +49,11 @@ at runtime on the login/settings screen; the runtime value is stored in
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://130.162.185.144:3000` | Base URL for the Papier API |
+| `VITE_API_BASE_URL` | `http://130.162.185.144:3000` | Base URL for the DOZO API |
 
 The API token is **not** a build-time variable — it is entered in the UI and
-persisted in `localStorage` under `papier.dashboard.apiToken`. The base URL is
-persisted under `papier.dashboard.apiBaseUrl`.
+persisted in `localStorage` under `dozo.dashboard.apiToken`. The base URL is
+persisted under `dozo.dashboard.apiBaseUrl`.
 
 ## API contract
 

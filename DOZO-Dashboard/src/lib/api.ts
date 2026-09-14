@@ -1,5 +1,5 @@
 /**
- * Typed client for the Papier redirect server API.
+ * Typed client for the DOZO redirect server API.
  *
  * Every `/api/*` request is sent with the `X-Api-Token` header. `GET /health`
  * is public. Endpoints that are still being implemented may answer `404`; the

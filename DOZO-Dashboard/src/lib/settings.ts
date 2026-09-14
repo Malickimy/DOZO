@@ -5,8 +5,12 @@ export interface Settings {
   token: string
 }
 
-const BASE_URL_KEY = 'papier.dashboard.apiBaseUrl'
-const TOKEN_KEY = 'papier.dashboard.apiToken'
+const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
+const TOKEN_KEY = 'dozo.dashboard.apiToken'
+
+// Pre-rename keys; migrated to the DOZO keys on first load.
+const LEGACY_BASE_URL_KEY = 'papier.dashboard.apiBaseUrl'
+const LEGACY_TOKEN_KEY = 'papier.dashboard.apiToken'
 
 function envBaseUrl(): string {
   const fromEnv = import.meta.env?.VITE_API_BASE_URL
@@ -39,10 +43,22 @@ function safeRemove(key: string): void {
   }
 }
 
+/** Read the DOZO key, falling back to (and migrating from) the legacy papier key. */
+function safeGetMigrated(key: string, legacyKey: string): string | null {
+  const current = safeGet(key)
+  if (current !== null) return current
+  const legacy = safeGet(legacyKey)
+  if (legacy !== null) {
+    safeSet(key, legacy)
+    safeRemove(legacyKey)
+  }
+  return legacy
+}
+
 export function loadSettings(): Settings {
   return {
-    baseUrl: safeGet(BASE_URL_KEY) ?? DEFAULT_API_BASE_URL,
-    token: safeGet(TOKEN_KEY) ?? '',
+    baseUrl: safeGetMigrated(BASE_URL_KEY, LEGACY_BASE_URL_KEY) ?? DEFAULT_API_BASE_URL,
+    token: safeGetMigrated(TOKEN_KEY, LEGACY_TOKEN_KEY) ?? '',
   }
 }
 
@@ -54,4 +70,6 @@ export function saveSettings(settings: Settings): void {
 export function clearSettings(): void {
   safeRemove(BASE_URL_KEY)
   safeRemove(TOKEN_KEY)
+  safeRemove(LEGACY_BASE_URL_KEY)
+  safeRemove(LEGACY_TOKEN_KEY)
 }

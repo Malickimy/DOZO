@@ -57,7 +57,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
             P
           </span>
           <div>
-            <h1 className="topbar__title">Papier Dashboard</h1>
+            <h1 className="topbar__title">DOZO Dashboard</h1>
             <p className="topbar__subtitle">Scan volume per terminal</p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# smoke.sh - Smoke-test a running Papier redirect server over HTTP.
+# smoke.sh - Smoke-test a running DOZO redirect server over HTTP.
 #
 # Sequence:
 #   1. GET  /health

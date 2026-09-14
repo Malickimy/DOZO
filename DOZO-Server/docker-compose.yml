@@ -1,7 +1,7 @@
 services:
-  papier-redirect:
+  dozo-server:
     build: .
-    image: papier-redirect-server:local
+    image: dozo-server:local
     ports:
       - "3000:3000"
     # Runtime config comes from .env (copy .env.production.example -> .env).
@@ -9,10 +9,10 @@ services:
       - .env
     environment:
       # Must win over DB_PATH in .env so SQLite lives on the named volume.
-      DB_PATH: /data/papier.db
+      DB_PATH: /data/dozo.db
     volumes:
-      - papier-data:/data
+      - dozo-data:/data
     restart: unless-stopped
 
 volumes:
-  papier-data:
+  dozo-data:
