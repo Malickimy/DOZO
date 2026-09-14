@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# mockpay_deploy - Build the Papier Mock Pay debug APK and install it on the device.
+# mockpay_deploy - Build the DOZO Mock Pay debug APK and install it on the device.
 #
 # Runs `./gradlew :mockpay:assembleDebug --console=plain` in $PROJECT_DIR, then
 # `adb install -r` of the resulting APK. Fails loudly if either step fails.

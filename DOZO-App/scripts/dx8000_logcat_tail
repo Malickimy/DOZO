@@ -9,7 +9,7 @@
 #   ADB            adb binary       (default: $ANDROID_HOME/platform-tools/adb)
 #   SERIAL         target device    (default: emulator-5554)
 #   LINES          number of lines  (default: 150)
-#   PACKAGE        default filter   (default: com.example.papier)
+#   PACKAGE        default filter   (default: com.example.dozo)
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 SERIAL="${SERIAL:-emulator-5554}"
 LINES="${LINES:-150}"
-FILTER="${PACKAGE:-com.example.papier}"
+FILTER="${PACKAGE:-com.example.dozo}"
 
 usage() {
     cat <<EOF
@@ -27,7 +27,7 @@ Dump the last N error-level logcat lines, then grep for <pkg> (case-insensitive)
 
 Options:
   --lines N          number of recent lines (default: \$LINES or 150)
-  --package <pkg>    additionally filter with grep (default: com.example.papier)
+  --package <pkg>    additionally filter with grep (default: com.example.dozo)
   --no-filter        do not grep; print all error lines
   -h, --help         show this help
 

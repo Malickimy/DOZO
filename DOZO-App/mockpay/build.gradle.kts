@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.papier.mockpay"
+    namespace = "com.example.dozo.mockpay"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.papier.mockpay"
+        applicationId = "com.example.dozo.mockpay"
         minSdk = 29
         targetSdk = 29
         versionCode = 1

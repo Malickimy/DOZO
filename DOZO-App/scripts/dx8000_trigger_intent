@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_trigger_intent - Fire a payment-result intent at the Papier MainActivity.
+# dx8000_trigger_intent - Fire a payment-result intent at the DOZO MainActivity.
 #
 # Selects an outcome (approved/canceled/refused) and provider (Fiserv/PoC) and
 # delivers the matching action to MainActivity.
@@ -22,14 +22,14 @@
 #   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
 #   ADB            adb binary       (default: $ANDROID_HOME/platform-tools/adb)
 #   SERIAL         target device    (default: emulator-5554)
-#   APP_ID         application id   (default: com.example.papier)
+#   APP_ID         application id   (default: com.example.dozo)
 
 set -euo pipefail
 
 ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 SERIAL="${SERIAL:-emulator-5554}"
-APP_ID="${APP_ID:-com.example.papier}"
+APP_ID="${APP_ID:-com.example.dozo}"
 
 DEFAULT_URL="https://g.page/r/EXAMPLE/review"
 DEFAULT_REASON_CANCELED="Canceled by user"

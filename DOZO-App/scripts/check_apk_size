@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# check_apk_size - Build the Papier release APK and enforce the size budget.
+# check_apk_size - Build the DOZO release APK and enforce the size budget.
 #
 # Runs `./gradlew :app:assembleRelease --console=plain` in $PROJECT_DIR, measures
 # the release APK under app/build/outputs/apk/release/, prints its size in MB and

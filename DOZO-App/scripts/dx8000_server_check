@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_server_check - Host-side connectivity check for the Papier redirect server.
+# dx8000_server_check - Host-side connectivity check for the DOZO redirect server.
 #
 # Runs entirely on the host (no adb/device). Curls {SERVER_URL}/health and,
 # unless --no-register is given, POSTs a test pairing registration and reads
@@ -31,7 +31,7 @@ usage() {
     cat <<EOF
 Usage: dx8000_server_check [--no-register] [-h|--help]
 
-Host-side check that the Papier redirect server is reachable:
+Host-side check that the DOZO redirect server is reachable:
   GET  \$SERVER_URL/health
   POST \$SERVER_URL/api/terminals/register   (unless --no-register)
   GET  \$SERVER_URL/api/terminals/pair-status/{code}

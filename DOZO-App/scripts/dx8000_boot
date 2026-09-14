@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_boot - Boot the Papier DX8000 AVD headlessly and wait until Android is ready.
+# dx8000_boot - Boot the DOZO DX8000 AVD headlessly and wait until Android is ready.
 #
 # Idempotent: if a device is already connected the script reports it and exits 0
 # without starting another emulator.

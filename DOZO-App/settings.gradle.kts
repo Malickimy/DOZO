@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Papier"
+rootProject.name = "DOZO"
 include(":app")
 include(":mockpay")

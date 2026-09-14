@@ -1,14 +1,14 @@
-# Papier Mock Pay
+# DOZO Mock Pay
 
 A mock Polcard/Fiserv payment application used to validate the
-`startActivityForResult` handoff into Papier (`com.example.papier/.MainActivity`)
+`startActivityForResult` handoff into DOZO (`com.example.dozo/.MainActivity`)
 and the numeric result codes it returns.
 
 It is a standalone Android app module (`:mockpay`) and does not modify `:app`.
 
 ## Contract
 
-Papier is launched with an explicit component and one of the actions below. All
+DOZO is launched with an explicit component and one of the actions below. All
 extras are strings unless noted.
 
 | Outcome  | Action                                          | `status`   | Extra `reason` | Extra `review_url` |
@@ -18,7 +18,7 @@ extras are strings unless noted.
 | Refused  | `com.fiserv.intent.action.TRANSACTION_REFUSED`  | `REFUSED`  | yes            | —                  |
 
 Common extras: `merchant_id`, `terminal_id`, `transaction_id`, and
-`amount_cents` (int). Papier returns a result code via `setResult(code)`:
+`amount_cents` (int). DOZO returns a result code via `setResult(code)`:
 
 | Code | Meaning   |
 | ---- | --------- |
@@ -42,11 +42,11 @@ same environment overrides as the other `scripts/` helpers: `PROJECT_DIR`,
 
 ## Use
 
-1. Install and activate Papier (`:app`), then launch **Papier Mock Pay**.
+1. Install and activate DOZO (`:app`), then launch **DOZO Mock Pay**.
 2. Edit `terminal_id`, `merchant_id`, `amount_cents`, `transaction_id`, and the
    optional `review_url` as needed.
 3. Tap **Approve**, **Cancel**, or **Refuse**. Mock Pay sends the matching
-   intent to Papier and waits for the result.
+   intent to DOZO and waits for the result.
 4. Read the returned code on screen and in logcat:
 
    ```sh
@@ -55,6 +55,6 @@ same environment overrides as the other `scripts/` helpers: `PROJECT_DIR`,
 
    The activity logs `resultCode=<n> label=<approved|canceled|refused|unexpected>`.
 
-**Manual launch (no extras)** starts Papier with no transaction extras to
-exercise the idle/silent-exit path. **Force stop Papier** calls
-`ActivityManager.killBackgroundProcesses("com.example.papier")`.
+**Manual launch (no extras)** starts DOZO with no transaction extras to
+exercise the idle/silent-exit path. **Force stop DOZO** calls
+`ActivityManager.killBackgroundProcesses("com.example.dozo")`.

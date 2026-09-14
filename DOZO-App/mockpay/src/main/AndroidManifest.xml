@@ -5,13 +5,13 @@
 
     <application
         android:allowBackup="false"
-        android:label="Papier Mock Pay"
+        android:label="DOZO Mock Pay"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MockPayActivity"
             android:exported="true"
-            android:label="Papier Mock Pay"
+            android:label="DOZO Mock Pay"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">

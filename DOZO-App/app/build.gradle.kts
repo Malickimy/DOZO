@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.papier"
+    namespace = "com.example.dozo"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.papier"
+        applicationId = "com.example.dozo"
         minSdk = 29
         targetSdk = 29
         versionCode = 1
