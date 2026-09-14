@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "papier/**"
+      - "DOZO-App/**"
       - ".github/workflows/app.yml"
   pull_request:
     paths:
-      - "papier/**"
+      - "DOZO-App/**"
       - ".github/workflows/app.yml"
   workflow_dispatch:
 
@@ -22,5 +22,5 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: Build + unit test
-        working-directory: papier
+        working-directory: DOZO-App
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --console=plain

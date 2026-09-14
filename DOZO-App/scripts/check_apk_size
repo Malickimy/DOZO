@@ -7,14 +7,14 @@
 # exits non-zero when it exceeds $APK_SIZE_BUDGET_MB (default: 5).
 #
 # Environment overrides:
-#   PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/papier)
+#   PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/DOZO-App)
 #   GRADLEW             gradle wrapper         (default: $PROJECT_DIR/gradlew)
 #   APK_SIZE_BUDGET_MB  budget in megabytes    (default: 5)
 #   SKIP_BUILD          set to 1 to reuse the existing APK (default: 0)
 
 set -euo pipefail
 
-PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/papier}"
+PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/DOZO-App}"
 GRADLEW="${GRADLEW:-$PROJECT_DIR/gradlew}"
 APK_SIZE_BUDGET_MB="${APK_SIZE_BUDGET_MB:-5}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
@@ -34,7 +34,7 @@ Options:
   -h, --help      show this help
 
 Environment overrides:
-  PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/papier)
+  PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/DOZO-App)
   GRADLEW             gradle wrapper         (default: \$PROJECT_DIR/gradlew)
   APK_SIZE_BUDGET_MB  budget in megabytes    (default: 5)
   SKIP_BUILD          set to 1 to reuse the existing APK (default: 0)

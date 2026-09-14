@@ -4,9 +4,9 @@
 # loose monorepo: each project keeps its own build config; this file only shells
 # out to the right one.
 
-APP_DIR       := papier
-SERVER_DIR    := papier-redirect-server
-DASHBOARD_DIR := papier-dashboard
+APP_DIR       := DOZO-App
+SERVER_DIR    := DOZO-Server
+DASHBOARD_DIR := DOZO-Dashboard
 
 .PHONY: help app app-test server server-dev dashboard dashboard-dev verify
 

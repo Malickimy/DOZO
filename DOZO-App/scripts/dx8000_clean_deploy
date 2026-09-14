@@ -6,7 +6,7 @@
 # `adb install -r` of the resulting APK. Fails loudly if either step fails.
 #
 # Environment overrides:
-#   PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/papier)
+#   PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/DOZO-App)
 #   ANDROID_HOME   Android SDK root   (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
 #   ADB            adb binary         (default: $ANDROID_HOME/platform-tools/adb)
 #   SERIAL         target device      (default: emulator-5554)
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/papier}"
+PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/DOZO-App}"
 ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 SERIAL="${SERIAL:-emulator-5554}"
@@ -30,7 +30,7 @@ Clean, assemble the debug APK and install it on the connected device:
   adb -s \$SERIAL install -r \$PROJECT_DIR/$APK_REL
 
 Environment overrides:
-  PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/papier)
+  PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/DOZO-App)
   ANDROID_HOME   Android SDK root   (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
   ADB            adb binary         (default: \$ANDROID_HOME/platform-tools/adb)
   SERIAL         target device      (default: emulator-5554)

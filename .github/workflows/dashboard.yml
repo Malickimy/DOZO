@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "papier-dashboard/**"
+      - "DOZO-Dashboard/**"
       - ".github/workflows/dashboard.yml"
   pull_request:
     paths:
-      - "papier-dashboard/**"
+      - "DOZO-Dashboard/**"
       - ".github/workflows/dashboard.yml"
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: papier-dashboard
+        working-directory: DOZO-Dashboard
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
