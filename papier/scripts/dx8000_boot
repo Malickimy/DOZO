@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+#
+# dx8000_boot - Boot the Papier DX8000 AVD headlessly and wait until Android is ready.
+#
+# Idempotent: if a device is already connected the script reports it and exits 0
+# without starting another emulator.
+#
+# Environment overrides:
+#   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
+#   ADB            adb binary        (default: $ANDROID_HOME/platform-tools/adb)
+#   EMULATOR       emulator binary   (default: $ANDROID_HOME/emulator/emulator)
+#   AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
+#   SERIAL         emulator serial   (default: emulator-5554)
+#   BOOT_TIMEOUT   seconds to wait for sys.boot_completed (default: 300)
+#   LOG_FILE       emulator log      (default: /tmp/dx8000-emulator.log)
+
+set -euo pipefail
+
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
+EMULATOR="${EMULATOR:-$ANDROID_HOME/emulator/emulator}"
+AVD_NAME="${AVD_NAME:-Ingenico_AXIUM_DX8000}"
+SERIAL="${SERIAL:-emulator-5554}"
+BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
+LOG_FILE="${LOG_FILE:-/tmp/dx8000-emulator.log}"
+
+usage() {
+    cat <<EOF
+Usage: dx8000_boot [-h|--help]
+
+Boot the AVD "\$AVD_NAME" headlessly (detached) and wait for sys.boot_completed=1.
+If a device is already connected, report it and exit 0 (idempotent).
+
+Environment overrides:
+  ANDROID_HOME   Android SDK root (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
+  ADB            adb binary        (default: \$ANDROID_HOME/platform-tools/adb)
+  EMULATOR       emulator binary   (default: \$ANDROID_HOME/emulator/emulator)
+  AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
+  SERIAL         emulator serial   (default: emulator-5554)
+  BOOT_TIMEOUT   seconds to wait   (default: 300)
+  LOG_FILE       emulator log      (default: /tmp/dx8000-emulator.log)
+EOF
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) usage; exit 0 ;;
+        *) echo "dx8000_boot: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [[ ! -x "$ADB" ]]; then
+    echo "ERROR: adb not found or not executable: $ADB" >&2
+    echo "       Set ANDROID_HOME or ADB to the correct location." >&2
+    exit 1
+fi
+
+# Idempotency: any device in state "device" means there is nothing to boot.
+if "$ADB" devices | awk 'NR > 1 && $2 == "device" { found = 1 } END { exit !found }'; then
+    echo "Device already connected; nothing to boot."
+    "$ADB" devices
+    exit 0
+fi
+
+if [[ ! -x "$EMULATOR" ]]; then
+    echo "ERROR: emulator not found or not executable: $EMULATOR" >&2
+    echo "       Set ANDROID_HOME or EMULATOR to the correct location." >&2
+    exit 1
+fi
+
+echo "Booting AVD '$AVD_NAME' headlessly; log: $LOG_FILE"
+nohup "$EMULATOR" -avd "$AVD_NAME" -no-window -no-audio -no-boot-anim >"$LOG_FILE" 2>&1 &
+disown 2>/dev/null || true
+
+echo "Waiting for device to appear..."
+"$ADB" wait-for-device
+
+echo "Waiting for sys.boot_completed=1 (timeout ${BOOT_TIMEOUT}s)..."
+deadline=$((SECONDS + BOOT_TIMEOUT))
+while :; do
+    booted="$("$ADB" -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n' || true)"
+    if [[ "$booted" == "1" ]]; then
+        break
+    fi
+    if (( SECONDS >= deadline )); then
+        echo "ERROR: timed out after ${BOOT_TIMEOUT}s waiting for boot (last='$booted')." >&2
+        echo "       See emulator log: $LOG_FILE" >&2
+        exit 1
+    fi
+    sleep 2
+done
+
+echo "AVD '$AVD_NAME' booted."
+echo "Serial:  $SERIAL"
+"$ADB" -s "$SERIAL" shell wm size
+"$ADB" -s "$SERIAL" shell wm density

@@ -1,0 +1,18 @@
+services:
+  papier-redirect:
+    build: .
+    image: papier-redirect-server:local
+    ports:
+      - "3000:3000"
+    # Runtime config comes from .env (copy .env.production.example -> .env).
+    env_file:
+      - .env
+    environment:
+      # Must win over DB_PATH in .env so SQLite lives on the named volume.
+      DB_PATH: /data/papier.db
+    volumes:
+      - papier-data:/data
+    restart: unless-stopped
+
+volumes:
+  papier-data:

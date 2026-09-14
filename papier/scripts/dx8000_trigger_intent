@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+#
+# dx8000_trigger_intent - Fire a payment-result intent at the Papier MainActivity.
+#
+# Selects an outcome (approved/canceled/refused) and provider (Fiserv/PoC) and
+# delivers the matching action to MainActivity.
+#
+# The remote command is assembled as a SINGLE string and passed to `adb shell`.
+# Extra values are single-quoted for the device shell (embedded single quotes
+# escaped) so values containing spaces survive the device shell's re-parse.
+#
+# Extras sent:
+#   status          APPROVED / CANCELED / REFUSED (matches the chosen outcome)
+#   merchant_id     merchant identifier      (default: MERCHANT01)
+#   terminal_id     terminal identifier      (default: DEMOTERM01)
+#   transaction_id  transaction identifier   (default: TXN-<epoch>)
+#   amount_cents    integer amount in cents  (default: 1999)
+#   review_url      approved only
+#   reason          canceled/refused only
+#
+# Environment overrides:
+#   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
+#   ADB            adb binary       (default: $ANDROID_HOME/platform-tools/adb)
+#   SERIAL         target device    (default: emulator-5554)
+#   APP_ID         application id   (default: com.example.papier)
+
+set -euo pipefail
+
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
+SERIAL="${SERIAL:-emulator-5554}"
+APP_ID="${APP_ID:-com.example.papier}"
+
+DEFAULT_URL="https://g.page/r/EXAMPLE/review"
+DEFAULT_REASON_CANCELED="Canceled by user"
+DEFAULT_REASON_REFUSED="Card declined"
+DEFAULT_MERCHANT="MERCHANT01"
+DEFAULT_TERMINAL="DEMOTERM01"
+
+outcome="approved"
+provider="fiserv"
+txn="TXN-$(date +%s)"
+amount="1999"
+url="$DEFAULT_URL"
+reason=""
+reason_given=0
+merchant="$DEFAULT_MERCHANT"
+terminal="$DEFAULT_TERMINAL"
+
+# Single-quote a value for the device shell, escaping embedded single quotes.
+shq() {
+    local s=$1
+    s=${s//\'/\'\\\'\'}
+    printf "'%s'" "$s"
+}
+
+usage() {
+    cat <<EOF
+Usage: dx8000_trigger_intent [options]
+
+Fire a payment-result intent at $APP_ID/.MainActivity.
+
+Outcome (default: --approved):
+  --approved             approved/complete outcome
+  --canceled             canceled outcome
+  --refused              refused outcome
+
+Provider (default: Fiserv):
+  --poc, --ingenico      use the PoC actions
+                         (default: Fiserv actions)
+
+Options:
+  --txn <id>             transaction_id extra      (default: TXN-<epoch>)
+  --amount <cents>       amount_cents extra (int)  (default: 1999)
+  --merchant <id>        merchant_id extra         (default: $DEFAULT_MERCHANT)
+  --terminal <id>        terminal_id extra         (default: $DEFAULT_TERMINAL)
+  --url <review_url>     review_url extra (approved only)
+                         (default: $DEFAULT_URL)
+  --reason <text>        reason extra (canceled/refused only)
+                         (defaults: canceled "$DEFAULT_REASON_CANCELED", refused "$DEFAULT_REASON_REFUSED")
+  -h, --help             show this help
+
+Environment overrides:
+  ANDROID_HOME, ADB, SERIAL, APP_ID
+EOF
+}
+
+die() { echo "dx8000_trigger_intent: $*" >&2; exit 2; }
+
+while (( $# )); do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        --approved) outcome="approved"; shift ;;
+        --canceled) outcome="canceled"; shift ;;
+        --refused)  outcome="refused"; shift ;;
+        --poc|--ingenico) provider="poc"; shift ;;
+        --txn)    [[ $# -ge 2 ]] || die "--txn requires a value";    txn="$2";    shift 2 ;;
+        --txn=*)  txn="${1#*=}";    shift ;;
+        --amount) [[ $# -ge 2 ]] || die "--amount requires a value"; amount="$2"; shift 2 ;;
+        --amount=*) amount="${1#*=}"; shift ;;
+        --merchant) [[ $# -ge 2 ]] || die "--merchant requires a value"; merchant="$2"; shift 2 ;;
+        --merchant=*) merchant="${1#*=}"; shift ;;
+        --terminal) [[ $# -ge 2 ]] || die "--terminal requires a value"; terminal="$2"; shift 2 ;;
+        --terminal=*) terminal="${1#*=}"; shift ;;
+        --url)    [[ $# -ge 2 ]] || die "--url requires a value";    url="$2";    shift 2 ;;
+        --url=*)  url="${1#*=}";    shift ;;
+        --reason) [[ $# -ge 2 ]] || die "--reason requires a value"; reason="$2"; reason_given=1; shift 2 ;;
+        --reason=*) reason="${1#*=}"; reason_given=1; shift ;;
+        -*) die "unknown option: $1" ;;
+        *)  die "unexpected argument: $1" ;;
+    esac
+done
+
+if [[ ! -x "$ADB" ]]; then
+    echo "ERROR: adb not found or not executable: $ADB" >&2
+    exit 1
+fi
+if [[ ! "$amount" =~ ^-?[0-9]+$ ]]; then
+    die "--amount must be an integer (cents), got: $amount"
+fi
+
+case "$outcome:$provider" in
+    approved:fiserv) action="com.fiserv.intent.action.TRANSACTION_COMPLETE" ;;
+    approved:poc)    action="com.ingenico.dx8000.action.TRANSACTION_APPROVED" ;;
+    canceled:fiserv) action="com.fiserv.intent.action.TRANSACTION_CANCELED" ;;
+    canceled:poc)    action="com.ingenico.dx8000.action.TRANSACTION_CANCELED" ;;
+    refused:fiserv)  action="com.fiserv.intent.action.TRANSACTION_REFUSED" ;;
+    refused:poc)     action="com.ingenico.dx8000.action.TRANSACTION_REFUSED" ;;
+    *) die "unsupported outcome/provider: $outcome/$provider" ;;
+esac
+
+component="$APP_ID/.MainActivity"
+status="$(printf '%s' "$outcome" | tr '[:lower:]' '[:upper:]')"
+
+# Build the remote command as one string; quote every extra for the device shell.
+remote="am start -n $(shq "$component") -a $(shq "$action") --es status $(shq "$status") --es merchant_id $(shq "$merchant") --es terminal_id $(shq "$terminal") --es transaction_id $(shq "$txn") --ei amount_cents $(shq "$amount")"
+if [[ "$outcome" == "approved" ]]; then
+    remote+=" --es review_url $(shq "$url")"
+else
+    if (( reason_given == 0 )); then
+        case "$outcome" in
+            canceled) reason="$DEFAULT_REASON_CANCELED" ;;
+            refused)  reason="$DEFAULT_REASON_REFUSED" ;;
+        esac
+    fi
+    remote+=" --es reason $(shq "$reason")"
+fi
+
+echo "Command:"
+printf '  %q' "$ADB" -s "$SERIAL" shell
+printf ' %s' "$remote"
+printf '\n'
+
+set +e
+out="$("$ADB" -s "$SERIAL" shell "$remote" 2>&1)"
+rc=$?
+set -e
+printf '%s\n' "$out"
+
+if (( rc != 0 )) || [[ "$out" == *"does not exist"* ]] || [[ "$out" == *"Error:"* ]]; then
+    echo "ERROR: failed to start activity $component (adb exit $rc)" >&2
+    exit 1
+fi
+
+echo "Intent delivered (outcome=$outcome, status=$status, provider=$provider, action=$action, txn=$txn, amount=$amount, merchant=$merchant, terminal=$terminal)."

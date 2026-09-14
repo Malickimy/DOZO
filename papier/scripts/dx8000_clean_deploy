@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#
+# dx8000_clean_deploy - Clean build the Papier debug APK and install it on the device.
+#
+# Runs `./gradlew clean :app:assembleDebug --console=plain` in $PROJECT_DIR, then
+# `adb install -r` of the resulting APK. Fails loudly if either step fails.
+#
+# Environment overrides:
+#   PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/papier)
+#   ANDROID_HOME   Android SDK root   (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
+#   ADB            adb binary         (default: $ANDROID_HOME/platform-tools/adb)
+#   SERIAL         target device      (default: emulator-5554)
+#   GRADLEW        gradle wrapper     (default: $PROJECT_DIR/gradlew)
+
+set -euo pipefail
+
+PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/papier}"
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
+SERIAL="${SERIAL:-emulator-5554}"
+GRADLEW="${GRADLEW:-$PROJECT_DIR/gradlew}"
+APK_REL="app/build/outputs/apk/debug/app-debug.apk"
+
+usage() {
+    cat <<EOF
+Usage: dx8000_clean_deploy [-h|--help]
+
+Clean, assemble the debug APK and install it on the connected device:
+  ./gradlew clean :app:assembleDebug --console=plain
+  adb -s \$SERIAL install -r \$PROJECT_DIR/$APK_REL
+
+Environment overrides:
+  PROJECT_DIR    Gradle project root (default: /Users/malicky/l/DOZO/papier)
+  ANDROID_HOME   Android SDK root   (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
+  ADB            adb binary         (default: \$ANDROID_HOME/platform-tools/adb)
+  SERIAL         target device      (default: emulator-5554)
+  GRADLEW        gradle wrapper     (default: \$PROJECT_DIR/gradlew)
+EOF
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) usage; exit 0 ;;
+        *) echo "dx8000_clean_deploy: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [[ ! -d "$PROJECT_DIR" ]]; then
+    echo "ERROR: project directory not found: $PROJECT_DIR" >&2
+    exit 1
+fi
+if [[ ! -x "$GRADLEW" ]]; then
+    echo "ERROR: gradle wrapper not found or not executable: $GRADLEW" >&2
+    exit 1
+fi
+if [[ ! -x "$ADB" ]]; then
+    echo "ERROR: adb not found or not executable: $ADB" >&2
+    exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+echo "==> ./gradlew clean :app:assembleDebug --console=plain"
+./gradlew clean :app:assembleDebug --console=plain
+
+APK="$PROJECT_DIR/$APK_REL"
+if [[ ! -f "$APK" ]]; then
+    echo "ERROR: APK not found after build: $APK" >&2
+    exit 1
+fi
+
+size_bytes="$(wc -c <"$APK" | tr -d ' ')"
+echo "APK:  $APK"
+echo "Size: $size_bytes bytes"
+
+echo "==> adb -s $SERIAL install -r $APK"
+set +e
+install_out="$("$ADB" -s "$SERIAL" install -r "$APK" 2>&1)"
+install_rc=$?
+set -e
+printf '%s\n' "$install_out"
+
+if (( install_rc != 0 )) || [[ "$install_out" != *"Success"* ]]; then
+    echo "ERROR: install failed (adb exit $install_rc)" >&2
+    exit 1
+fi
+
+echo "Install: OK"

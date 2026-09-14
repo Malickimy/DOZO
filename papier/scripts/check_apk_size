@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# check_apk_size - Build the Papier release APK and enforce the size budget.
+#
+# Runs `./gradlew :app:assembleRelease --console=plain` in $PROJECT_DIR, measures
+# the release APK under app/build/outputs/apk/release/, prints its size in MB and
+# exits non-zero when it exceeds $APK_SIZE_BUDGET_MB (default: 5).
+#
+# Environment overrides:
+#   PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/papier)
+#   GRADLEW             gradle wrapper         (default: $PROJECT_DIR/gradlew)
+#   APK_SIZE_BUDGET_MB  budget in megabytes    (default: 5)
+#   SKIP_BUILD          set to 1 to reuse the existing APK (default: 0)
+
+set -euo pipefail
+
+PROJECT_DIR="${PROJECT_DIR:-/Users/malicky/l/DOZO/papier}"
+GRADLEW="${GRADLEW:-$PROJECT_DIR/gradlew}"
+APK_SIZE_BUDGET_MB="${APK_SIZE_BUDGET_MB:-5}"
+SKIP_BUILD="${SKIP_BUILD:-0}"
+APK_DIR="$PROJECT_DIR/app/build/outputs/apk/release"
+
+usage() {
+    cat <<EOF
+Usage: check_apk_size [--budget MB] [--skip-build] [-h|--help]
+
+Build the release APK and fail when it exceeds the size budget:
+  ./gradlew :app:assembleRelease --console=plain
+  measure $APK_DIR/app-release*.apk
+
+Options:
+  --budget MB     size budget in megabytes (default: \$APK_SIZE_BUDGET_MB or 5)
+  --skip-build    measure the existing APK without rebuilding
+  -h, --help      show this help
+
+Environment overrides:
+  PROJECT_DIR         Gradle project root    (default: /Users/malicky/l/DOZO/papier)
+  GRADLEW             gradle wrapper         (default: \$PROJECT_DIR/gradlew)
+  APK_SIZE_BUDGET_MB  budget in megabytes    (default: 5)
+  SKIP_BUILD          set to 1 to reuse the existing APK (default: 0)
+EOF
+}
+
+while (( $# )); do
+    case "$1" in
+        -h|--help)      usage; exit 0 ;;
+        --skip-build)   SKIP_BUILD=1; shift ;;
+        --budget)       [[ $# -ge 2 ]] || { echo "check_apk_size: --budget requires a value" >&2; exit 2; }; APK_SIZE_BUDGET_MB="$2"; shift 2 ;;
+        --budget=*)     APK_SIZE_BUDGET_MB="${1#*=}"; shift ;;
+        -*)             echo "check_apk_size: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)              echo "check_apk_size: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if ! awk -v budget="$APK_SIZE_BUDGET_MB" 'BEGIN { exit !(budget ~ /^[0-9]+([.][0-9]+)?$/) }'; then
+    echo "ERROR: APK_SIZE_BUDGET_MB must be a positive number: $APK_SIZE_BUDGET_MB" >&2
+    exit 2
+fi
+
+if [[ ! -d "$PROJECT_DIR" ]]; then
+    echo "ERROR: project directory not found: $PROJECT_DIR" >&2
+    exit 1
+fi
+if [[ ! -x "$GRADLEW" ]]; then
+    echo "ERROR: gradle wrapper not found or not executable: $GRADLEW" >&2
+    exit 1
+fi
+
+if (( ! SKIP_BUILD )); then
+    cd "$PROJECT_DIR"
+    echo "==> ./gradlew :app:assembleRelease --console=plain"
+    ./gradlew :app:assembleRelease --console=plain
+fi
+
+APK=""
+for candidate in "$APK_DIR"/app-release*.apk; do
+    [[ -e "$candidate" ]] || continue
+    if [[ -z "$APK" || "$candidate" -nt "$APK" ]]; then
+        APK="$candidate"
+    fi
+done
+if [[ -z "$APK" ]]; then
+    echo "ERROR: no release APK found in $APK_DIR" >&2
+    exit 1
+fi
+
+size_bytes="$(wc -c <"$APK" | tr -d ' ')"
+size_mb="$(awk -v bytes="$size_bytes" 'BEGIN { printf "%.2f", bytes / 1048576 }')"
+
+echo "APK:    $APK"
+echo "Size:   $size_mb MB ($size_bytes bytes)"
+echo "Budget: $APK_SIZE_BUDGET_MB MB"
+
+if awk -v bytes="$size_bytes" -v budget="$APK_SIZE_BUDGET_MB" \
+    'BEGIN { exit !(bytes <= budget * 1048576) }'; then
+    echo "check_apk_size: OK"
+    exit 0
+fi
+
+echo "check_apk_size: FAILED - release APK exceeds the $APK_SIZE_BUDGET_MB MB budget" >&2
+exit 1

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#
+# dx8000_logcat_tail - Print the most recent error-level logcat lines, optionally
+# filtered to a package. Always exits 0 when the adb command itself succeeds, even
+# if the filter matches nothing.
+#
+# Environment overrides:
+#   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
+#   ADB            adb binary       (default: $ANDROID_HOME/platform-tools/adb)
+#   SERIAL         target device    (default: emulator-5554)
+#   LINES          number of lines  (default: 150)
+#   PACKAGE        default filter   (default: com.example.papier)
+
+set -euo pipefail
+
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
+SERIAL="${SERIAL:-emulator-5554}"
+LINES="${LINES:-150}"
+FILTER="${PACKAGE:-com.example.papier}"
+
+usage() {
+    cat <<EOF
+Usage: dx8000_logcat_tail [--lines N] [--package <pkg> | --no-filter] [-h|--help]
+
+Dump the last N error-level logcat lines, then grep for <pkg> (case-insensitive).
+
+Options:
+  --lines N          number of recent lines (default: \$LINES or 150)
+  --package <pkg>    additionally filter with grep (default: com.example.papier)
+  --no-filter        do not grep; print all error lines
+  -h, --help         show this help
+
+Environment overrides:
+  ANDROID_HOME, ADB, SERIAL, LINES, PACKAGE
+EOF
+}
+
+while (( $# )); do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        --lines)   [[ $# -ge 2 ]] || { echo "dx8000_logcat_tail: --lines requires a value" >&2; exit 2; }; LINES="$2"; shift 2 ;;
+        --lines=*) LINES="${1#*=}"; shift ;;
+        --package) [[ $# -ge 2 ]] || { echo "dx8000_logcat_tail: --package requires a value" >&2; exit 2; }; FILTER="$2"; shift 2 ;;
+        --package=*) FILTER="${1#*=}"; shift ;;
+        --no-filter) FILTER=""; shift ;;
+        -*) echo "dx8000_logcat_tail: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)  echo "dx8000_logcat_tail: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [[ ! "$LINES" =~ ^[0-9]+$ ]]; then
+    echo "dx8000_logcat_tail: --lines must be a non-negative integer, got: $LINES" >&2
+    exit 2
+fi
+if [[ ! -x "$ADB" ]]; then
+    echo "ERROR: adb not found or not executable: $ADB" >&2
+    exit 1
+fi
+
+# The '*:E' filter must stay single-quoted so zsh/fish never glob it.
+out="$("$ADB" -s "$SERIAL" logcat -d -t "$LINES" '*:E' 2>/dev/null || true)"
+
+if [[ -n "$FILTER" ]]; then
+    out="$(printf '%s\n' "$out" | grep -i -- "$FILTER" || true)"
+fi
+
+printf '%s\n' "$out"
+exit 0
