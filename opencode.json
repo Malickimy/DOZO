@@ -50,8 +50,9 @@
         "-y",
         "@database-mcp/sqlite",
         "--dsn",
-        "/Users/malicky/l/DOZO/DOZO-Server/data/dozo.db"
+        "./data/dozo.db"
       ],
+      "cwd": "./DOZO-Server",
       "enabled": false
     },
     "docker": {
@@ -118,9 +119,10 @@
         "run",
         "server.py"
       ],
+      "cwd": "./DOZO-App",
       "enabled": false,
       "environment": {
-        "ANDROID_PROJECT_DIR": "/Users/malicky/l/DOZO/DOZO-App",
+        "ANDROID_PROJECT_DIR": ".",
         "JAVA_HOME": "/Users/malicky/Library/Java/JavaVirtualMachines/openjdk-25.0.1/Contents/Home",
         "PATH": "/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }

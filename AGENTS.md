@@ -76,6 +76,15 @@ git worktree remove ../workspace-server
 git worktree remove ../workspace-dashboard
 ```
 
+A worktree is a full checkout, so it loads its **own** `opencode.json` and `.opencode/`
+from the branch it was created on — the root config is not shared live. Two rules follow:
+
+- **Commit config before branching a worktree**, or rebase the branch onto the commit
+  that added it. Uncommitted config and skills never appear in a worktree.
+- **Keep `opencode.json` paths worktree-relative** (`cwd` + `./DOZO-*`). MCP servers
+  must read the worktree's copies, not the main checkout — never reintroduce absolute
+  `/Users/.../DOZO/...` paths.
+
 ## GitHub: hand off to the GitHub agent
 
 - **All GitHub actions are handed off to the GitHub agent** (subagent `githuber`, via
