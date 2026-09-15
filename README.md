@@ -13,7 +13,9 @@ DOZO/
 ├── DOZO-Dashboard/      # Vite + React merchant portal
 ├── CONTRACTS.md         # cross-project interface (source of truth)
 ├── MANUAL.md            # hands-on operator manual
+├── AGENTS.md            # agent/contributor workflow (commits, PRs, worktrees)
 ├── Makefile             # root task runner
+├── commitlint.config.js # commit scope/format rules
 └── .github/workflows/   # path-filtered CI (app / server / dashboard)
 ```
 
@@ -30,6 +32,7 @@ make verify        # Android build + unit tests, server tests, dashboard build +
 Or per project:
 
 ```bash
+make test          # Android unit tests + server tests + dashboard tests
 make app           # ./gradlew :app:assembleDebug
 make app-test      # ./gradlew :app:testDebugUnitTest
 make server        # npm test in DOZO-Server
@@ -42,6 +45,9 @@ server or dashboard.
 
 ## Conventions
 
+- Agent and contributor workflow lives in [`AGENTS.md`](AGENTS.md).
+- Commits use Conventional Commits with a `DOZO-App` / `DOZO-Server` /
+  `DOZO-Dashboard` / `root` scope, enforced by commitlint in CI.
 - One writer; contract changes go through `CONTRACTS.md` and update all consumers in
   one commit.
 - Do **not** run the server `deploy.sh` full rebuild on the 1 GB VPS (it thrashes); use
