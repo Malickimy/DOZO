@@ -1,0 +1,150 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "references": {
+    "dozo-app": {
+      "path": "./DOZO-App",
+      "description": "Use for the Android terminal app (Kotlin/Gradle, intents, pairing, mockpay). Read before writing QA for an app-side change."
+    },
+    "dozo-server": {
+      "path": "./DOZO-Server",
+      "description": "Use for the Fastify + SQLite redirect server (routes, schema, tests). Read before writing API QA for a server change."
+    },
+    "dozo-dashboard": {
+      "path": "./DOZO-Dashboard",
+      "description": "Use for the Vite + React merchant portal (components, flows, vitest setup). Read before writing browser QA for a dashboard change."
+    },
+    "root": {
+      "path": ".",
+      "description": "Use for CONTRACTS.md, MANUAL.md, AGENTS.md, and repo-wide conventions. Read to ground contract and cross-cutting QA."
+    }
+  },
+  "mcp": {
+    "firecrawl": {
+      "type": "local",
+      "command": ["npx", "-y", "firecrawl-mcp"],
+      "enabled": false,
+      "environment": {
+        "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
+      },
+      "alwaysAllow": false
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": false
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "enabled": false
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp@latest", "--headless"],
+      "enabled": false
+    },
+    "sqlite": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@database-mcp/sqlite",
+        "--dsn",
+        "/Users/malicky/l/DOZO/DOZO-Server/data/dozo.db"
+      ],
+      "enabled": false
+    },
+    "docker": {
+      "type": "local",
+      "command": ["docker", "mcp", "gateway", "run"],
+      "enabled": false
+    },
+    "ssh": {
+      "type": "local",
+      "command": ["/Users/malicky/.local/bin/uvx", "safe-ssh-mcp"],
+      "enabled": false
+    },
+    "mobile-mcp": {
+      "type": "local",
+      "command": ["npx", "-y", "@mobilenext/mobile-mcp@latest"],
+      "enabled": false,
+      "environment": {
+        "MOBILEMCP_DISABLE_TELEMETRY": "1",
+        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": false,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "maps": {
+      "type": "remote",
+      "url": "https://mapstools.googleapis.com/mcp",
+      "enabled": false
+    },
+    "android-mcp-server": {
+      "type": "local",
+      "command": [
+        "/Users/malicky/.local/bin/uv",
+        "--directory",
+        "/Users/malicky/l/android-mcp-server",
+        "run",
+        "server.py"
+      ],
+      "enabled": false,
+      "environment": {
+        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "uiautomator2-mcp-server": {
+      "type": "local",
+      "command": ["/Users/malicky/.local/bin/uiautomator2-mcp-server", "stdio"],
+      "enabled": false,
+      "environment": {
+        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "android-builder-mcp": {
+      "type": "local",
+      "command": [
+        "/Users/malicky/.local/bin/uv",
+        "--directory",
+        "/Users/malicky/l/android-builder-mcp",
+        "run",
+        "server.py"
+      ],
+      "enabled": false,
+      "environment": {
+        "ANDROID_PROJECT_DIR": "/Users/malicky/l/DOZO/DOZO-App",
+        "JAVA_HOME": "/Users/malicky/Library/Java/JavaVirtualMachines/openjdk-25.0.1/Contents/Home",
+        "PATH": "/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    },
+    "jetbrains-psi-mcp-server": {
+      "type": "local",
+      "command": ["npx", "-y", "jetbrains-psi-mcp-server"],
+      "enabled": false
+    }
+  },
+  "tools": {
+    "firecrawl_*": false,
+    "context7_*": false,
+    "playwright_*": false,
+    "chrome-devtools_*": false,
+    "sqlite_*": false,
+    "docker_*": false,
+    "ssh_*": false,
+    "mobile-mcp_*": false,
+    "github_*": false,
+    "maps_*": false,
+    "android-mcp-server_*": false,
+    "uiautomator2-mcp-server_*": false,
+    "android-builder-mcp_*": false,
+    "jetbrains-psi-mcp-server_*": false
+  }
+}
