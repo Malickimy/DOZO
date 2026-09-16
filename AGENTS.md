@@ -113,10 +113,13 @@ from the branch it was created on — the root config is not shared live. Two ru
 
 ## MCP servers: enable on demand
 
-All MCP servers are **disabled** in [`opencode.json`](opencode.json). Do not enable or
-use one unless the task has a concrete action that actually needs it — for example
-browser E2E for the dashboard (`playwright`), read-only DB inspection (`sqlite`), or
-device UI automation (`mobile-mcp`).
+All MCP servers are **disabled** in the root [`opencode.json`](opencode.json), except in
+[`DOZO-App/`](DOZO-App/opencode.json), where the four Android tooling servers
+(`android-mcp-server`, `uiautomator2-mcp-server`, `android-builder-mcp`, `mobile-mcp`)
+are enabled so opening `DOZO-App/` brings them up automatically. Everywhere else, do not
+enable or use one unless the task has a concrete action that actually needs it — for
+example browser E2E for the dashboard (`playwright`) or read-only DB inspection
+(`sqlite`).
 
 - Try built-in tools, the repo skills, and `make` targets first; most tasks need no MCP.
 - When one is required, name the server and the action it performs, then set
