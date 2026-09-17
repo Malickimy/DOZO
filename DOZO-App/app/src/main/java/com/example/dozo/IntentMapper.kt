@@ -1,7 +1,5 @@
 package com.example.dozo
 
-import com.example.dozo.ui.OutcomeKind
-
 data class PaymentIntent(
     val action: String? = null,
     val status: String? = null,
@@ -22,23 +20,29 @@ sealed interface MappedState {
         val amountCents: Int?
     ) : MappedState
 
-    data class NonApproval(
-        val kind: OutcomeKind,
-        val txnId: String,
-        val amountCents: Int?,
-        val reason: String?
-    ) : MappedState
+    data object Silent : MappedState
 }
 
-fun MappedState.requiresSilentExit(isDebug: Boolean): Boolean =
-    this is MappedState.NonApproval && !isDebug
+sealed interface LaunchDecision {
+    data object ShowIdle : LaunchDecision
+    data object ShowQr : LaunchDecision
+    data object ExitApproved : LaunchDecision
+    data object ExitSilent : LaunchDecision
+}
+
+fun launchDecisionFor(mapped: MappedState, activated: Boolean): LaunchDecision = when (mapped) {
+    is MappedState.Idle -> LaunchDecision.ShowIdle
+    is MappedState.Approved ->
+        if (activated) LaunchDecision.ShowQr else LaunchDecision.ExitApproved
+    is MappedState.Silent -> LaunchDecision.ExitSilent
+}
+
 
 object IntentMapper {
 
     fun map(intent: PaymentIntent, redirectBaseUrl: String): MappedState {
         val txnId = intent.txnId?.takeIf { it.isNotBlank() } ?: DozoContract.DEFAULT_TXN_ID
         val amountCents = intent.amountCents
-        val reason = intent.reason?.takeIf { it.isNotBlank() }
         val reviewUrl = intent.reviewUrl?.takeIf { it.isNotBlank() }
         val terminalId = intent.terminalId?.takeIf { it.isNotBlank() }
 
@@ -52,40 +56,17 @@ object IntentMapper {
         if (status != null) {
             return when (status) {
                 DozoContract.STATUS_APPROVED -> approved()
-                DozoContract.STATUS_CANCELED -> MappedState.NonApproval(
-                    kind = OutcomeKind.CANCELED,
-                    txnId = txnId,
-                    amountCents = amountCents,
-                    reason = reason
-                )
-                else -> MappedState.NonApproval(
-                    kind = OutcomeKind.REFUSED,
-                    txnId = txnId,
-                    amountCents = amountCents,
-                    reason = reason
-                )
+                else -> MappedState.Silent
             }
         }
 
-        val action = intent.action
-        return when {
-            action == DozoContract.ACTION_FISERV_CANCELED ||
-                action == DozoContract.ACTION_INGENICO_CANCELED -> MappedState.NonApproval(
-                kind = OutcomeKind.CANCELED,
-                txnId = txnId,
-                amountCents = amountCents,
-                reason = reason
-            )
-            action == DozoContract.ACTION_FISERV_REFUSED ||
-                action == DozoContract.ACTION_INGENICO_REFUSED -> MappedState.NonApproval(
-                kind = OutcomeKind.REFUSED,
-                txnId = txnId,
-                amountCents = amountCents,
-                reason = reason
-            )
-            action == DozoContract.ACTION_FISERV ||
-                action == DozoContract.ACTION_INGENICO ||
-                reviewUrl != null -> approved()
+        return when (intent.action) {
+            DozoContract.ACTION_FISERV,
+            DozoContract.ACTION_INGENICO -> approved()
+            DozoContract.ACTION_FISERV_CANCELED,
+            DozoContract.ACTION_INGENICO_CANCELED,
+            DozoContract.ACTION_FISERV_REFUSED,
+            DozoContract.ACTION_INGENICO_REFUSED -> MappedState.Silent
             else -> MappedState.Idle
         }
     }

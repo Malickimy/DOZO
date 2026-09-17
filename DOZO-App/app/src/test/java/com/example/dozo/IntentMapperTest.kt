@@ -1,8 +1,6 @@
 package com.example.dozo
 
-import com.example.dozo.ui.OutcomeKind
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -39,36 +37,39 @@ class IntentMapperTest {
     }
 
     @Test
-    fun canceledStatusMapsToCanceledOutcome() {
+    fun canceledStatusIsSilent() {
         val result = IntentMapper.map(
             PaymentIntent(status = "CANCELED", txnId = "TXN-2", amountCents = 500, reason = "Cashier void"),
             baseUrl
         )
-        assertEquals(
-            MappedState.NonApproval(OutcomeKind.CANCELED, "TXN-2", 500, "Cashier void"),
-            result
-        )
+        assertEquals(MappedState.Silent, result)
     }
 
     @Test
-    fun refusedStatusMapsToRefusedOutcome() {
+    fun refusedStatusIsSilent() {
         val result = IntentMapper.map(
             PaymentIntent(status = "REFUSED", txnId = "TXN-3", reason = "Insufficient funds"),
             baseUrl
         )
-        assertEquals(
-            MappedState.NonApproval(OutcomeKind.REFUSED, "TXN-3", null, "Insufficient funds"),
-            result
-        )
+        assertEquals(MappedState.Silent, result)
     }
 
     @Test
-    fun unknownStatusNeverDrawsQr() {
+    fun unknownStatusIsSilent() {
         val result = IntentMapper.map(
             PaymentIntent(status = "SOMETHING_ELSE", reviewUrl = reviewUrl),
             baseUrl
         )
-        assertTrue(result is MappedState.NonApproval)
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun reviewUrlAloneIsNotApproval() {
+        val result = IntentMapper.map(
+            PaymentIntent(reviewUrl = reviewUrl),
+            baseUrl
+        )
+        assertEquals(MappedState.Idle, result)
     }
 
     @Test
@@ -85,21 +86,21 @@ class IntentMapperTest {
     }
 
     @Test
-    fun canceledActionMapsToCanceledOutcome() {
+    fun canceledActionIsSilent() {
         val result = IntentMapper.map(
             PaymentIntent(action = DozoContract.ACTION_INGENICO_CANCELED, txnId = "TXN-4"),
             baseUrl
         )
-        assertEquals(MappedState.NonApproval(OutcomeKind.CANCELED, "TXN-4", null, null), result)
+        assertEquals(MappedState.Silent, result)
     }
 
     @Test
-    fun refusedActionMapsToRefusedOutcome() {
+    fun refusedActionIsSilent() {
         val result = IntentMapper.map(
             PaymentIntent(action = DozoContract.ACTION_FISERV_REFUSED, txnId = "TXN-5"),
             baseUrl
         )
-        assertEquals(MappedState.NonApproval(OutcomeKind.REFUSED, "TXN-5", null, null), result)
+        assertEquals(MappedState.Silent, result)
     }
 
     @Test
@@ -112,12 +113,12 @@ class IntentMapperTest {
     }
 
     @Test
-    fun reviewUrlAloneMapsToQr() {
+    fun approvedActionWithoutUrlFallsBackToDefault() {
         val result = IntentMapper.map(
-            PaymentIntent(reviewUrl = reviewUrl),
+            PaymentIntent(action = DozoContract.ACTION_FISERV),
             baseUrl
         ) as MappedState.Approved
-        assertEquals(reviewUrl, result.payload)
+        assertEquals(DozoContract.DEFAULT_REVIEW_URL, result.payload)
     }
 
     @Test
@@ -157,7 +158,7 @@ class IntentMapperTest {
     }
 
     @Test
-    fun nonApprovalNeverBuildsPayload() {
+    fun nonApprovalIsSilentEvenWithTerminalIdAndUrl() {
         val canceled = IntentMapper.map(
             PaymentIntent(status = "CANCELED", terminalId = "T-123", reviewUrl = reviewUrl),
             baseUrl
@@ -166,8 +167,8 @@ class IntentMapperTest {
             PaymentIntent(status = "REFUSED", terminalId = "T-123", reviewUrl = reviewUrl),
             baseUrl
         )
-        assertTrue(canceled is MappedState.NonApproval)
-        assertTrue(refused is MappedState.NonApproval)
+        assertEquals(MappedState.Silent, canceled)
+        assertEquals(MappedState.Silent, refused)
     }
 
     @Test
@@ -193,56 +194,56 @@ class IntentMapperTest {
     }
 
     @Test
-    fun missingTxnIdFallsBackToDefault() {
+    fun missingTxnIdOnApprovedFallsBackToDefault() {
         val result = IntentMapper.map(
-            PaymentIntent(status = "REFUSED"),
+            PaymentIntent(status = "APPROVED"),
             baseUrl
-        ) as MappedState.NonApproval
+        ) as MappedState.Approved
         assertEquals(DozoContract.DEFAULT_TXN_ID, result.txnId)
-    }
-
-    @Test
-    fun blankReasonBecomesNull() {
-        val result = IntentMapper.map(
-            PaymentIntent(status = "CANCELED", reason = "   "),
-            baseUrl
-        ) as MappedState.NonApproval
-        assertNull(result.reason)
     }
 
     @Test
     fun resultCodesMatchContract() {
         assertEquals(1, RESULT_APPROVED)
-        assertEquals(2, RESULT_CANCELED)
-        assertEquals(3, RESULT_REFUSED)
     }
 
     @Test
-    fun approvedDismissalMapsToApprovedCode() {
-        assertEquals(RESULT_APPROVED, DozoContract.resultCodeFor(null))
+    fun idleLaunchShowsIdle() {
+        assertEquals(
+            LaunchDecision.ShowIdle,
+            launchDecisionFor(MappedState.Idle, activated = true)
+        )
+        assertEquals(
+            LaunchDecision.ShowIdle,
+            launchDecisionFor(MappedState.Idle, activated = false)
+        )
     }
 
     @Test
-    fun canceledOutcomeMapsToCanceledCode() {
-        assertEquals(RESULT_CANCELED, DozoContract.resultCodeFor(OutcomeKind.CANCELED))
+    fun approvedAndActivatedShowsQr() {
+        assertEquals(
+            LaunchDecision.ShowQr,
+            launchDecisionFor(MappedState.Approved("p", "t", null), activated = true)
+        )
     }
 
     @Test
-    fun refusedOutcomeMapsToRefusedCode() {
-        assertEquals(RESULT_REFUSED, DozoContract.resultCodeFor(OutcomeKind.REFUSED))
+    fun approvedAndInactiveStillExitsApproved() {
+        assertEquals(
+            LaunchDecision.ExitApproved,
+            launchDecisionFor(MappedState.Approved("p", "t", null), activated = false)
+        )
     }
 
     @Test
-    fun nonApprovalExitsSilentlyOnlyInRelease() {
-        val canceled = IntentMapper.map(PaymentIntent(status = "CANCELED"), baseUrl)
-        assertTrue(canceled.requiresSilentExit(isDebug = false))
-        assertEquals(false, canceled.requiresSilentExit(isDebug = true))
-    }
-
-    @Test
-    fun approvalNeverExitsSilently() {
-        val approved = IntentMapper.map(PaymentIntent(status = "APPROVED"), baseUrl)
-        assertEquals(false, approved.requiresSilentExit(isDebug = false))
-        assertEquals(false, approved.requiresSilentExit(isDebug = true))
+    fun silentAlwaysExitsSilently() {
+        assertEquals(
+            LaunchDecision.ExitSilent,
+            launchDecisionFor(MappedState.Silent, activated = true)
+        )
+        assertEquals(
+            LaunchDecision.ExitSilent,
+            launchDecisionFor(MappedState.Silent, activated = false)
+        )
     }
 }

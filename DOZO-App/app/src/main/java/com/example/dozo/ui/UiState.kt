@@ -7,16 +7,6 @@ sealed interface UiState {
 
     data class DisplayQr(
         val bitmap: ImageBitmap,
-        val txnId: String,
-        val amountCents: Int? = null
-    ) : UiState
-
-    data class Outcome(
-        val kind: OutcomeKind,
-        val txnId: String,
-        val amountCents: Int? = null,
-        val reason: String? = null
+        val txnId: String
     ) : UiState
 }
-
-enum class OutcomeKind { CANCELED, REFUSED }

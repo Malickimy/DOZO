@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.example.dozo.ui.AdoptScreen
 import com.example.dozo.ui.IdleScreen
-import com.example.dozo.ui.OutcomeScreen
 import com.example.dozo.ui.PairingScreen
 import com.example.dozo.ui.PinScreen
 import com.example.dozo.ui.QrDisplayScreen
@@ -44,10 +43,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val mapped = mappedLaunchOrNull() ?: run {
-            closeAndFinish(RESULT_CANCELED)
-            return
-        }
+        val mapped = handleLaunch() ?: return
         enableEdgeToEdge()
         uiState = mapped.toUiState()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
@@ -61,18 +57,8 @@ class MainActivity : ComponentActivity() {
                         is UiState.DisplayQr -> QrDisplayScreen(
                             bitmap = state.bitmap,
                             txnId = state.txnId,
-                            amountCents = state.amountCents,
                             timeoutSeconds = displayTimeoutSeconds,
                             onDismiss = { closeAndFinish(RESULT_APPROVED) }
-                        )
-                        is UiState.Outcome -> OutcomeScreen(
-                            kind = state.kind,
-                            txnId = state.txnId,
-                            amountCents = state.amountCents,
-                            reason = state.reason,
-                            onDismiss = {
-                                closeAndFinish(DozoContract.resultCodeFor(state.kind))
-                            }
                         )
                     }
                     AppScreen.Pin -> PinScreen(
@@ -167,10 +153,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val mapped = mappedLaunchOrNull() ?: run {
-            closeAndFinish(RESULT_CANCELED)
-            return
-        }
+        val mapped = handleLaunch() ?: return
         uiState = mapped.toUiState()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
         appScreen = AppScreen.Payment
@@ -184,12 +167,19 @@ class MainActivity : ComponentActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun mappedLaunchOrNull(): MappedState? {
+    private fun handleLaunch(): MappedState? {
         val mapped = IntentMapper.map(intent.toPaymentIntent(), DozoConfig.redirectBaseUrl(this))
-        if (mapped is MappedState.Idle) return mapped
-        if (!isActivated()) return null
-        if (mapped.requiresSilentExit(BuildConfig.DEBUG)) return null
-        return mapped
+        return when (launchDecisionFor(mapped, isActivated())) {
+            LaunchDecision.ExitApproved -> {
+                closeAndFinish(RESULT_APPROVED)
+                null
+            }
+            LaunchDecision.ExitSilent -> {
+                closeAndFinish(RESULT_CANCELED)
+                null
+            }
+            LaunchDecision.ShowIdle, LaunchDecision.ShowQr -> mapped
+        }
     }
 
     private fun isActivated(): Boolean = DozoConfig.isActivated(this)
@@ -257,10 +247,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun currentResultCode(): Int = when (val state = uiState) {
+    private fun currentResultCode(): Int = when (uiState) {
         is UiState.Idle -> RESULT_CANCELED
         is UiState.DisplayQr -> RESULT_APPROVED
-        is UiState.Outcome -> DozoContract.resultCodeFor(state.kind)
     }
 
     private fun closeAndFinish(code: Int) {
@@ -273,15 +262,9 @@ private fun MappedState.toUiState(): UiState = when (this) {
     is MappedState.Idle -> UiState.Idle
     is MappedState.Approved -> UiState.DisplayQr(
         bitmap = QrRenderer.render(payload),
-        txnId = txnId,
-        amountCents = amountCents
+        txnId = txnId
     )
-    is MappedState.NonApproval -> UiState.Outcome(
-        kind = kind,
-        txnId = txnId,
-        amountCents = amountCents,
-        reason = reason
-    )
+    is MappedState.Silent -> UiState.Idle
 }
 
 private fun Intent?.toPaymentIntent(): PaymentIntent = PaymentIntent(

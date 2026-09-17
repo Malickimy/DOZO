@@ -1,10 +1,6 @@
 package com.example.dozo
 
-import com.example.dozo.ui.OutcomeKind
-
 const val RESULT_APPROVED: Int = 1
-const val RESULT_CANCELED: Int = 2
-const val RESULT_REFUSED: Int = 3
 
 object DozoContract {
     const val ACTION_FISERV = "com.fiserv.intent.action.TRANSACTION_COMPLETE"
@@ -49,10 +45,4 @@ object DozoContract {
     const val DEFAULT_API_TOKEN = "dev-placeholder-token"
     const val DEFAULT_MERCHANT_ID = "demo-merchant"
     const val DEFAULT_PIN = "0000"
-
-    fun resultCodeFor(kind: OutcomeKind?): Int = when (kind) {
-        null -> RESULT_APPROVED
-        OutcomeKind.CANCELED -> RESULT_CANCELED
-        OutcomeKind.REFUSED -> RESULT_REFUSED
-    }
 }
