@@ -31,13 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import java.util.Locale
 
 @Composable
 fun QrDisplayScreen(
     bitmap: ImageBitmap,
     txnId: String,
-    amountCents: Int?,
     timeoutSeconds: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -79,14 +77,6 @@ fun QrDisplayScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            if (amountCents != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = formatAmount(amountCents),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
 
             Spacer(Modifier.height(24.dp))
 
@@ -133,6 +123,3 @@ fun QrDisplayScreen(
         }
     }
 }
-
-private fun formatAmount(cents: Int): String =
-    String.format(Locale.US, "$%.2f", cents / 100.0)
