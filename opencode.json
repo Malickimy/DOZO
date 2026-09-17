@@ -50,9 +50,8 @@
         "-y",
         "@database-mcp/sqlite",
         "--dsn",
-        "./data/dozo.db"
+        "{env:DOZO_DB_PATH}"
       ],
-      "cwd": "./DOZO-Server",
       "enabled": false
     },
     "docker": {
@@ -119,7 +118,6 @@
         "run",
         "server.py"
       ],
-      "cwd": "./DOZO-App",
       "enabled": false,
       "environment": {
         "ANDROID_PROJECT_DIR": ".",
