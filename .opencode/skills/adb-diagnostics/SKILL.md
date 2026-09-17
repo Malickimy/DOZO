@@ -25,7 +25,7 @@ $ANDROID_HOME/platform-tools/adb logcat -d -t 150 '*:E'
 - `'*:E'` only Error level and above. **Quote it** — in zsh an unquoted
   `*:E` triggers `no matches found` and the command never runs.
 
-`dx8000_adb` (fish helper) is an alternative if it wraps the same binary.
+`dozo_adb` (fish helper) is an alternative if it wraps the same binary.
 
 ## Variants
 
@@ -73,5 +73,5 @@ adb logcat -d -t 200
 
 ## Notes
 
-- Emulator AVD: `Ingenico_AXIUM_DX8000`; boot with `dx8000_boot` if absent.
+- Emulator AVD: `Ingenico_AXIUM_DX8000`; boot with `dozo_boot` if absent.
 - Verify the device is present first: `adb devices`.

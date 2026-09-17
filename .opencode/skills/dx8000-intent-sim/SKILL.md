@@ -27,22 +27,22 @@ app advances its transaction UI without a real terminal.
 
 ## Helper CLI
 
-`dx8000_trigger_intent` (on `PATH`) selects the outcome with `--approved`
+`dozo_trigger_intent` (on `PATH`) selects the outcome with `--approved`
 (default), `--canceled`, or `--refused`, and the provider with `--poc`.
 Other flags: `--txn`, `--amount`, `--url`, `--reason`.
 
 ```sh
 # Approved (Fiserv, default; --approved is explicit)
-dx8000_trigger_intent --approved --txn TXN-123456 --amount 1999 --url "https://g.page/r/EXAMPLE/review"
+dozo_trigger_intent --approved --txn TXN-123456 --amount 1999 --url "https://g.page/r/EXAMPLE/review"
 
 # Approved via PoC action
-dx8000_trigger_intent --poc --txn TXN-123456 --amount 1999 --url "https://g.page/r/EXAMPLE/review"
+dozo_trigger_intent --poc --txn TXN-123456 --amount 1999 --url "https://g.page/r/EXAMPLE/review"
 
 # Canceled
-dx8000_trigger_intent --canceled --txn TXN-123456 --amount 1999 --reason "Cashier void"
+dozo_trigger_intent --canceled --txn TXN-123456 --amount 1999 --reason "Cashier void"
 
 # Refused
-dx8000_trigger_intent --refused --txn TXN-123456 --amount 1999 --reason "Insufficient funds"
+dozo_trigger_intent --refused --txn TXN-123456 --amount 1999 --reason "Insufficient funds"
 ```
 
 ## Raw `adb shell am start`
@@ -103,7 +103,7 @@ Check the rendered outcome text without looking at the screen:
 adb shell uiautomator dump /sdcard/ui.xml && adb shell cat /sdcard/ui.xml | grep -i -E "canceled|refused"
 ```
 
-- `dx8000_verify_qr` should PASS only for approved; it must FAIL for
+- `dozo_verify_qr` should PASS only for approved; it must FAIL for
   canceled/refused (no QR is rendered).
 - Watch logs: `adb logcat -d -t 100 | grep com.example.dozo`.
-- Confirm device: `adb devices` (AVD `Ingenico_AXIUM_DX8000`, boot `dx8000_boot`).
+- Confirm device: `adb devices` (AVD `Ingenico_AXIUM_DX8000`, boot `dozo_boot`).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_clean_deploy - Clean build the DOZO debug APK and install it on the device.
+# dozo_clean_deploy - Clean build the DOZO debug APK and install it on the device.
 #
 # Runs `./gradlew clean :app:assembleDebug --console=plain` in $PROJECT_DIR, then
 # `adb install -r` of the resulting APK. Fails loudly if either step fails.
@@ -23,7 +23,7 @@ APK_REL="app/build/outputs/apk/debug/app-debug.apk"
 
 usage() {
     cat <<EOF
-Usage: dx8000_clean_deploy [-h|--help]
+Usage: dozo_clean_deploy [-h|--help]
 
 Clean, assemble the debug APK and install it on the connected device:
   ./gradlew clean :app:assembleDebug --console=plain
@@ -41,7 +41,7 @@ EOF
 for arg in "$@"; do
     case "$arg" in
         -h|--help) usage; exit 0 ;;
-        *) echo "dx8000_clean_deploy: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
+        *) echo "dozo_clean_deploy: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
     esac
 done
 
