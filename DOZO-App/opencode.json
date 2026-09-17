@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "android-mcp-server": { "enabled": true },
+    "uiautomator2-mcp-server": { "enabled": true },
+    "android-builder-mcp": { "enabled": true },
+    "mobile-mcp": { "enabled": true }
+  },
+  "tools": {
+    "android-mcp-server_*": true,
+    "uiautomator2-mcp-server_*": true,
+    "android-builder-mcp_*": true,
+    "mobile-mcp_*": true
+  }
+}

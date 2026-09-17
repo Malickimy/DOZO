@@ -76,6 +76,17 @@ git worktree remove ../workspace-server
 git worktree remove ../workspace-dashboard
 ```
 
+A worktree is a full checkout, so it loads its **own** `opencode.json` and `.opencode/`
+from the branch it was created on — the root config is not shared live. Two rules follow:
+
+- **Commit config before branching a worktree**, or rebase the branch onto the commit
+  that added it. Uncommitted config and skills never appear in a worktree.
+- **No hardcoded `/Users/.../DOZO/...` repo paths** in `opencode.json` — they pin MCP
+  servers to the main checkout. An MCP server's `cwd` is resolved from the **instance
+  directory** (where opencode was launched), *not* the repo root, so a relative `cwd`
+  like `./DOZO-App` breaks when opencode runs inside `DOZO-App/`. Rely on the default
+  cwd instead, and take checkout-specific paths from env vars (e.g. `DOZO_DB_PATH`).
+
 ## GitHub: hand off to the GitHub agent
 
 - **All GitHub actions are handed off to the GitHub agent** (subagent `githuber`, via
@@ -104,16 +115,23 @@ git worktree remove ../workspace-dashboard
 
 ## MCP servers: enable on demand
 
-All MCP servers are **disabled** in [`opencode.json`](opencode.json). Do not enable or
-use one unless the task has a concrete action that actually needs it — for example
-browser E2E for the dashboard (`playwright`), read-only DB inspection (`sqlite`), or
-device UI automation (`mobile-mcp`).
+All MCP servers are **disabled** in the root [`opencode.json`](opencode.json), except in
+[`DOZO-App/`](DOZO-App/opencode.json), where the four Android tooling servers
+(`android-mcp-server`, `uiautomator2-mcp-server`, `android-builder-mcp`, `mobile-mcp`)
+are enabled so opening `DOZO-App/` brings them up automatically. Everywhere else, do not
+enable or use one unless the task has a concrete action that actually needs it — for
+example browser E2E for the dashboard (`playwright`) or read-only DB inspection
+(`sqlite`).
 
 - Try built-in tools, the repo skills, and `make` targets first; most tasks need no MCP.
 - When one is required, name the server and the action it performs, then set
   `"enabled": true` for that server and its `tools` glob for the duration of the task.
 - Disable it again when the task is done. Idle servers cost context and add startup
   failures (Docker Desktop down, missing tokens).
+- Some servers need the environment prepared before they stay up: `android-mcp-server`
+  closes the connection unless the DX8000 emulator (`Ingenico_AXIUM_DX8000`) is running,
+  and `sqlite` reads its database from `DOZO_DB_PATH` (set it to the checkout's
+  `DOZO-Server/data/dozo.db`).
 
 ## Verify before opening a PR
 
