@@ -246,4 +246,182 @@ class IntentMapperTest {
             launchDecisionFor(MappedState.Silent, activated = false)
         )
     }
+
+    @Test
+    fun everyCanceledAndRefusedActionIsSilent() {
+        val silentActions = listOf(
+            DozoContract.ACTION_FISERV_CANCELED,
+            DozoContract.ACTION_INGENICO_CANCELED,
+            DozoContract.ACTION_FISERV_REFUSED,
+            DozoContract.ACTION_INGENICO_REFUSED
+        )
+        silentActions.forEach { action ->
+            assertEquals(
+                action,
+                MappedState.Silent,
+                IntentMapper.map(PaymentIntent(action = action, reviewUrl = reviewUrl), baseUrl)
+            )
+        }
+    }
+
+    @Test
+    fun blankStatusWithCanceledActionIsSilent() {
+        val result = IntentMapper.map(
+            PaymentIntent(
+                action = DozoContract.ACTION_FISERV_CANCELED,
+                status = "   ",
+                txnId = "TXN-6",
+                reviewUrl = reviewUrl
+            ),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun blankStatusWithRefusedActionIsSilent() {
+        val result = IntentMapper.map(
+            PaymentIntent(
+                action = DozoContract.ACTION_INGENICO_REFUSED,
+                status = "",
+                reviewUrl = reviewUrl
+            ),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun blankStatusWithNoActionIsIdle() {
+        assertEquals(
+            MappedState.Idle,
+            IntentMapper.map(PaymentIntent(status = "   ", reviewUrl = reviewUrl), baseUrl)
+        )
+    }
+
+    @Test
+    fun unknownStatusOverridesApprovedAction() {
+        val result = IntentMapper.map(
+            PaymentIntent(
+                action = DozoContract.ACTION_FISERV,
+                status = "PENDING",
+                reviewUrl = reviewUrl
+            ),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun approvedStatusOverridesCanceledAction() {
+        val result = IntentMapper.map(
+            PaymentIntent(
+                action = DozoContract.ACTION_FISERV_CANCELED,
+                status = "APPROVED",
+                reviewUrl = reviewUrl,
+                txnId = "TXN-7"
+            ),
+            baseUrl
+        )
+        assertEquals(MappedState.Approved(reviewUrl, "TXN-7", null), result)
+    }
+
+    @Test
+    fun canceledStatusOverridesApprovedAction() {
+        val result = IntentMapper.map(
+            PaymentIntent(
+                action = DozoContract.ACTION_INGENICO,
+                status = "CANCELED",
+                reviewUrl = reviewUrl
+            ),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun canceledAndRefusedStatusAreCaseInsensitive() {
+        assertEquals(
+            MappedState.Silent,
+            IntentMapper.map(PaymentIntent(status = "canceled", reviewUrl = reviewUrl), baseUrl)
+        )
+        assertEquals(
+            MappedState.Silent,
+            IntentMapper.map(PaymentIntent(status = " refused ", reviewUrl = reviewUrl), baseUrl)
+        )
+    }
+
+    @Test
+    fun reviewUrlWithCanceledActionIsSilent() {
+        val result = IntentMapper.map(
+            PaymentIntent(action = DozoContract.ACTION_INGENICO_CANCELED, reviewUrl = reviewUrl),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun reviewUrlWithUnknownStatusIsSilent() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "DECLINED", reviewUrl = reviewUrl),
+            baseUrl
+        )
+        assertEquals(MappedState.Silent, result)
+    }
+
+    @Test
+    fun launcherActionWithoutStatusIsIdle() {
+        assertEquals(
+            MappedState.Idle,
+            IntentMapper.map(
+                PaymentIntent(action = "android.intent.action.MAIN", reviewUrl = reviewUrl),
+                baseUrl
+            )
+        )
+    }
+
+    @Test
+    fun blankReviewUrlFallsBackToDefault() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "APPROVED", reviewUrl = "   "),
+            baseUrl
+        ) as MappedState.Approved
+        assertEquals(DozoContract.DEFAULT_REVIEW_URL, result.payload)
+    }
+
+    @Test
+    fun blankTerminalIdWithoutReviewUrlUsesDefault() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "APPROVED", terminalId = "   "),
+            baseUrl
+        ) as MappedState.Approved
+        assertEquals(DozoContract.DEFAULT_REVIEW_URL, result.payload)
+    }
+
+    @Test
+    fun blankTxnIdOnApprovedFallsBackToDefault() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "APPROVED", txnId = "   "),
+            baseUrl
+        ) as MappedState.Approved
+        assertEquals(DozoContract.DEFAULT_TXN_ID, result.txnId)
+    }
+
+    @Test
+    fun approvedWithoutAmountHasNullAmount() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "APPROVED", reviewUrl = reviewUrl),
+            baseUrl
+        ) as MappedState.Approved
+        assertEquals(null, result.amountCents)
+    }
+
+    @Test
+    fun approvedWithNegativeAmountIsPreserved() {
+        val result = IntentMapper.map(
+            PaymentIntent(status = "APPROVED", reviewUrl = reviewUrl, amountCents = -1),
+            baseUrl
+        ) as MappedState.Approved
+        assertEquals(-1, result.amountCents)
+    }
 }
