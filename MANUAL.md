@@ -42,7 +42,7 @@ Merchant dashboard ──token auth──▶ Redirect server API ──▶ SQLit
 Boot the emulator:
 
 ```bash
-dx8000_boot                 # headless, idempotent
+dozo_boot                 # headless, idempotent
 adb devices -l              # expect emulator-5554
 ```
 
@@ -129,7 +129,7 @@ cd /Users/malicky/l/DOZO/DOZO-Server
 ./scripts/smoke.sh                                   # defaults to the VPS
 BASE_URL=http://127.0.0.1:3000 ./scripts/smoke.sh     # local
 # from the app repo:
-scripts/dx8000_server_check
+scripts/dozo_server_check
 ```
 
 ---
@@ -140,7 +140,7 @@ scripts/dx8000_server_check
 
 ```bash
 cd /Users/malicky/l/DOZO/DOZO-App
-./scripts/dx8000_clean_deploy        # clean build + adb install -r
+./scripts/dozo_clean_deploy        # clean build + adb install -r
 # or
 ./gradlew :app:assembleDebug && adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -169,17 +169,17 @@ Result codes returned to the caller: **1 approved, 2 canceled, 3 refused** (unac
 
 ```bash
 # Approved (Fiserv action) with a terminal id -> QR points at the redirect server
-scripts/dx8000_trigger_intent --approved --terminal DEMOTERM01 --merchant demo-merchant --txn TXN-DEMO --amount 2499
+scripts/dozo_trigger_intent --approved --terminal DEMOTERM01 --merchant demo-merchant --txn TXN-DEMO --amount 2499
 
 # Verify the on-screen QR decodes to the expected payload
-scripts/dx8000_verify_qr --expect http://130.162.185.144:3000/r/DEMOTERM01
+scripts/dozo_verify_qr --expect http://130.162.185.144:3000/r/DEMOTERM01
 
 # Canceled / refused
-scripts/dx8000_trigger_intent --canceled --txn TXN-C --amount 500 --reason "Canceled by user"
-scripts/dx8000_trigger_intent --refused  --poc --txn TXN-R --amount 750 --reason "Insufficient funds"
+scripts/dozo_trigger_intent --canceled --txn TXN-C --amount 500 --reason "Canceled by user"
+scripts/dozo_trigger_intent --refused  --poc --txn TXN-R --amount 750 --reason "Insufficient funds"
 ```
 
-`dx8000_trigger_intent` also sends `status`/`merchant_id`/`terminal_id`. Note `--url` is only a fallback when no terminal id is sent. Use `--poc`/`--ingenico` for the Ingenico actions.
+`dozo_trigger_intent` also sends `status`/`merchant_id`/`terminal_id`. Note `--url` is only a fallback when no terminal id is sent. Use `--poc`/`--ingenico` for the Ingenico actions.
 
 ### Mock payment app (startActivityForResult)
 
@@ -278,12 +278,12 @@ Then: **Test connection** → pick merchant `demo-merchant` → see terminals, s
 **A. Approved sale → QR → scan → Google**
 
 ```bash
-dx8000_boot
-scripts/dx8000_clean_deploy
+dozo_boot
+scripts/dozo_clean_deploy
 adb shell am force-stop com.example.dozo
-scripts/dx8000_trigger_intent --approved --terminal DEMOTERM01 --txn TXN-E2E --amount 2499
+scripts/dozo_trigger_intent --approved --terminal DEMOTERM01 --txn TXN-E2E --amount 2499
 sleep 5
-scripts/dx8000_verify_qr --expect http://130.162.185.144:3000/r/DEMOTERM01   # PASS
+scripts/dozo_verify_qr --expect http://130.162.185.144:3000/r/DEMOTERM01   # PASS
 curl -sS -i -A "DemoPhone/1.0" http://130.162.185.144:3000/r/DEMOTERM01 | head -3   # 302 -> Google
 ```
 
@@ -310,12 +310,12 @@ adb logcat -d -s MockPay | tail
 
 | Script | What it does |
 | --- | --- |
-| `dx8000_boot` | Boot the AVD headlessly and wait for boot. |
-| `dx8000_clean_deploy` | Clean-build and install the app. |
-| `dx8000_trigger_intent` | Fire a synthetic payment-result intent (`--approved/--canceled/--refused`, `--poc`, `--terminal`, `--merchant`, …). |
-| `dx8000_verify_qr` | Screencap + zbarimg; assert the QR payload. |
-| `dx8000_logcat_tail` | Recent error-level logcat, package-filtered. |
-| `dx8000_server_check` | Host-side `/health` (+ optional register) check against the VPS. |
+| `dozo_boot` | Boot the AVD headlessly and wait for boot. |
+| `dozo_clean_deploy` | Clean-build and install the app. |
+| `dozo_trigger_intent` | Fire a synthetic payment-result intent (`--approved/--canceled/--refused`, `--poc`, `--terminal`, `--merchant`, …). |
+| `dozo_verify_qr` | Screencap + zbarimg; assert the QR payload. |
+| `dozo_logcat_tail` | Recent error-level logcat, package-filtered. |
+| `dozo_server_check` | Host-side `/health` (+ optional register) check against the VPS. |
 | `mockpay_deploy` | Build and install the mock payment app. |
 | `check_apk_size` | Build release and enforce the APK size budget. |
 | server `scripts/deploy.sh` | Deploy the server to the VPS. |
@@ -327,8 +327,8 @@ adb logcat -d -s MockPay | tail
 ## 7. Troubleshooting
 
 - **`java.net.SocketException: socket failed: EPERM`** in the app — stale install state. `adb uninstall com.example.dozo` then reinstall; check `dozo_prefs.xml`.
-- **`dx8000_verify_qr` FAIL, no QR** — capture too early (QR renders ~3s after trigger); canceled/refused never show a QR, so FAIL is expected there.
-- **`reason` truncated after the first word** — device-shell quoting; use `dx8000_trigger_intent`, or single-quote the whole `adb shell "am start …"` command.
+- **`dozo_verify_qr` FAIL, no QR** — capture too early (QR renders ~3s after trigger); canceled/refused never show a QR, so FAIL is expected there.
+- **`reason` truncated after the first word** — device-shell quoting; use `dozo_trigger_intent`, or single-quote the whole `adb shell "am start …"` command.
 - **Pairing stays "pending"** — it only becomes `claimed` after `POST /api/terminals/claim` (the dashboard does this).
 - **Server unreachable** — OCI ingress must allow TCP 3000; host iptables must allow 3000 (`sudo iptables -L INPUT -n`).
 - **VPS very slow / SSH stalls** — a full image rebuild is compiling `better-sqlite3`. Don't run `deploy.sh`; use the copy-and-commit method or add swap.

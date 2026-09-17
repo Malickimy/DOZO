@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_boot - Boot the DOZO DX8000 AVD headlessly and wait until Android is ready.
+# dozo_boot - Boot the DOZO DX8000 AVD headlessly and wait until Android is ready.
 #
 # Idempotent: if a device is already connected the script reports it and exits 0
 # without starting another emulator.
@@ -12,7 +12,7 @@
 #   AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
 #   SERIAL         emulator serial   (default: emulator-5554)
 #   BOOT_TIMEOUT   seconds to wait for sys.boot_completed (default: 300)
-#   LOG_FILE       emulator log      (default: /tmp/dx8000-emulator.log)
+#   LOG_FILE       emulator log      (default: /tmp/dozo-emulator.log)
 
 set -euo pipefail
 
@@ -22,11 +22,11 @@ EMULATOR="${EMULATOR:-$ANDROID_HOME/emulator/emulator}"
 AVD_NAME="${AVD_NAME:-Ingenico_AXIUM_DX8000}"
 SERIAL="${SERIAL:-emulator-5554}"
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
-LOG_FILE="${LOG_FILE:-/tmp/dx8000-emulator.log}"
+LOG_FILE="${LOG_FILE:-/tmp/dozo-emulator.log}"
 
 usage() {
     cat <<EOF
-Usage: dx8000_boot [-h|--help]
+Usage: dozo_boot [-h|--help]
 
 Boot the AVD "\$AVD_NAME" headlessly (detached) and wait for sys.boot_completed=1.
 If a device is already connected, report it and exit 0 (idempotent).
@@ -38,14 +38,14 @@ Environment overrides:
   AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
   SERIAL         emulator serial   (default: emulator-5554)
   BOOT_TIMEOUT   seconds to wait   (default: 300)
-  LOG_FILE       emulator log      (default: /tmp/dx8000-emulator.log)
+  LOG_FILE       emulator log      (default: /tmp/dozo-emulator.log)
 EOF
 }
 
 for arg in "$@"; do
     case "$arg" in
         -h|--help) usage; exit 0 ;;
-        *) echo "dx8000_boot: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
+        *) echo "dozo_boot: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
     esac
 done
 

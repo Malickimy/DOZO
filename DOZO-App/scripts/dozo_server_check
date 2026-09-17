@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_server_check - Host-side connectivity check for the DOZO redirect server.
+# dozo_server_check - Host-side connectivity check for the DOZO redirect server.
 #
 # Runs entirely on the host (no adb/device). Curls {SERVER_URL}/health and,
 # unless --no-register is given, POSTs a test pairing registration and reads
@@ -13,7 +13,7 @@
 #   SERVER_URL     server base URL  (default: http://130.162.185.144:3000)
 #   API_TOKEN      shared API token (default: dev-placeholder-token)
 #   MERCHANT_ID    seeded merchant  (default: demo-merchant)
-#   DEVICE_SERIAL  sample serial    (default: DX8000-CHECK-<epoch>)
+#   DEVICE_SERIAL  sample serial    (default: DOZO-CHECK-<epoch>)
 #   TERMINAL_ID    explicit id      (default: CHECKTERM01)
 #   CURL           curl binary      (default: curl)
 
@@ -22,14 +22,14 @@ set -euo pipefail
 SERVER_URL="${SERVER_URL:-http://130.162.185.144:3000}"
 API_TOKEN="${API_TOKEN:-dev-placeholder-token}"
 MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
-DEVICE_SERIAL="${DEVICE_SERIAL:-DX8000-CHECK-$(date +%s)}"
+DEVICE_SERIAL="${DEVICE_SERIAL:-DOZO-CHECK-$(date +%s)}"
 TERMINAL_ID="${TERMINAL_ID:-CHECKTERM01}"
 CURL="${CURL:-curl}"
 REGISTER=1
 
 usage() {
     cat <<EOF
-Usage: dx8000_server_check [--no-register] [-h|--help]
+Usage: dozo_server_check [--no-register] [-h|--help]
 
 Host-side check that the DOZO redirect server is reachable:
   GET  \$SERVER_URL/health
@@ -44,7 +44,7 @@ Environment overrides:
   SERVER_URL     server base URL  (default: http://130.162.185.144:3000)
   API_TOKEN      shared API token (default: dev-placeholder-token)
   MERCHANT_ID    seeded merchant  (default: demo-merchant)
-  DEVICE_SERIAL  sample serial    (default: DX8000-CHECK-<epoch>)
+  DEVICE_SERIAL  sample serial    (default: DOZO-CHECK-<epoch>)
   TERMINAL_ID    explicit id      (default: CHECKTERM01)
   CURL           curl binary      (default: curl)
 EOF
@@ -54,12 +54,12 @@ while (( $# )); do
     case "$1" in
         -h|--help)      usage; exit 0 ;;
         --no-register)  REGISTER=0; shift ;;
-        --server-url)   [[ $# -ge 2 ]] || { echo "dx8000_server_check: --server-url requires a value" >&2; exit 2; }; SERVER_URL="$2"; shift 2 ;;
+        --server-url)   [[ $# -ge 2 ]] || { echo "dozo_server_check: --server-url requires a value" >&2; exit 2; }; SERVER_URL="$2"; shift 2 ;;
         --server-url=*) SERVER_URL="${1#*=}"; shift ;;
-        --token)        [[ $# -ge 2 ]] || { echo "dx8000_server_check: --token requires a value" >&2; exit 2; }; API_TOKEN="$2"; shift 2 ;;
+        --token)        [[ $# -ge 2 ]] || { echo "dozo_server_check: --token requires a value" >&2; exit 2; }; API_TOKEN="$2"; shift 2 ;;
         --token=*)      API_TOKEN="${1#*=}"; shift ;;
-        -*)             echo "dx8000_server_check: unknown option: $1" >&2; usage >&2; exit 2 ;;
-        *)              echo "dx8000_server_check: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
+        -*)             echo "dozo_server_check: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)              echo "dozo_server_check: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
 
@@ -131,7 +131,7 @@ fi
 
 echo
 if (( fail )); then
-    echo "dx8000_server_check: FAILED" >&2
+    echo "dozo_server_check: FAILED" >&2
     exit 1
 fi
-echo "dx8000_server_check: OK"
+echo "dozo_server_check: OK"
