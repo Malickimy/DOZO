@@ -4,8 +4,8 @@
 # and assert the payload equals the expected review URL.
 #
 # The default matches a default dozo_trigger_intent run: the app builds
-# {redirectBaseUrl}/r/{terminal_id} with redirectBaseUrl https://track.papier.app
-# and terminal_id DEMOTERM01.
+# {redirectBaseUrl}/r/{terminal_id} with redirectBaseUrl
+# http://130.162.185.144:3000 and terminal_id DEMOTERM01.
 #
 # Exit codes: 0 = PASS (payload matches), 1 = FAIL (mismatch / no QR / error).
 #
@@ -22,7 +22,7 @@ ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 SERIAL="${SERIAL:-emulator-5554}"
 ZBARIMG="${ZBARIMG:-/usr/local/bin/zbarimg}"
-DEFAULT_URL="https://track.papier.app/r/DEMOTERM01"
+DEFAULT_URL="http://130.162.185.144:3000/r/DEMOTERM01"
 QR_TIMEOUT="${QR_TIMEOUT:-10}"
 
 expect="$DEFAULT_URL"
@@ -33,7 +33,7 @@ Usage: dozo_verify_qr [<url> | --expect <url>] [--timeout N] [-h|--help]
 
 Capture the screen, decode the QR and compare its payload to the expected URL.
 The default matches a default dozo_trigger_intent run (redirectBaseUrl
-https://track.papier.app + terminal_id DEMOTERM01).
+http://130.162.185.144:3000 + terminal_id DEMOTERM01).
 The QR is polled for up to \$QR_TIMEOUT seconds to tolerate cold-start rendering.
 
 Arguments / options:
