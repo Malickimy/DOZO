@@ -1,9 +1,9 @@
 ---
-name: dx8000-intent-sim
+name: dozo-intent-sim
 description: Fire synthetic Fiserv/PoC payment-result intents at com.example.dozo.MainActivity on the DX8000 emulator to drive UI state transitions for approved, canceled, and refused outcomes. Trigger when the user asks to simulate a payment approval, cancellation, or refusal, inject a transaction intent, or test the app's approval/QR or status-screen flow.
 ---
 
-# dx8000-intent-sim
+# dozo-intent-sim
 
 Launches `com.example.dozo/.MainActivity` with payment-result extras so the
 app advances its transaction UI without a real terminal.
