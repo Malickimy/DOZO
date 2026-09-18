@@ -2,8 +2,8 @@
 #
 # dozo_boot - Boot the DOZO DX8000 AVD headlessly and wait until Android is ready.
 #
-# Idempotent: if a device is already connected the script reports it and exits 0
-# without starting another emulator.
+# Idempotent: if the target AVD is already connected on $SERIAL the script
+# reports it and exits 0 without starting another emulator.
 #
 # Environment overrides:
 #   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
@@ -29,7 +29,7 @@ usage() {
 Usage: dozo_boot [-h|--help]
 
 Boot the AVD "\$AVD_NAME" headlessly (detached) and wait for sys.boot_completed=1.
-If a device is already connected, report it and exit 0 (idempotent).
+If the target AVD is already connected on \$SERIAL, report it and exit 0 (idempotent).
 
 Environment overrides:
   ANDROID_HOME   Android SDK root (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
@@ -55,11 +55,18 @@ if [[ ! -x "$ADB" ]]; then
     exit 1
 fi
 
-# Idempotency: any device in state "device" means there is nothing to boot.
-if "$ADB" devices | awk 'NR > 1 && $2 == "device" { found = 1 } END { exit !found }'; then
-    echo "Device already connected; nothing to boot."
-    "$ADB" devices
-    exit 0
+# Idempotency: the target AVD must already be up on $SERIAL to skip booting.
+if "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
+    running_avd="$("$ADB" -s "$SERIAL" emu avd name 2>/dev/null | head -n 1 | tr -d '\r' || true)"
+    if [[ -z "$running_avd" ]]; then
+        running_avd="$("$ADB" -s "$SERIAL" shell getprop ro.kernel.qemu.avd_name 2>/dev/null | tr -d '\r' || true)"
+    fi
+    if [[ "$running_avd" == "$AVD_NAME" ]]; then
+        echo "AVD '$AVD_NAME' already connected on $SERIAL; nothing to boot."
+        "$ADB" devices
+        exit 0
+    fi
+    echo "WARNING: $SERIAL is running AVD '${running_avd:-unknown}', not '$AVD_NAME'; booting a new instance." >&2
 fi
 
 if [[ ! -x "$EMULATOR" ]]; then
@@ -73,7 +80,7 @@ nohup "$EMULATOR" -avd "$AVD_NAME" -no-window -no-audio -no-boot-anim >"$LOG_FIL
 disown 2>/dev/null || true
 
 echo "Waiting for device to appear..."
-"$ADB" wait-for-device
+"$ADB" -s "$SERIAL" wait-for-device
 
 echo "Waiting for sys.boot_completed=1 (timeout ${BOOT_TIMEOUT}s)..."
 deadline=$((SECONDS + BOOT_TIMEOUT))
