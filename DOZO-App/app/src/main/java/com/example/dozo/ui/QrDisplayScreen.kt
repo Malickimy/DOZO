@@ -82,6 +82,17 @@ fun QrDisplayScreen(
 
             Spacer(Modifier.height(24.dp))
 
+            Image(
+                painter = painterResource(R.drawable.dozo_logo),
+                contentDescription = "Dozo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -99,17 +110,6 @@ fun QrDisplayScreen(
                     contentScale = ContentScale.Fit
                 )
             }
-
-            Spacer(Modifier.height(24.dp))
-
-            Image(
-                painter = painterResource(R.drawable.ascii_art_text),
-                contentDescription = "Amo",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp),
-                contentScale = ContentScale.Fit
-            )
 
             Spacer(Modifier.height(24.dp))
 
