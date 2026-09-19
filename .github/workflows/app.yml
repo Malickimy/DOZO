@@ -23,4 +23,4 @@ jobs:
           java-version: "17"
       - name: Build + unit test
         working-directory: DOZO-App
-        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --console=plain
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :mockpay:assembleDebug --console=plain

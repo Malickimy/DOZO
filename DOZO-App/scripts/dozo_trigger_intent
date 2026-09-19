@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_trigger_intent - Fire a payment-result intent at the DOZO MainActivity.
+# dozo_trigger_intent - Fire a payment-result intent at the DOZO MainActivity.
 #
 # Selects an outcome (approved/canceled/refused) and provider (Fiserv/PoC) and
 # delivers the matching action to MainActivity.
@@ -56,7 +56,7 @@ shq() {
 
 usage() {
     cat <<EOF
-Usage: dx8000_trigger_intent [options]
+Usage: dozo_trigger_intent [options]
 
 Fire a payment-result intent at $APP_ID/.MainActivity.
 
@@ -85,7 +85,7 @@ Environment overrides:
 EOF
 }
 
-die() { echo "dx8000_trigger_intent: $*" >&2; exit 2; }
+die() { echo "dozo_trigger_intent: $*" >&2; exit 2; }
 
 while (( $# )); do
     case "$1" in

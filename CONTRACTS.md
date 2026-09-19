@@ -12,7 +12,7 @@ _Last synced from code on 2026-09-17. The workspace is a single monorepo at `/Us
 
 | Workstream | Path | Owns |
 | --- | --- | --- |
-| App | `/Users/malicky/l/DOZO/DOZO-App` | `app/**`, `mockpay/**`, `scripts/dx8000_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
+| App | `/Users/malicky/l/DOZO/DOZO-App` | `app/**`, `mockpay/**`, `scripts/dozo_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
 | Server | `/Users/malicky/l/DOZO/DOZO-Server` | entire directory |
 | Dashboard | `/Users/malicky/l/DOZO/DOZO-Dashboard` | entire directory |
 | Contract & docs | `/Users/malicky/l/DOZO` (repo root) | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |

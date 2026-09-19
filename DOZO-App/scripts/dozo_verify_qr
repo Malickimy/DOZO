@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# dx8000_verify_qr - Screencap the device, decode the on-screen QR with zbarimg,
+# dozo_verify_qr - Screencap the device, decode the on-screen QR with zbarimg,
 # and assert the payload equals the expected review URL.
 #
-# The default matches a default dx8000_trigger_intent run: the app builds
-# {redirectBaseUrl}/r/{terminal_id} with redirectBaseUrl https://track.papier.app
-# and terminal_id DEMOTERM01.
+# The default matches a default dozo_trigger_intent run: the app builds
+# {redirectBaseUrl}/r/{terminal_id} with redirectBaseUrl
+# http://130.162.185.144:3000 and terminal_id DEMOTERM01.
 #
 # Exit codes: 0 = PASS (payload matches), 1 = FAIL (mismatch / no QR / error).
 #
@@ -22,18 +22,18 @@ ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 SERIAL="${SERIAL:-emulator-5554}"
 ZBARIMG="${ZBARIMG:-/usr/local/bin/zbarimg}"
-DEFAULT_URL="https://track.papier.app/r/DEMOTERM01"
+DEFAULT_URL="http://130.162.185.144:3000/r/DEMOTERM01"
 QR_TIMEOUT="${QR_TIMEOUT:-10}"
 
 expect="$DEFAULT_URL"
 
 usage() {
     cat <<EOF
-Usage: dx8000_verify_qr [<url> | --expect <url>] [--timeout N] [-h|--help]
+Usage: dozo_verify_qr [<url> | --expect <url>] [--timeout N] [-h|--help]
 
 Capture the screen, decode the QR and compare its payload to the expected URL.
-The default matches a default dx8000_trigger_intent run (redirectBaseUrl
-https://track.papier.app + terminal_id DEMOTERM01).
+The default matches a default dozo_trigger_intent run (redirectBaseUrl
+http://130.162.185.144:3000 + terminal_id DEMOTERM01).
 The QR is polled for up to \$QR_TIMEOUT seconds to tolerate cold-start rendering.
 
 Arguments / options:
@@ -50,17 +50,17 @@ EOF
 while (( $# )); do
     case "$1" in
         -h|--help) usage; exit 0 ;;
-        --expect)  [[ $# -ge 2 ]] || { echo "dx8000_verify_qr: --expect requires a value" >&2; exit 2; }; expect="$2"; shift 2 ;;
+        --expect)  [[ $# -ge 2 ]] || { echo "dozo_verify_qr: --expect requires a value" >&2; exit 2; }; expect="$2"; shift 2 ;;
         --expect=*) expect="${1#*=}"; shift ;;
-        --timeout) [[ $# -ge 2 ]] || { echo "dx8000_verify_qr: --timeout requires a value" >&2; exit 2; }; QR_TIMEOUT="$2"; shift 2 ;;
+        --timeout) [[ $# -ge 2 ]] || { echo "dozo_verify_qr: --timeout requires a value" >&2; exit 2; }; QR_TIMEOUT="$2"; shift 2 ;;
         --timeout=*) QR_TIMEOUT="${1#*=}"; shift ;;
-        -*) echo "dx8000_verify_qr: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        -*) echo "dozo_verify_qr: unknown option: $1" >&2; usage >&2; exit 2 ;;
         *) expect="$1"; shift ;;
     esac
 done
 
 if [[ ! "$QR_TIMEOUT" =~ ^[0-9]+$ ]]; then
-    echo "dx8000_verify_qr: --timeout must be a non-negative integer, got: $QR_TIMEOUT" >&2
+    echo "dozo_verify_qr: --timeout must be a non-negative integer, got: $QR_TIMEOUT" >&2
     exit 2
 fi
 
@@ -73,7 +73,7 @@ if [[ ! -x "$ZBARIMG" ]]; then
     exit 1
 fi
 
-tmp="$(mktemp "${TMPDIR:-/tmp}/dx8000-qr.XXXXXX.png")"
+tmp="$(mktemp "${TMPDIR:-/tmp}/dozo-qr.XXXXXX.png")"
 cleanup() { rm -f "$tmp"; }
 trap cleanup EXIT
 

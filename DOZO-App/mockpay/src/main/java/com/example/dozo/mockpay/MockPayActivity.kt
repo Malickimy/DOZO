@@ -120,8 +120,7 @@ class MockPayActivity : ComponentActivity() {
 
 private fun resultLabel(code: Int): String = when (code) {
     1 -> "approved"
-    2 -> "canceled"
-    3 -> "refused"
+    0 -> "silent"
     else -> "unexpected"
 }
 

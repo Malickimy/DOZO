@@ -1,6 +1,6 @@
 ---
 description: Playwright QA engineer for the DOZO monorepo. Use when a feature lands and needs end-to-end or API coverage, when asked to QA/verify a change, or to write, run, or fix Playwright tests across DOZO-App, DOZO-Server, DOZO-Dashboard, or root.
-mode: subagent
+mode: all
 temperature: 0.1
 ---
 

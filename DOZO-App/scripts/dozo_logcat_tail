@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dx8000_logcat_tail - Print the most recent error-level logcat lines, optionally
+# dozo_logcat_tail - Print the most recent error-level logcat lines, optionally
 # filtered to a package. Always exits 0 when the adb command itself succeeds, even
 # if the filter matches nothing.
 #
@@ -21,7 +21,7 @@ FILTER="${PACKAGE:-com.example.dozo}"
 
 usage() {
     cat <<EOF
-Usage: dx8000_logcat_tail [--lines N] [--package <pkg> | --no-filter] [-h|--help]
+Usage: dozo_logcat_tail [--lines N] [--package <pkg> | --no-filter] [-h|--help]
 
 Dump the last N error-level logcat lines, then grep for <pkg> (case-insensitive).
 
@@ -39,18 +39,18 @@ EOF
 while (( $# )); do
     case "$1" in
         -h|--help) usage; exit 0 ;;
-        --lines)   [[ $# -ge 2 ]] || { echo "dx8000_logcat_tail: --lines requires a value" >&2; exit 2; }; LINES="$2"; shift 2 ;;
+        --lines)   [[ $# -ge 2 ]] || { echo "dozo_logcat_tail: --lines requires a value" >&2; exit 2; }; LINES="$2"; shift 2 ;;
         --lines=*) LINES="${1#*=}"; shift ;;
-        --package) [[ $# -ge 2 ]] || { echo "dx8000_logcat_tail: --package requires a value" >&2; exit 2; }; FILTER="$2"; shift 2 ;;
+        --package) [[ $# -ge 2 ]] || { echo "dozo_logcat_tail: --package requires a value" >&2; exit 2; }; FILTER="$2"; shift 2 ;;
         --package=*) FILTER="${1#*=}"; shift ;;
         --no-filter) FILTER=""; shift ;;
-        -*) echo "dx8000_logcat_tail: unknown option: $1" >&2; usage >&2; exit 2 ;;
-        *)  echo "dx8000_logcat_tail: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
+        -*) echo "dozo_logcat_tail: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)  echo "dozo_logcat_tail: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
 
 if [[ ! "$LINES" =~ ^[0-9]+$ ]]; then
-    echo "dx8000_logcat_tail: --lines must be a non-negative integer, got: $LINES" >&2
+    echo "dozo_logcat_tail: --lines must be a non-negative integer, got: $LINES" >&2
     exit 2
 fi
 if [[ ! -x "$ADB" ]]; then
