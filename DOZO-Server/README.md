@@ -85,7 +85,7 @@ Send `X-Api-Token: <API_TOKEN>` or `Authorization: Bearer <API_TOKEN>`.
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| `POST` | `/api/terminals/register` | Body `{device_serial, merchant_id, terminal_id?, label?}` → `201 {code, terminal_id, expires_at, expires_in_seconds}` |
+| `POST` | `/api/terminals/register` | Body `{device_serial, merchant_id, terminal_id?}` → `201 {code, terminal_id, expires_at, expires_in_seconds}` (`400 invalid_device_serial`, `404 unknown_merchant`, `503 code_generation_failed`) |
 | `POST` | `/api/terminals/claim` | Body `{code, label?}` → `200 {status:"claimed", api_token, store}` |
 | `GET` | `/api/terminals/pair-status/:code` | `202` pending / `200` claimed (+ token & store) / `404` unknown / `410` expired |
 | `POST` | `/api/heartbeat` | Body `{terminal_id}` → updates `terminals.last_seen` |
