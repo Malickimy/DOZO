@@ -76,7 +76,7 @@
     "github": {
       "type": "remote",
       "url": "https://api.githubcopilot.com/mcp/",
-      "enabled": false,
+      "enabled": true,
       "oauth": false,
       "headers": {
         "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -140,7 +140,7 @@
     "docker_*": false,
     "ssh_*": false,
     "mobile-mcp_*": false,
-    "github_*": false,
+    "github_*": true,
     "maps_*": false,
     "android-mcp-server_*": false,
     "uiautomator2-mcp-server_*": false,
