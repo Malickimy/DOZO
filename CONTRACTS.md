@@ -4,7 +4,7 @@ Frozen interfaces shared by the Android app, redirect server, and merchant dashb
 Treat this file as **read-only**. To change a contract: update this file first, then update
 every consumer, and flag the other workstream owners.
 
-_Last synced from code on 2026-09-17. The workspace is a single monorepo at `/Users/malicky/l/DOZO` (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`)._
+_Last synced from code on 2026-09-19. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
 
 ---
 
@@ -12,13 +12,13 @@ _Last synced from code on 2026-09-17. The workspace is a single monorepo at `/Us
 
 | Workstream | Path | Owns |
 | --- | --- | --- |
-| App | `/Users/malicky/l/DOZO/DOZO-App` | `app/**`, `mockpay/**`, `scripts/dozo_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
-| Server | `/Users/malicky/l/DOZO/DOZO-Server` | entire directory |
-| Dashboard | `/Users/malicky/l/DOZO/DOZO-Dashboard` | entire directory |
-| Contract & docs | `/Users/malicky/l/DOZO` (repo root) | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |
+| App | `DOZO-App/` | `app/**`, `mockpay/**`, `scripts/dozo_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size` |
+| Server | `DOZO-Server/` | entire directory |
+| Dashboard | `DOZO-Dashboard/` | entire directory |
+| Contract & docs | `.` (repo root) | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |
 | Docs | Papier Obsidian vault (`obsidian` CLI, vault name `Papier`) | vault notes |
 
-> Repo root: `/Users/malicky/l/DOZO` (monorepo; the git repo lives here). If any path moves again, update this table, the app `scripts/*` `PROJECT_DIR` defaults, `~/.config/opencode/opencode.json` (`ANDROID_PROJECT_DIR`), and the `android-build` skill.
+> Repo root: the monorepo checkout (main `/Users/malicky/l/DOZO`; worktrees such as `/Users/malicky/l/workspace-server` mirror the same layout). Paths in this file are repo-relative so they hold in any worktree. If a path moves again, update this table, the app `scripts/*` `PROJECT_DIR` defaults, `~/.config/opencode/opencode.json` (`ANDROID_PROJECT_DIR`), and the `android-build` skill.
 
 ---
 
@@ -45,13 +45,13 @@ allowed headers `X-Api-Token`, `Content-Type`; methods `GET, POST, PUT, OPTIONS`
 | GET | `/health` | — | `200 {"status":"ok"}` |
 | GET | `/r/:terminal_id` | — | `302` `Location: {GOOGLE_REVIEW_BASE}?placeid={google_place_id}` |
 
-`/r/:terminal_id` logs a scan unless debounced (`SHA-256(terminal_id + client IP + User-Agent)`, 120 s window). Unknown/inactive terminal → `404 {"error":"unknown_terminal"}` and **no** scan row.
+`/r/:terminal_id` logs a scan unless debounced (`SHA-256(terminal_id + client IP + User-Agent)`, 120 s window). Unknown terminal → `404 {"error":"unknown_terminal"}`; inactive terminal → `404 {"error":"inactive_terminal"}`; **no** scan row in either case.
 
 ### Authenticated
 
 | Method | Path | Request body | Success | Errors |
 | --- | --- | --- | --- | --- |
-| POST | `/api/terminals/register` | `{device_serial, merchant_id, terminal_id?}` | `201 {code, terminal_id, expires_at, expires_in_seconds}` | `400`, `404 unknown_merchant` |
+| POST | `/api/terminals/register` | `{device_serial, merchant_id, terminal_id?}` | `201 {code, terminal_id, expires_at, expires_in_seconds}` | `400 invalid_device_serial`, `404 unknown_merchant`, `503 code_generation_failed` |
 | GET | `/api/terminals/pair-status/:code` | — | `202 {status:"pending", code, expires_at}` / `200 {status:"claimed", api_token, store}` | `404 {status:"unknown"}`, `410 {status:"expired"}` |
 | POST | `/api/terminals/claim` | `{code, label?}` | `200 {status:"claimed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` |
 | POST | `/api/terminals/adopt` | `{terminal_id, merchant_id, label}` | `200 <config>` | `400`, `404 unknown_merchant` |

@@ -19,6 +19,7 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # --- Server data / SQLite ---
 data/
