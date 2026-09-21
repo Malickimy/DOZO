@@ -41,6 +41,8 @@ fun SettingsScreen(
     initialMerchantId: String,
     initialTerminalId: String,
     initialApiToken: String,
+    initialMerchantName: String,
+    initialPromptText: String,
     initialDisplayEnabled: Boolean,
     initialActivated: Boolean,
     initialTimeoutSeconds: Int,
@@ -49,6 +51,8 @@ fun SettingsScreen(
     onMerchantIdChange: (String) -> Unit,
     onTerminalIdChange: (String) -> Unit,
     onApiTokenChange: (String) -> Unit,
+    onMerchantNameChange: (String) -> Unit,
+    onPromptTextChange: (String) -> Unit,
     onDisplayEnabledChange: (Boolean) -> Unit,
     onActivatedChange: (Boolean) -> Unit,
     onTimeoutSecondsChange: (Int) -> Unit,
@@ -67,6 +71,8 @@ fun SettingsScreen(
     var merchantId by remember { mutableStateOf(initialMerchantId) }
     var terminalId by remember { mutableStateOf(initialTerminalId) }
     var apiToken by remember { mutableStateOf(initialApiToken) }
+    var merchantName by remember { mutableStateOf(initialMerchantName) }
+    var promptText by remember { mutableStateOf(initialPromptText) }
     var displayEnabled by remember { mutableStateOf(initialDisplayEnabled) }
     var activated by remember { mutableStateOf(initialActivated) }
     var timeoutSeconds by remember { mutableFloatStateOf(initialTimeoutSeconds.toFloat()) }
@@ -142,6 +148,24 @@ fun SettingsScreen(
                 onCheckedChange = {
                     displayEnabled = it
                     onDisplayEnabledChange(it)
+                }
+            )
+            Spacer(Modifier.height(16.dp))
+            ConfigField(
+                label = stringResource(R.string.settings_merchant_name),
+                value = merchantName,
+                onValueChange = {
+                    merchantName = it
+                    onMerchantNameChange(it)
+                }
+            )
+            Spacer(Modifier.height(12.dp))
+            ConfigField(
+                label = stringResource(R.string.settings_prompt_text),
+                value = promptText,
+                onValueChange = {
+                    promptText = it
+                    onPromptTextChange(it)
                 }
             )
             Spacer(Modifier.height(16.dp))

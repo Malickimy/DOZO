@@ -27,6 +27,8 @@
     <string name="settings_api_token">API token</string>
     <string name="settings_show_qr">Show review QR</string>
     <string name="settings_show_qr_subtitle">Display the QR after approved sales</string>
+    <string name="settings_merchant_name">Merchant name</string>
+    <string name="settings_prompt_text">Prompt text</string>
     <string name="settings_activated">Activated</string>
     <string name="settings_activated_subtitle">Accept transaction handoffs</string>
     <string name="settings_display_timeout">Display timeout: %1$d s</string>
