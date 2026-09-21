@@ -22,12 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import com.example.dozo.PairStatusResult
 import com.example.dozo.DozoApi
+import com.example.dozo.R
 import com.example.dozo.RegisterResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
@@ -48,7 +50,7 @@ fun PairingScreen(
     modifier: Modifier = Modifier
 ) {
     var registerResult by remember { mutableStateOf<RegisterResult?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<Int?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(attempt) {
@@ -58,7 +60,7 @@ fun PairingScreen(
         val registered = runCatching { api.register(deviceSerial, merchantId, terminalId) }
             .getOrElse {
                 Log.w("DOZO", "pairing register failed", it)
-                message = "Could not reach the server"
+                message = R.string.common_unreachable
                 return@LaunchedEffect
             }
         registerResult = registered
@@ -70,8 +72,8 @@ fun PairingScreen(
                 delay(POLL_INTERVAL_MS)
                 when (val status = runCatching { api.pairStatus(registered.code) }.getOrNull()) {
                     is PairStatusResult.Claimed -> result = status
-                    is PairStatusResult.Expired -> message = "Pairing code expired"
-                    is PairStatusResult.Unknown -> message = "Pairing code not found"
+                    is PairStatusResult.Expired -> message = R.string.pairing_expired
+                    is PairStatusResult.Unknown -> message = R.string.pairing_not_found
                     else -> Unit
                 }
             }
@@ -79,7 +81,7 @@ fun PairingScreen(
         }
         when {
             claimed != null -> onPaired(claimed)
-            message == null -> message = "Pairing timed out"
+            message == null -> message = R.string.pairing_timeout
         }
     }
 
@@ -96,7 +98,7 @@ fun PairingScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Pair terminal",
+                text = stringResource(R.string.pairing_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -113,37 +115,38 @@ fun PairingScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Enter this code in the merchant portal",
+                    text = stringResource(R.string.pairing_enter_code),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             } else {
                 Text(
-                    text = "Requesting a pairing code…",
+                    text = stringResource(R.string.pairing_requesting),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
             Spacer(Modifier.height(28.dp))
-            if (message == null) {
+            val messageRes = message
+            if (messageRes == null) {
                 CircularProgressIndicator()
             } else {
                 Text(
-                    text = message.orEmpty(),
+                    text = stringResource(messageRes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = { attempt++ }) {
-                    Text("Retry")
+                    Text(stringResource(R.string.common_retry))
                 }
             }
             Spacer(Modifier.height(24.dp))
             OutlinedButton(onClick = onCancel) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     }

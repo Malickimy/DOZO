@@ -1,0 +1,72 @@
+<resources>
+    <string name="app_name">DOZO</string>
+
+    <!-- Idle -->
+    <string name="idle_waiting">Waiting for transaction…</string>
+
+    <!-- QR display -->
+    <string name="qr_title">Payment approved</string>
+    <string name="qr_transaction">Transaction %1$s</string>
+    <string name="qr_prompt">Scan the code and rate us on Google</string>
+    <string name="qr_closing">Closing in %1$d s</string>
+    <string name="qr_done">Done</string>
+    <string name="qr_logo_content_desc">Dozo logo</string>
+    <string name="qr_code_content_desc">Google review QR code</string>
+
+    <!-- PIN -->
+    <string name="pin_enter">Enter PIN</string>
+    <string name="pin_new">New PIN</string>
+    <string name="pin_del">Del</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_api_base_url">API base URL</string>
+    <string name="settings_redirect_base_url">Redirect base URL</string>
+    <string name="settings_merchant_id">Merchant ID</string>
+    <string name="settings_terminal_id">Terminal ID</string>
+    <string name="settings_api_token">API token</string>
+    <string name="settings_show_qr">Show review QR</string>
+    <string name="settings_show_qr_subtitle">Display the QR after approved sales</string>
+    <string name="settings_activated">Activated</string>
+    <string name="settings_activated_subtitle">Accept transaction handoffs</string>
+    <string name="settings_display_timeout">Display timeout: %1$d s</string>
+    <string name="settings_sync_now">Sync now</string>
+    <string name="settings_heartbeat_now">Send heartbeat now</string>
+    <string name="settings_generate_pairing">Generate pairing code</string>
+    <string name="settings_adopt_register">Adopt existing register</string>
+    <string name="settings_change_pin">Change PIN</string>
+    <string name="settings_unpair">Unpair &amp; wipe</string>
+    <string name="settings_back">Back</string>
+
+    <!-- Pairing -->
+    <string name="pairing_title">Pair terminal</string>
+    <string name="pairing_enter_code">Enter this code in the merchant portal</string>
+    <string name="pairing_requesting">Requesting a pairing code…</string>
+    <string name="pairing_expired">Pairing code expired</string>
+    <string name="pairing_not_found">Pairing code not found</string>
+    <string name="pairing_timeout">Pairing timed out</string>
+
+    <!-- Adopt -->
+    <string name="adopt_title">Adopt existing register</string>
+    <string name="adopt_subtitle">Pick the register this terminal replaces</string>
+    <string name="adopt_empty">No registers available for this merchant</string>
+    <string name="adopt_merchant_not_found">Merchant not found</string>
+    <string name="adopt_register_not_found">Register not found</string>
+    <string name="adopt_invalid">Invalid register selection</string>
+    <string name="adopt_action">Adopt</string>
+
+    <!-- Shared -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_unreachable">Could not reach the server</string>
+
+    <!-- Manual sync / heartbeat status -->
+    <string name="status_not_configured">Not configured</string>
+    <string name="status_syncing">Syncing…</string>
+    <string name="status_sync_done">Config synced</string>
+    <string name="status_terminal_not_found">Terminal not found</string>
+    <string name="status_sync_failed">Sync failed</string>
+    <string name="status_sending_heartbeat">Sending heartbeat…</string>
+    <string name="status_heartbeat_sent">Heartbeat sent</string>
+    <string name="status_heartbeat_failed">Heartbeat failed</string>
+</resources>

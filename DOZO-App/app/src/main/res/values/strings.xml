@@ -1,3 +1,72 @@
 <resources>
     <string name="app_name">DOZO</string>
+
+    <!-- Idle -->
+    <string name="idle_waiting">Oczekiwanie na transakcję…</string>
+
+    <!-- QR display -->
+    <string name="qr_title">Płatność zatwierdzona</string>
+    <string name="qr_transaction">Transakcja %1$s</string>
+    <string name="qr_prompt">Zeskanuj kod i oceń nas w Google</string>
+    <string name="qr_closing">Zamknięcie za %1$d s</string>
+    <string name="qr_done">Gotowe</string>
+    <string name="qr_logo_content_desc">Logo DOZO</string>
+    <string name="qr_code_content_desc">Kod QR do opinii Google</string>
+
+    <!-- PIN -->
+    <string name="pin_enter">Wprowadź PIN</string>
+    <string name="pin_new">Nowy PIN</string>
+    <string name="pin_del">Usuń</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_api_base_url">Adres bazowy API</string>
+    <string name="settings_redirect_base_url">Adres bazowy przekierowania</string>
+    <string name="settings_merchant_id">Identyfikator sprzedawcy</string>
+    <string name="settings_terminal_id">Identyfikator terminala</string>
+    <string name="settings_api_token">Token API</string>
+    <string name="settings_show_qr">Pokaż kod QR opinii</string>
+    <string name="settings_show_qr_subtitle">Wyświetlaj kod QR po zatwierdzonej sprzedaży</string>
+    <string name="settings_activated">Aktywowany</string>
+    <string name="settings_activated_subtitle">Przyjmuj przekazania transakcji</string>
+    <string name="settings_display_timeout">Czas wyświetlania: %1$d s</string>
+    <string name="settings_sync_now">Synchronizuj teraz</string>
+    <string name="settings_heartbeat_now">Wyślij sygnał teraz</string>
+    <string name="settings_generate_pairing">Wygeneruj kod parowania</string>
+    <string name="settings_adopt_register">Przejmij istniejącą kasę</string>
+    <string name="settings_change_pin">Zmień PIN</string>
+    <string name="settings_unpair">Odepnij i wyczyść</string>
+    <string name="settings_back">Wstecz</string>
+
+    <!-- Pairing -->
+    <string name="pairing_title">Parowanie terminala</string>
+    <string name="pairing_enter_code">Wprowadź ten kod w panelu sprzedawcy</string>
+    <string name="pairing_requesting">Żądanie kodu parowania…</string>
+    <string name="pairing_expired">Kod parowania wygasł</string>
+    <string name="pairing_not_found">Nie znaleziono kodu parowania</string>
+    <string name="pairing_timeout">Parowanie przekroczyło limit czasu</string>
+
+    <!-- Adopt -->
+    <string name="adopt_title">Przejmij istniejącą kasę</string>
+    <string name="adopt_subtitle">Wybierz kasę, którą zastępuje ten terminal</string>
+    <string name="adopt_empty">Brak dostępnych kas dla tego sprzedawcy</string>
+    <string name="adopt_merchant_not_found">Nie znaleziono sprzedawcy</string>
+    <string name="adopt_register_not_found">Nie znaleziono kasy</string>
+    <string name="adopt_invalid">Nieprawidłowy wybór kasy</string>
+    <string name="adopt_action">Przejmij</string>
+
+    <!-- Shared -->
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_retry">Ponów</string>
+    <string name="common_unreachable">Nie można połączyć się z serwerem</string>
+
+    <!-- Manual sync / heartbeat status -->
+    <string name="status_not_configured">Nieskonfigurowane</string>
+    <string name="status_syncing">Synchronizacja…</string>
+    <string name="status_sync_done">Konfiguracja zsynchronizowana</string>
+    <string name="status_terminal_not_found">Nie znaleziono terminala</string>
+    <string name="status_sync_failed">Synchronizacja nie powiodła się</string>
+    <string name="status_sending_heartbeat">Wysyłanie sygnału…</string>
+    <string name="status_heartbeat_sent">Sygnał wysłany</string>
+    <string name="status_heartbeat_failed">Sygnał nie powiódł się</string>
 </resources>

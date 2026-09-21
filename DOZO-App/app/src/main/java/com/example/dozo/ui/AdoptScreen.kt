@@ -29,11 +29,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.dozo.AdoptResult
 import com.example.dozo.DozoApi
+import com.example.dozo.R
 import com.example.dozo.Register
 import com.example.dozo.RegistersResult
 import com.example.dozo.TerminalConfig
@@ -51,7 +53,7 @@ fun AdoptScreen(
 ) {
     var registers by remember { mutableStateOf<List<Register>?>(null) }
     var selected by remember { mutableStateOf<Register?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<Int?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
     var adopting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -66,8 +68,8 @@ fun AdoptScreen(
                 .getOrElse { RegistersResult.Failed }
         ) {
             is RegistersResult.Success -> registers = result.registers
-            RegistersResult.NotFound -> message = "Merchant not found"
-            RegistersResult.Failed -> message = "Could not reach the server"
+            RegistersResult.NotFound -> message = R.string.adopt_merchant_not_found
+            RegistersResult.Failed -> message = R.string.common_unreachable
         }
     }
 
@@ -85,44 +87,45 @@ fun AdoptScreen(
             verticalArrangement = Arrangement.Top
         ) {
             Text(
-                text = "Adopt existing register",
+                text = stringResource(R.string.adopt_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Pick the register this terminal replaces",
+                text = stringResource(R.string.adopt_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
             val list = registers
+            val messageRes = message
             when {
-                message != null -> {
+                messageRes != null -> {
                     Text(
-                        text = message.orEmpty(),
+                        text = stringResource(messageRes),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { attempt++ }) {
-                        Text("Retry")
+                        Text(stringResource(R.string.common_retry))
                     }
                 }
                 list == null -> CircularProgressIndicator()
                 list.isEmpty() -> {
                     Text(
-                        text = "No registers available for this merchant",
+                        text = stringResource(R.string.adopt_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { attempt++ }) {
-                        Text("Retry")
+                        Text(stringResource(R.string.common_retry))
                     }
                 }
                 else -> {
@@ -146,9 +149,9 @@ fun AdoptScreen(
                                 }.getOrElse { AdoptResult.Failed }
                                 when (result) {
                                     is AdoptResult.Success -> onAdopted(result.config)
-                                    AdoptResult.NotFound -> message = "Register not found"
-                                    AdoptResult.Invalid -> message = "Invalid register selection"
-                                    AdoptResult.Failed -> message = "Could not reach the server"
+                                    AdoptResult.NotFound -> message = R.string.adopt_register_not_found
+                                    AdoptResult.Invalid -> message = R.string.adopt_invalid
+                                    AdoptResult.Failed -> message = R.string.common_unreachable
                                 }
                                 adopting = false
                             }
@@ -156,13 +159,13 @@ fun AdoptScreen(
                         enabled = selected != null && !adopting,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Adopt")
+                        Text(stringResource(R.string.adopt_action))
                     }
                 }
             }
             Spacer(Modifier.height(24.dp))
             OutlinedButton(onClick = onCancel) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     }

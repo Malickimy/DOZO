@@ -34,6 +34,8 @@ object DozoContract {
     const val KEY_API_TOKEN = "api_token"
     const val KEY_TERMINAL_ID = "terminal_id"
     const val KEY_MERCHANT_ID = "merchant_id"
+    const val KEY_MERCHANT_NAME = "merchant_name"
+    const val KEY_PROMPT_TEXT = "prompt_text"
     const val KEY_PAIRING_CODE = "pairing_code"
     const val KEY_PIN = "pin"
 

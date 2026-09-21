@@ -48,6 +48,14 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_MERCHANT_ID
 
+    fun merchantName(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_MERCHANT_NAME, null)
+            ?.takeIf { it.isNotBlank() }
+
+    fun promptText(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_PROMPT_TEXT, null)
+            ?.takeIf { it.isNotBlank() }
+
     fun pairingCode(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_PAIRING_CODE, null)
             ?.takeIf { it.isNotBlank() }
@@ -89,6 +97,14 @@ object DozoConfig {
 
     fun setApiToken(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_API_TOKEN, value).apply()
+    }
+
+    fun setMerchantName(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_MERCHANT_NAME, value).apply()
+    }
+
+    fun setPromptText(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_PROMPT_TEXT, value).apply()
     }
 
     fun setPairingCode(context: Context, value: String) {
