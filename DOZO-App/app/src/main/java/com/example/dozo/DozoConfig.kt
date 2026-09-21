@@ -48,6 +48,11 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_MERCHANT_ID
 
+    fun language(context: Context): String {
+        val stored = prefs(context).getString(DozoContract.KEY_LANGUAGE, null)
+        return if (Language.isSupported(stored)) stored!! else Language.DEFAULT
+    }
+
     fun merchantName(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_MERCHANT_NAME, null)
             ?.takeIf { it.isNotBlank() }
@@ -97,6 +102,11 @@ object DozoConfig {
 
     fun setApiToken(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_API_TOKEN, value).apply()
+    }
+
+    fun setLanguage(context: Context, value: String) {
+        val normalized = if (Language.isSupported(value)) value else Language.DEFAULT
+        edit(context).putString(DozoContract.KEY_LANGUAGE, normalized).apply()
     }
 
     fun setMerchantName(context: Context, value: String) {

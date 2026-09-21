@@ -1,5 +1,6 @@
 package com.example.dozo
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -41,6 +42,10 @@ class MainActivity : ComponentActivity() {
         DozoContract.DEFAULT_DISPLAY_TIMEOUT_SECONDS
     )
     private var manualStatus by mutableStateOf<String?>(null)
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
