@@ -48,6 +48,19 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_MERCHANT_ID
 
+    fun language(context: Context): String {
+        val stored = prefs(context).getString(DozoContract.KEY_LANGUAGE, null)
+        return if (Language.isSupported(stored)) stored!! else Language.DEFAULT
+    }
+
+    fun merchantName(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_MERCHANT_NAME, null)
+            ?.takeIf { it.isNotBlank() }
+
+    fun promptText(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_PROMPT_TEXT, null)
+            ?.takeIf { it.isNotBlank() }
+
     fun pairingCode(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_PAIRING_CODE, null)
             ?.takeIf { it.isNotBlank() }
@@ -89,6 +102,19 @@ object DozoConfig {
 
     fun setApiToken(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_API_TOKEN, value).apply()
+    }
+
+    fun setLanguage(context: Context, value: String) {
+        val normalized = if (Language.isSupported(value)) value else Language.DEFAULT
+        edit(context).putString(DozoContract.KEY_LANGUAGE, normalized).apply()
+    }
+
+    fun setMerchantName(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_MERCHANT_NAME, value).apply()
+    }
+
+    fun setPromptText(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_PROMPT_TEXT, value).apply()
     }
 
     fun setPairingCode(context: Context, value: String) {

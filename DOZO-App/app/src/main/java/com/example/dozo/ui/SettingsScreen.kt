@@ -27,9 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.dozo.DozoContract
+import com.example.dozo.R
 import kotlin.math.roundToInt
 
 @Composable
@@ -39,6 +41,8 @@ fun SettingsScreen(
     initialMerchantId: String,
     initialTerminalId: String,
     initialApiToken: String,
+    initialMerchantName: String,
+    initialPromptText: String,
     initialDisplayEnabled: Boolean,
     initialActivated: Boolean,
     initialTimeoutSeconds: Int,
@@ -47,6 +51,8 @@ fun SettingsScreen(
     onMerchantIdChange: (String) -> Unit,
     onTerminalIdChange: (String) -> Unit,
     onApiTokenChange: (String) -> Unit,
+    onMerchantNameChange: (String) -> Unit,
+    onPromptTextChange: (String) -> Unit,
     onDisplayEnabledChange: (Boolean) -> Unit,
     onActivatedChange: (Boolean) -> Unit,
     onTimeoutSecondsChange: (Int) -> Unit,
@@ -65,6 +71,8 @@ fun SettingsScreen(
     var merchantId by remember { mutableStateOf(initialMerchantId) }
     var terminalId by remember { mutableStateOf(initialTerminalId) }
     var apiToken by remember { mutableStateOf(initialApiToken) }
+    var merchantName by remember { mutableStateOf(initialMerchantName) }
+    var promptText by remember { mutableStateOf(initialPromptText) }
     var displayEnabled by remember { mutableStateOf(initialDisplayEnabled) }
     var activated by remember { mutableStateOf(initialActivated) }
     var timeoutSeconds by remember { mutableFloatStateOf(initialTimeoutSeconds.toFloat()) }
@@ -82,14 +90,14 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.Top
         ) {
             Text(
-                text = "Settings",
+                text = stringResource(R.string.settings_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(20.dp))
             ConfigField(
-                label = "API base URL",
+                label = stringResource(R.string.settings_api_base_url),
                 value = apiBaseUrl,
                 onValueChange = {
                     apiBaseUrl = it
@@ -98,7 +106,7 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(12.dp))
             ConfigField(
-                label = "Redirect base URL",
+                label = stringResource(R.string.settings_redirect_base_url),
                 value = redirectBaseUrl,
                 onValueChange = {
                     redirectBaseUrl = it
@@ -107,7 +115,7 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(12.dp))
             ConfigField(
-                label = "Merchant ID",
+                label = stringResource(R.string.settings_merchant_id),
                 value = merchantId,
                 onValueChange = {
                     merchantId = it
@@ -116,7 +124,7 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(12.dp))
             ConfigField(
-                label = "Terminal ID",
+                label = stringResource(R.string.settings_terminal_id),
                 value = terminalId,
                 onValueChange = {
                     terminalId = it
@@ -125,7 +133,7 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(12.dp))
             ConfigField(
-                label = "API token",
+                label = stringResource(R.string.settings_api_token),
                 value = apiToken,
                 onValueChange = {
                     apiToken = it
@@ -134,8 +142,8 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(20.dp))
             ToggleRow(
-                title = "Show review QR",
-                subtitle = "Display the QR after approved sales",
+                title = stringResource(R.string.settings_show_qr),
+                subtitle = stringResource(R.string.settings_show_qr_subtitle),
                 checked = displayEnabled,
                 onCheckedChange = {
                     displayEnabled = it
@@ -143,9 +151,27 @@ fun SettingsScreen(
                 }
             )
             Spacer(Modifier.height(16.dp))
+            ConfigField(
+                label = stringResource(R.string.settings_merchant_name),
+                value = merchantName,
+                onValueChange = {
+                    merchantName = it
+                    onMerchantNameChange(it)
+                }
+            )
+            Spacer(Modifier.height(12.dp))
+            ConfigField(
+                label = stringResource(R.string.settings_prompt_text),
+                value = promptText,
+                onValueChange = {
+                    promptText = it
+                    onPromptTextChange(it)
+                }
+            )
+            Spacer(Modifier.height(16.dp))
             ToggleRow(
-                title = "Activated",
-                subtitle = "Accept transaction handoffs",
+                title = stringResource(R.string.settings_activated),
+                subtitle = stringResource(R.string.settings_activated_subtitle),
                 checked = activated,
                 onCheckedChange = {
                     activated = it
@@ -154,7 +180,7 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(20.dp))
             Text(
-                text = "Display timeout: ${timeoutSeconds.roundToInt()}s",
+                text = stringResource(R.string.settings_display_timeout, timeoutSeconds.roundToInt()),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -174,13 +200,13 @@ fun SettingsScreen(
                     onClick = onSyncNow,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Sync now")
+                    Text(stringResource(R.string.settings_sync_now))
                 }
                 OutlinedButton(
                     onClick = onSendHeartbeatNow,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Send heartbeat now")
+                    Text(stringResource(R.string.settings_heartbeat_now))
                 }
             }
             if (manualStatus != null) {
@@ -196,35 +222,35 @@ fun SettingsScreen(
                 onClick = onGeneratePairingCode,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Generate pairing code")
+                Text(stringResource(R.string.settings_generate_pairing))
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onAdoptExistingRegister,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Adopt existing register")
+                Text(stringResource(R.string.settings_adopt_register))
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onChangePin,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Change PIN")
+                Text(stringResource(R.string.settings_change_pin))
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onUnpair,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Unpair & wipe")
+                Text(stringResource(R.string.settings_unpair))
             }
             Spacer(Modifier.height(24.dp))
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Back")
+                Text(stringResource(R.string.settings_back))
             }
         }
     }

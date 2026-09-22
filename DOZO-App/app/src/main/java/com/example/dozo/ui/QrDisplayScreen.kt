@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,8 @@ fun QrDisplayScreen(
     bitmap: ImageBitmap,
     txnId: String,
     timeoutSeconds: Int,
+    merchantName: String?,
+    promptText: String?,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -66,7 +69,7 @@ fun QrDisplayScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Payment approved",
+                text = stringResource(R.string.qr_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -74,17 +77,27 @@ fun QrDisplayScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Transaction $txnId",
+                text = stringResource(R.string.qr_transaction, txnId),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+            if (merchantName != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = merchantName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
 
             Image(
                 painter = painterResource(R.drawable.dozo_logo),
-                contentDescription = "Dozo",
+                contentDescription = stringResource(R.string.qr_logo_content_desc),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp),
@@ -102,7 +115,7 @@ fun QrDisplayScreen(
             ) {
                 Image(
                     bitmap = bitmap,
-                    contentDescription = "Google review QR code",
+                    contentDescription = stringResource(R.string.qr_code_content_desc),
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
@@ -114,9 +127,10 @@ fun QrDisplayScreen(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = "Scan to leave a review",
+                text = promptText ?: stringResource(R.string.qr_prompt),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
@@ -125,13 +139,13 @@ fun QrDisplayScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Closing in ${secondsLeft}s",
+                text = stringResource(R.string.qr_closing, secondsLeft),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(20.dp))
             Button(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.qr_done))
             }
         }
     }

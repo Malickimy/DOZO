@@ -1,5 +1,6 @@
 package com.example.dozo
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -11,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.dozo.ui.AdoptScreen
 import com.example.dozo.ui.IdleScreen
@@ -41,6 +43,10 @@ class MainActivity : ComponentActivity() {
     )
     private var manualStatus by mutableStateOf<String?>(null)
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val mapped = handleLaunch() ?: return
@@ -58,17 +64,19 @@ class MainActivity : ComponentActivity() {
                             bitmap = state.bitmap,
                             txnId = state.txnId,
                             timeoutSeconds = displayTimeoutSeconds,
+                            merchantName = DozoConfig.merchantName(this),
+                            promptText = DozoConfig.promptText(this),
                             onDismiss = { closeAndFinish(RESULT_APPROVED) }
                         )
                     }
                     AppScreen.Pin -> PinScreen(
-                        title = "Enter PIN",
+                        title = stringResource(R.string.pin_enter),
                         expectedPin = DozoConfig.pin(this),
                         onComplete = { appScreen = AppScreen.Settings },
                         onCancel = { appScreen = AppScreen.Payment }
                     )
                     AppScreen.SetPin -> PinScreen(
-                        title = "New PIN",
+                        title = stringResource(R.string.pin_new),
                         expectedPin = null,
                         onComplete = {
                             DozoConfig.setPin(this, it)
@@ -82,6 +90,8 @@ class MainActivity : ComponentActivity() {
                         initialMerchantId = DozoConfig.merchantId(this),
                         initialTerminalId = DozoConfig.terminalId(this).orEmpty(),
                         initialApiToken = DozoConfig.apiToken(this),
+                        initialMerchantName = DozoConfig.merchantName(this).orEmpty(),
+                        initialPromptText = DozoConfig.promptText(this).orEmpty(),
                         initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
                         initialActivated = DozoConfig.isActivationEnabled(this),
                         initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
@@ -90,6 +100,8 @@ class MainActivity : ComponentActivity() {
                         onMerchantIdChange = { DozoConfig.setMerchantId(this, it) },
                         onTerminalIdChange = { DozoConfig.setTerminalId(this, it) },
                         onApiTokenChange = { DozoConfig.setApiToken(this, it) },
+                        onMerchantNameChange = { DozoConfig.setMerchantName(this, it) },
+                        onPromptTextChange = { DozoConfig.setPromptText(this, it) },
                         onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
                         onActivatedChange = { DozoConfig.setActivated(this, it) },
                         onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
@@ -198,10 +210,10 @@ class MainActivity : ComponentActivity() {
         val terminalId = DozoConfig.terminalId(this)
         val apiToken = DozoConfig.apiToken(this)
         if (terminalId.isNullOrBlank() || apiToken.isBlank()) {
-            manualStatus = "Not configured"
+            manualStatus = getString(R.string.status_not_configured)
             return
         }
-        manualStatus = "Syncing…"
+        manualStatus = getString(R.string.status_syncing)
         lifecycleScope.launch {
             manualStatus = try {
                 when (val result = DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
@@ -217,13 +229,13 @@ class MainActivity : ComponentActivity() {
                             this@MainActivity,
                             deriveRedirectBaseUrl(config.redirectBaseUrl, terminalId)
                         )
-                        "Config synced"
+                        getString(R.string.status_sync_done)
                     }
-                    ConfigResult.NotFound -> "Terminal not found"
-                    ConfigResult.Failed -> "Sync failed"
+                    ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
+                    ConfigResult.Failed -> getString(R.string.status_sync_failed)
                 }
             } catch (_: Exception) {
-                "Sync failed"
+                getString(R.string.status_sync_failed)
             }
         }
     }
@@ -232,17 +244,17 @@ class MainActivity : ComponentActivity() {
         val terminalId = DozoConfig.terminalId(this)
         val apiToken = DozoConfig.apiToken(this)
         if (terminalId.isNullOrBlank() || apiToken.isBlank()) {
-            manualStatus = "Not configured"
+            manualStatus = getString(R.string.status_not_configured)
             return
         }
-        manualStatus = "Sending heartbeat…"
+        manualStatus = getString(R.string.status_sending_heartbeat)
         lifecycleScope.launch {
             manualStatus = try {
                 val ok = DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
                     .heartbeat(terminalId)
-                if (ok) "Heartbeat sent" else "Heartbeat failed"
+                if (ok) getString(R.string.status_heartbeat_sent) else getString(R.string.status_heartbeat_failed)
             } catch (_: Exception) {
-                "Heartbeat failed"
+                getString(R.string.status_heartbeat_failed)
             }
         }
     }

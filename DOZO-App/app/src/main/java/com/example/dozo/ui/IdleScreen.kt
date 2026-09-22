@@ -19,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.dozo.R
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val SETTINGS_HOLD_MS = 1_500L
@@ -50,7 +52,7 @@ fun IdleScreen(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Waiting for transaction…",
+                    text = stringResource(R.string.idle_waiting),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
