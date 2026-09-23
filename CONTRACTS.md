@@ -4,7 +4,7 @@ Frozen interfaces shared by the Android app, redirect server, and merchant dashb
 Treat this file as **read-only**. To change a contract: update this file first, then update
 every consumer, and flag the other workstream owners.
 
-_Last synced from code on 2026-09-22. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
+_Last synced from code on 2026-09-23. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
 
 _Release Board R1–R6 are drafted below ahead of their implementations; each ships on its own expand/contract branch (see §11)._
 
@@ -55,10 +55,11 @@ allowed headers `X-Api-Token`, `Content-Type`; methods `GET, POST, PUT, OPTIONS`
 
 | Method | Path | Request body | Success | Errors |
 | --- | --- | --- | --- | --- |
-| POST | `/api/terminals/register` | `{device_serial, merchant_id, terminal_id?}` | `201 {code, terminal_id, expires_at, expires_in_seconds}` | `400 invalid_device_serial`, `404 unknown_merchant`, `503 code_generation_failed` |
-| GET | `/api/terminals/pair-status/:code` | — | `202 {status:"pending", code, expires_at}` / `200 {status:"claimed", api_token, store}` | `404 {status:"unknown"}`, `410 {status:"expired"}` |
-| POST | `/api/terminals/claim` | `{code, label?}` | `200 {status:"claimed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` |
-| POST | `/api/terminals/adopt` | `{terminal_id, merchant_id, label}` | `200 <config>` | `400`, `404 unknown_merchant` |
+| POST | `/api/terminals/register` | `{device_serial, merchant_id, terminal_id?}` | `201 {code, terminal_id, expires_at, expires_in_seconds}` | `400 invalid_device_serial`, `404 unknown_merchant`, `503 code_generation_failed` _(deprecated — model-B)_ |
+| GET | `/api/terminals/pair-status/:code` | — | `202 {status:"pending", code, expires_at}` / `200 {status:"claimed", api_token, store}` | `404 {status:"unknown"}`, `410 {status:"expired"}` _(deprecated — model-B)_ |
+| POST | `/api/terminals/claim` | `{code, label?}` | `200 {status:"claimed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` _(deprecated — model-B)_ |
+| POST | `/api/terminals/adopt` | `{terminal_id, merchant_id, label}` | `200 <config>` | `400`, `404 unknown_merchant` _(deprecated — model-B)_ |
+| POST | `/api/terminals/redeem` | `{code, device_serial, terminal_id?}` | `200 {status:"redeemed", api_token, store}` | `400 invalid_code`, `400 invalid_terminal_id`, `400 invalid_device_serial`, `404 unknown_code`, `410 expired_code`, `410 redeemed_code` |
 | POST | `/api/heartbeat` | `{terminal_id}` | `200 {ok, terminal_id, last_seen}` | `400`, `404 unknown_terminal` |
 | GET | `/api/terminals/offline` | — | `200 {threshold_seconds, cutoff, terminals:[{terminal_id, merchant_id, label, active, last_seen}]}` | — |
 | GET | `/api/terminals/:terminal_id/config` | — | `200 <config>` | `404 unknown_terminal` |
@@ -70,14 +71,15 @@ allowed headers `X-Api-Token`, `Content-Type`; methods `GET, POST, PUT, OPTIONS`
 | GET | `/api/merchants/:id/scans` | query `?terminal_id=&since=&until=&limit=` (default 100, max 1000) | `200 [{id, terminal_id, scanned_at, user_agent}]` | `404` |
 | GET | `/api/merchants/:id/scans/series` | query `?since=&until=&bucket=day` | `200 [{day, count}]` | `404` |
 | GET | `/api/merchants/:id/registers` | — | `200 [{label, terminal_id, active, last_seen}]` | `404` |
+| POST | `/api/merchants/:id/registers/:label/setup-code` | — | `201 {code, merchant_id, label, expires_at, expires_in_seconds}` | `400 invalid_label`, `404 unknown_merchant`, `503 code_generation_failed` |
 | PUT | `/api/merchants/:id/google-place-id` | `{google_place_id}` | `200 {merchant_id, google_place_id}` | `400`, `404` |
-| POST | `/api/merchants/:id/registers/:label/setup-code` | — | `201 {code, label, expires_at, expires_in_seconds}` | `400 invalid_label`, `404 unknown_merchant`, `503 code_generation_failed` |
-| POST | `/api/terminals/redeem` | `{code, device_serial, terminal_id?}` | `200 {status:"redeemed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` |
 | GET | `/api/connector/config` | — | `200 {generated_at, redirect_base_url, terminals:[{terminal_id, merchant_id, google_place_id, label, active}]}` | — |
+
+The four legacy pairing endpoints above — `register`, `pair-status/:code`, `claim`, and `adopt` — are replaced by `setup-code` + `redeem` (model-B) and will be removed in `feat/model-b-retire`.
 
 Notes:
 
-- **R1 (proposed).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. `register`, `pair-status`, `claim`, and `adopt` are **deprecated by R1**; Step 4 removes them once the app and dashboard round-trip a setup code. Redeeming a code for an occupied register deactivates the prior terminal.
+- **R1 (proposed).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. `register`, `pair-status`, `claim`, and `adopt` are **deprecated by R1**; `feat/model-b-retire` (Step 4) removes them once the app and dashboard round-trip a setup code. Redeeming a code for an occupied register deactivates the prior terminal.
 - **R3 (proposed).** `PATCH /api/terminals/:id` owns `active` and `label`; `PUT /api/terminals/:id/config` keeps `display_enabled` and `display_timeout_seconds`. Both responses gain `static_review_url`.
 - **R5 (proposed).** The series bucket groups `scanned_at` by the Europe/Warsaw day; `scanned_at` stays an ISO UTC timestamp.
 - **R6 (proposed).** `api_token` becomes per-terminal: issued at `claim` / `redeem`, hashed at rest, validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs.
@@ -96,7 +98,7 @@ store   = {terminal_id, merchant_id, google_place_id, label, redirect_url,
 
 ---
 
-## 4. Database schema (SQLite, `PRAGMA user_version` migrations v1–v2)
+## 4. Database schema (SQLite, `PRAGMA user_version` migrations v1–v3)
 
 ```
 merchants(merchant_id PK, google_place_id NOT NULL, created_at NOT NULL)
@@ -105,6 +107,7 @@ terminals(terminal_id PK, merchant_id FK, label, active INT DEFAULT 1, last_seen
 scans(id INTEGER PK AUTOINCREMENT, terminal_id FK, scanned_at, user_agent)
 pairing_codes(code PK, device_serial, merchant_id FK, terminal_id,
               created_at, expires_at, claimed_at)
+setup_codes(code PK, merchant_id FK, label, created_at, expires_at, redeemed_at)
 ```
 
 Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `ChIJN1t_tDeuEmsRUsoyG83frY4`), terminal `DEMOTERM01`.
