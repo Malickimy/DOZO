@@ -2,11 +2,11 @@ import { randomInt } from 'node:crypto';
 import { deriveTerminalId, isValidTerminalId } from '../lib/terminal-id.js';
 
 // Unambiguous uppercase alphabet: no I, O, 0, 1.
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 8;
-const MAX_CODE_ATTEMPTS = 12;
+export const MAX_CODE_ATTEMPTS = 12;
 
-function generateCode() {
+export function generateCode() {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i += 1) {
     code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
@@ -14,7 +14,7 @@ function generateCode() {
   return code;
 }
 
-function storeConfig(config, terminal) {
+export function storeConfig(config, terminal) {
   return {
     terminal_id: terminal.terminal_id,
     merchant_id: terminal.merchant_id,
