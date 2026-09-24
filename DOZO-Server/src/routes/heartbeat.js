@@ -1,3 +1,5 @@
+import { assertTerminalAccess } from '../middleware/terminal-auth.js';
+
 /**
  * Heartbeat / liveness API.
  *
@@ -25,6 +27,7 @@ export function registerHeartbeatRoutes(app) {
     if (!terminalId) {
       return reply.code(400).send({ error: 'invalid_terminal_id' });
     }
+    if (!assertTerminalAccess(request, reply, { terminalId })) return;
     if (!getTerminal.get(terminalId)) {
       return reply.code(404).send({ error: 'unknown_terminal', terminal_id: terminalId });
     }

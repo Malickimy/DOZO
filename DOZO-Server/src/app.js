@@ -45,7 +45,7 @@ export function createAppShell({
     allowedHeaders: ['X-Api-Token', 'X-Connector-Secret', 'Content-Type'],
   });
 
-  app.addHook('onRequest', makeAuthHook(config));
+  app.addHook('onRequest', makeAuthHook(config, db));
 
   app.get('/health', async () => ({ status: 'ok' }));
 

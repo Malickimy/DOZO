@@ -126,7 +126,8 @@ test('setup-code trims the label and redeem accepts a padded lowercase code', as
   const res = await redeem(app, { code: `  ${code.toLowerCase()}  `, device_serial: 'TRIM-DEV-1' });
   assert.equal(res.statusCode, 200);
   assert.equal(res.json().store.label, 'Lane 3');
-  assert.equal(res.json().api_token, TEST_TOKEN);
+  assert.equal(typeof res.json().api_token, 'string');
+  assert.ok(res.json().api_token.length >= 40);
   assert.equal(res.json().store.terminal_id, 'TRIMDEV1');
 });
 

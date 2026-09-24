@@ -1,5 +1,6 @@
 import { deriveTerminalId, isValidTerminalId } from '../lib/terminal-id.js';
 import { generateCode, MAX_CODE_ATTEMPTS, storeConfig } from '../lib/setup-code.js';
+import { generateToken, hashToken } from '../lib/token.js';
 
 /**
  * Model-B pairing API (Release Board R1).
@@ -50,6 +51,10 @@ export function registerModelBRoutes(app) {
        merchant_id = excluded.merchant_id,
        label       = excluded.label,
        active      = 1`,
+  );
+  // R6: a fresh per-terminal token is issued (and rotated) on every redeem.
+  const setTerminalToken = db.prepare(
+    'UPDATE terminals SET api_token_hash = ? WHERE terminal_id = ?',
   );
   const getTerminal = db.prepare(
     `SELECT t.*, m.google_place_id
@@ -136,6 +141,7 @@ export function registerModelBRoutes(app) {
     }
 
     const redeemedAt = now().toISOString();
+    const apiToken = generateToken();
     db.transaction(() => {
       ensureRegister.run(record.merchant_id, record.label, redeemedAt);
       const register = getRegister.get(record.merchant_id, record.label);
@@ -144,6 +150,7 @@ export function registerModelBRoutes(app) {
       }
       deactivateRegister.run(record.merchant_id, record.label, terminalId);
       upsertTerminal.run(terminalId, record.merchant_id, record.label, redeemedAt);
+      setTerminalToken.run(hashToken(apiToken), terminalId);
       bindRegister.run(terminalId, register.register_id);
       markRedeemed.run(redeemedAt, code);
     })();
@@ -151,7 +158,7 @@ export function registerModelBRoutes(app) {
     const terminal = getTerminal.get(terminalId);
     return reply.code(200).send({
       status: 'redeemed',
-      api_token: config.apiToken,
+      api_token: apiToken,
       store: storeConfig(config, terminal),
     });
   });

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeTestContext, authHeaders, TEST_TOKEN, TEST_PLACE_ID } from './helpers.js';
+import { hashToken } from '../src/lib/token.js';
 
 const START = '2026-01-01T00:00:00.000Z';
 
@@ -93,7 +94,15 @@ test('redeem binds the derived terminal to the register and returns token + stor
 
   const body = res.json();
   assert.equal(body.status, 'redeemed');
-  assert.equal(body.api_token, TEST_TOKEN);
+  assert.equal(typeof body.api_token, 'string');
+  assert.ok(body.api_token.length >= 40, 'onboard returns a high-entropy token');
+  assert.notEqual(body.api_token, TEST_TOKEN, 'no longer the shared env token');
+  assert.equal(
+    db.prepare('SELECT api_token_hash FROM terminals WHERE terminal_id = ?').get('DX8000SN000123')
+      .api_token_hash,
+    hashToken(body.api_token),
+    'only the hash is stored at rest',
+  );
   assert.equal(body.store.merchant_id, 'M1');
   assert.equal(body.store.label, 'Front counter');
   assert.equal(body.store.google_place_id, TEST_PLACE_ID);
