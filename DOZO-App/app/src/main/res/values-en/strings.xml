@@ -40,6 +40,28 @@
     <string name="settings_unpair">Unpair &amp; wipe</string>
     <string name="settings_back">Back</string>
 
+    <!-- Settings tabs -->
+    <string name="settings_tab_screen">Screen</string>
+    <string name="settings_tab_connection">Connection</string>
+    <string name="settings_tab_system">System</string>
+    <string name="settings_close_mode">Close mode</string>
+    <string name="settings_close_mode_subtitle">Auto-close the QR screen</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_pl">Polish</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_enter_setup_code">Enter setup code</string>
+
+    <!-- Setup code (model-B redeem) -->
+    <string name="setup_code_title">Setup code</string>
+    <string name="setup_code_help">Enter the code from the merchant portal to pair this terminal</string>
+    <string name="setup_code_label">Code</string>
+    <string name="setup_code_action">Redeem</string>
+    <string name="setup_code_invalid">Invalid code</string>
+    <string name="setup_code_unknown">Code not found</string>
+    <string name="setup_code_expired">Code expired</string>
+    <string name="setup_code_redeemed">This code has already been used</string>
+
     <!-- Pairing -->
     <string name="pairing_title">Pair terminal</string>
     <string name="pairing_enter_code">Enter this code in the merchant portal</string>

@@ -39,6 +39,7 @@ object DozoContract {
     const val KEY_LANGUAGE = "language"
     const val KEY_PAIRING_CODE = "pairing_code"
     const val KEY_PIN = "pin"
+    const val KEY_AUTO_CLOSE = "auto_close_enabled"
 
     const val DEFAULT_REDIRECT_BASE_URL = "http://130.162.185.144:3000"
     const val DEFAULT_DISPLAY_TIMEOUT_SECONDS = 15

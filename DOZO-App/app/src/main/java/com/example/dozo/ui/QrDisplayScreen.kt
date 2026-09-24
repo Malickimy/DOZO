@@ -40,6 +40,7 @@ fun QrDisplayScreen(
     bitmap: ImageBitmap,
     txnId: String,
     timeoutSeconds: Int,
+    autoClose: Boolean,
     merchantName: String?,
     promptText: String?,
     onDismiss: () -> Unit,
@@ -47,7 +48,8 @@ fun QrDisplayScreen(
 ) {
     var secondsLeft by remember { mutableIntStateOf(timeoutSeconds) }
 
-    LaunchedEffect(txnId, timeoutSeconds) {
+    LaunchedEffect(txnId, timeoutSeconds, autoClose) {
+        if (!autoClose) return@LaunchedEffect
         secondsLeft = timeoutSeconds
         while (secondsLeft > 0) {
             delay(1000)
@@ -133,16 +135,18 @@ fun QrDisplayScreen(
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { secondsLeft / timeoutSeconds.toFloat() },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.qr_closing, secondsLeft),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (autoClose) {
+                LinearProgressIndicator(
+                    progress = { secondsLeft / timeoutSeconds.toFloat() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.qr_closing, secondsLeft),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(Modifier.height(20.dp))
             Button(onClick = onDismiss) {
                 Text(stringResource(R.string.qr_done))
