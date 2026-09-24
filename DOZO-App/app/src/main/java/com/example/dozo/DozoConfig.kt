@@ -29,6 +29,9 @@ object DozoConfig {
             )
         )
 
+    fun isAutoCloseEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(DozoContract.KEY_AUTO_CLOSE, true)
+
     fun apiBaseUrl(context: Context): String =
         prefs(context).getString(DozoContract.KEY_API_BASE_URL, null)
             ?.takeIf { it.isNotBlank() }
@@ -48,10 +51,8 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_MERCHANT_ID
 
-    fun language(context: Context): String {
-        val stored = prefs(context).getString(DozoContract.KEY_LANGUAGE, null)
-        return if (Language.isSupported(stored)) stored!! else Language.DEFAULT
-    }
+    fun language(context: Context): String =
+        SettingsPersistence.normalizeLanguage(prefs(context).getString(DozoContract.KEY_LANGUAGE, null))
 
     fun merchantName(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_MERCHANT_NAME, null)
@@ -84,6 +85,10 @@ object DozoConfig {
             .apply()
     }
 
+    fun setAutoCloseEnabled(context: Context, value: Boolean) {
+        edit(context).putBoolean(DozoContract.KEY_AUTO_CLOSE, value).apply()
+    }
+
     fun setRedirectBaseUrl(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_REDIRECT_BASE_URL, value).apply()
     }
@@ -105,7 +110,7 @@ object DozoConfig {
     }
 
     fun setLanguage(context: Context, value: String) {
-        val normalized = if (Language.isSupported(value)) value else Language.DEFAULT
+        val normalized = SettingsPersistence.normalizeLanguage(value)
         edit(context).putString(DozoContract.KEY_LANGUAGE, normalized).apply()
     }
 
@@ -149,10 +154,7 @@ object DozoConfig {
     }
 
     fun clampTimeoutSeconds(value: Int): Int =
-        value.coerceIn(
-            DozoContract.MIN_DISPLAY_TIMEOUT_SECONDS,
-            DozoContract.MAX_DISPLAY_TIMEOUT_SECONDS
-        )
+        SettingsPersistence.clampTimeoutSeconds(value)
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(DozoContract.PREFS_NAME, Context.MODE_PRIVATE)

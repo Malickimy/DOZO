@@ -50,7 +50,17 @@ sealed interface PairStatusResult {
 sealed interface ConfigResult {
     data class Success(val config: TerminalConfig) : ConfigResult
     data object NotFound : ConfigResult
+    data object Unauthorized : ConfigResult
     data object Failed : ConfigResult
+}
+
+sealed interface RedeemResult {
+    data class Success(val apiToken: String, val store: StoreConfig) : RedeemResult
+    data object Invalid : RedeemResult
+    data object Unknown : RedeemResult
+    data object Expired : RedeemResult
+    data object AlreadyRedeemed : RedeemResult
+    data object Failed : RedeemResult
 }
 
 sealed interface RegistersResult {
@@ -97,14 +107,18 @@ class DozoApi(
 
     suspend fun config(terminalId: String): ConfigResult = withContext(Dispatchers.IO) {
         val response = request("/api/terminals/$terminalId/config", "GET", null)
-        when {
-            response.code == HTTP_OK -> parseTerminalConfig(response.body)
-                ?.let { ConfigResult.Success(it) }
-                ?: ConfigResult.Failed
-            response.code == HTTP_NOT_FOUND -> ConfigResult.NotFound
-            else -> ConfigResult.Failed
-        }
+        parseConfigResponse(response.code, response.body)
     }
+
+    suspend fun redeem(code: String, deviceSerial: String): RedeemResult =
+        withContext(Dispatchers.IO) {
+            val body = JSONObject()
+                .put("code", code.trim().uppercase())
+                .put("device_serial", deviceSerial)
+                .toString()
+            val response = request("/api/terminals/redeem", "POST", body)
+            parseRedeem(response.code, response.body)
+        }
 
     suspend fun registers(merchantId: String): RegistersResult = withContext(Dispatchers.IO) {
         val response = request("/api/merchants/$merchantId/registers", "GET", null)
@@ -205,6 +219,32 @@ fun parseStore(json: JSONObject?): StoreConfig = StoreConfig(
 fun parseHeartbeat(body: String): Boolean =
     runCatching { JSONObject(body).optBoolean("ok", false) }.getOrDefault(false)
 
+fun parseConfigResponse(httpStatus: Int, body: String): ConfigResult = when {
+    httpStatus == HTTP_OK -> parseTerminalConfig(body)
+        ?.let { ConfigResult.Success(it) }
+        ?: ConfigResult.Failed
+    httpStatus == HTTP_UNAUTHORIZED -> ConfigResult.Unauthorized
+    httpStatus == HTTP_NOT_FOUND -> ConfigResult.NotFound
+    else -> ConfigResult.Failed
+}
+
+fun parseRedeem(httpStatus: Int, body: String): RedeemResult {
+    val json = runCatching { JSONObject(body) }.getOrNull()
+    val status = json?.optString("status").orEmpty()
+    val error = json?.optString("error").orEmpty()
+    return when {
+        httpStatus == HTTP_OK && status == "redeemed" && json != null -> RedeemResult.Success(
+            apiToken = json.optString("api_token"),
+            store = parseStore(json.optJSONObject("store"))
+        )
+        httpStatus == HTTP_BAD_REQUEST -> RedeemResult.Invalid
+        httpStatus == HTTP_NOT_FOUND || error == "unknown_code" -> RedeemResult.Unknown
+        httpStatus == HTTP_GONE && error == "redeemed_code" -> RedeemResult.AlreadyRedeemed
+        httpStatus == HTTP_GONE || error == "expired_code" -> RedeemResult.Expired
+        else -> RedeemResult.Failed
+    }
+}
+
 fun parseTerminalConfig(body: String): TerminalConfig? {
     val json = runCatching { JSONObject(body) }.getOrNull() ?: return null
     val terminalId = json.optString("terminal_id")
@@ -256,5 +296,6 @@ fun deriveRedirectBaseUrl(redirectUrl: String, terminalId: String): String {
 
 private const val HTTP_OK = 200
 private const val HTTP_BAD_REQUEST = 400
+private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_GONE = 410

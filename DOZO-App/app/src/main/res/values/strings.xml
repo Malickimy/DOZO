@@ -40,6 +40,28 @@
     <string name="settings_unpair">Odepnij i wyczyść</string>
     <string name="settings_back">Wstecz</string>
 
+    <!-- Settings tabs -->
+    <string name="settings_tab_screen">Ekran</string>
+    <string name="settings_tab_connection">Połączenie</string>
+    <string name="settings_tab_system">System</string>
+    <string name="settings_close_mode">Tryb zamykania</string>
+    <string name="settings_close_mode_subtitle">Zamykaj ekran QR automatycznie</string>
+    <string name="settings_language">Język</string>
+    <string name="settings_language_system">Systemowy</string>
+    <string name="settings_language_pl">Polski</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_enter_setup_code">Wprowadź kod konfiguracyjny</string>
+
+    <!-- Setup code (model-B redeem) -->
+    <string name="setup_code_title">Kod konfiguracyjny</string>
+    <string name="setup_code_help">Wprowadź kod z panelu sprzedawcy, aby połączyć terminal</string>
+    <string name="setup_code_label">Kod</string>
+    <string name="setup_code_action">Połącz</string>
+    <string name="setup_code_invalid">Nieprawidłowy kod</string>
+    <string name="setup_code_unknown">Nie znaleziono kodu</string>
+    <string name="setup_code_expired">Kod wygasł</string>
+    <string name="setup_code_redeemed">Ten kod został już użyty</string>
+
     <!-- Pairing -->
     <string name="pairing_title">Parowanie terminala</string>
     <string name="pairing_enter_code">Wprowadź ten kod w panelu sprzedawcy</string>

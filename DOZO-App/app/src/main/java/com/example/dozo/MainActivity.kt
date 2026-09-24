@@ -21,6 +21,7 @@ import com.example.dozo.ui.PinScreen
 import com.example.dozo.ui.QrDisplayScreen
 import com.example.dozo.ui.QrRenderer
 import com.example.dozo.ui.SettingsScreen
+import com.example.dozo.ui.SetupCodeScreen
 import com.example.dozo.ui.UiState
 import com.example.dozo.ui.theme.DozoTheme
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ private sealed interface AppScreen {
     data object Pin : AppScreen
     data object SetPin : AppScreen
     data object Settings : AppScreen
+    data object SetupCode : AppScreen
     data object Pairing : AppScreen
     data object Adopt : AppScreen
 }
@@ -64,6 +66,7 @@ class MainActivity : ComponentActivity() {
                             bitmap = state.bitmap,
                             txnId = state.txnId,
                             timeoutSeconds = displayTimeoutSeconds,
+                            autoClose = DozoConfig.isAutoCloseEnabled(this),
                             merchantName = DozoConfig.merchantName(this),
                             promptText = DozoConfig.promptText(this),
                             onDismiss = { closeAndFinish(RESULT_APPROVED) }
@@ -94,7 +97,9 @@ class MainActivity : ComponentActivity() {
                         initialPromptText = DozoConfig.promptText(this).orEmpty(),
                         initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
                         initialActivated = DozoConfig.isActivationEnabled(this),
+                        initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
                         initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
+                        initialLanguage = DozoConfig.language(this),
                         onApiBaseUrlChange = { DozoConfig.setApiBaseUrl(this, it) },
                         onRedirectBaseUrlChange = { DozoConfig.setRedirectBaseUrl(this, it) },
                         onMerchantIdChange = { DozoConfig.setMerchantId(this, it) },
@@ -104,11 +109,13 @@ class MainActivity : ComponentActivity() {
                         onPromptTextChange = { DozoConfig.setPromptText(this, it) },
                         onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
                         onActivatedChange = { DozoConfig.setActivated(this, it) },
+                        onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
                         onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
+                        onLanguageChange = { DozoConfig.setLanguage(this, it) },
                         manualStatus = manualStatus,
                         onSyncNow = { syncConfigNow() },
                         onSendHeartbeatNow = { sendHeartbeatNow() },
-                        onGeneratePairingCode = { appScreen = AppScreen.Pairing },
+                        onEnterSetupCode = { appScreen = AppScreen.SetupCode },
                         onAdoptExistingRegister = { appScreen = AppScreen.Adopt },
                         onChangePin = { appScreen = AppScreen.SetPin },
                         onUnpair = {
@@ -116,6 +123,22 @@ class MainActivity : ComponentActivity() {
                             appScreen = AppScreen.Payment
                         },
                         onBack = { appScreen = AppScreen.Payment }
+                    )
+                    AppScreen.SetupCode -> SetupCodeScreen(
+                        apiBaseUrl = DozoConfig.apiBaseUrl(this),
+                        apiToken = DozoConfig.apiToken(this),
+                        deviceSerial = deviceSerial(),
+                        onRedeemed = { apiToken, store ->
+                            val prefs = SettingsPersistence.redeemPrefs(apiToken, store)
+                            DozoConfig.applyClaimed(
+                                this,
+                                prefs.terminalId,
+                                prefs.apiToken,
+                                prefs.redirectBaseUrl
+                            )
+                            appScreen = AppScreen.Settings
+                        },
+                        onCancel = { appScreen = AppScreen.Settings }
                     )
                     AppScreen.Pairing -> PairingScreen(
                         apiBaseUrl = DozoConfig.apiBaseUrl(this),
@@ -232,6 +255,8 @@ class MainActivity : ComponentActivity() {
                         getString(R.string.status_sync_done)
                     }
                     ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
+                    // TODO(R6): on 401 clear api_token and route to pairing once Server Sprint 7 lands.
+                    ConfigResult.Unauthorized -> getString(R.string.status_sync_failed)
                     ConfigResult.Failed -> getString(R.string.status_sync_failed)
                 }
             } catch (_: Exception) {

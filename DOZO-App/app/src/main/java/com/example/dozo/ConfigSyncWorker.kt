@@ -30,6 +30,8 @@ class ConfigSyncWorker(
                     Result.success()
                 }
                 ConfigResult.NotFound -> Result.success()
+                // TODO(R6): on 401 clear api_token and route to pairing once Server Sprint 7 lands.
+                ConfigResult.Unauthorized -> Result.retry()
                 ConfigResult.Failed -> Result.retry()
             }
         } catch (_: Exception) {
