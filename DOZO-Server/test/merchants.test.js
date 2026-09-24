@@ -200,6 +200,68 @@ test('GET /api/merchants/:id/scans defaults limit to 100 and caps at 1000', asyn
   assert.equal(zero.json().length, 1);
 });
 
+test('GET /api/merchants/:id/scans/series buckets by Europe/Warsaw day', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  // Warsaw is UTC+1 in January: 23:30Z is already the next local day.
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T22:30:00.000Z' });
+  insertScan(db, { id: 2, scannedAt: '2026-01-01T23:30:00.000Z' });
+  insertScan(db, { id: 3, scannedAt: '2026-01-02T10:00:00.000Z' });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans/series',
+    headers: authHeaders(),
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), [
+    { day: '2026-01-01', count: 1 },
+    { day: '2026-01-02', count: 2 },
+  ]);
+
+  const filtered = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans/series?since=2026-01-01T23:00:00.000Z',
+    headers: authHeaders(),
+  });
+  assert.deepEqual(filtered.json(), [{ day: '2026-01-02', count: 2 }]);
+});
+
+test('GET /api/merchants/:id/scans/series validates bucket and merchant', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const empty = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans/series',
+    headers: authHeaders(),
+  });
+  assert.deepEqual(empty.json(), []);
+
+  const badBucket = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans/series?bucket=hour',
+    headers: authHeaders(),
+  });
+  assert.equal(badBucket.statusCode, 400);
+  assert.equal(badBucket.json().error, 'invalid_bucket');
+
+  const unknown = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/NOPE/scans/series',
+    headers: authHeaders(),
+  });
+  assert.equal(unknown.statusCode, 404);
+  assert.equal(unknown.json().error, 'unknown_merchant');
+});
+
 test('unknown merchant returns 404 across merchant routes', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
