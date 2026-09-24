@@ -9,11 +9,41 @@
  */
 const DEFAULT_SCAN_LIMIT = 100;
 const MAX_SCAN_LIMIT = 1000;
+const DEFAULT_SERIES_BUCKET = 'day';
+
+// `scanned_at` is stored as an ISO UTC timestamp; the series buckets it by the
+// merchant-local (Europe/Warsaw) calendar day.
+const WARSAW_DAY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Warsaw',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function warsawDay(isoTimestamp) {
+  const parts = WARSAW_DAY_FORMAT.formatToParts(new Date(isoTimestamp));
+  const value = (type) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
 
 function parseLimit(value) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return DEFAULT_SCAN_LIMIT;
   return Math.min(Math.max(parsed, 1), MAX_SCAN_LIMIT);
+}
+
+function scanWindow(query, merchantId) {
+  const conditions = ['t.merchant_id = ?'];
+  const params = [merchantId];
+  if (typeof query.since === 'string' && query.since.trim()) {
+    conditions.push('s.scanned_at >= ?');
+    params.push(query.since.trim());
+  }
+  if (typeof query.until === 'string' && query.until.trim()) {
+    conditions.push('s.scanned_at <= ?');
+    params.push(query.until.trim());
+  }
+  return { conditions, params };
 }
 
 export function registerMerchantRoutes(app) {
@@ -124,6 +154,43 @@ export function registerMerchantRoutes(app) {
       )
       .all(...params);
     return scans;
+  });
+
+  app.get('/api/merchants/:merchant_id/scans/series', async (request, reply) => {
+    const merchantId = request.params.merchant_id;
+    if (!getMerchant.get(merchantId)) {
+      return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
+    }
+
+    const query = request.query ?? {};
+    const bucket =
+      typeof query.bucket === 'string' && query.bucket.trim()
+        ? query.bucket.trim().toLowerCase()
+        : DEFAULT_SERIES_BUCKET;
+    if (bucket !== DEFAULT_SERIES_BUCKET) {
+      return reply.code(400).send({ error: 'invalid_bucket' });
+    }
+
+    const { conditions, params } = scanWindow(query, merchantId);
+    const rows = db
+      .prepare(
+        `SELECT s.scanned_at
+           FROM scans s
+           JOIN terminals t ON t.terminal_id = s.terminal_id
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY s.scanned_at ASC`,
+      )
+      .all(...params);
+
+    const counts = new Map();
+    for (const row of rows) {
+      const day = warsawDay(row.scanned_at);
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([day, count]) => ({ day, count }));
   });
 
   app.put('/api/merchants/:merchant_id/google-place-id', async (request, reply) => {
