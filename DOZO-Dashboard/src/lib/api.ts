@@ -71,6 +71,21 @@ export interface OfflineResult {
   terminals: OfflineTerminal[]
 }
 
+export interface Register {
+  label: string
+  terminal_id: string | null
+  active: ActiveFlag
+  last_seen: string | null
+}
+
+export interface SetupCode {
+  code: string
+  merchant_id: string
+  label: string
+  expires_at: string
+  expires_in_seconds: number
+}
+
 export interface HealthResult {
   status: string
 }
@@ -161,10 +176,12 @@ export interface ApiClient {
   health: () => Promise<HealthResult>
   listMerchants: () => Promise<Merchant[]>
   listTerminals: (merchantId: string) => Promise<Terminal[]>
+  listRegisters: (merchantId: string) => Promise<Register[]>
   getSummary: (merchantId: string) => Promise<MerchantSummary>
   listScans: (merchantId: string, query?: ScansQuery) => Promise<Scan[]>
   setGooglePlaceId: (merchantId: string, googlePlaceId: string) => Promise<{ merchant_id: string; google_place_id: string | null }>
   claimTerminal: (code: string, label?: string) => Promise<ClaimResult>
+  issueSetupCode: (merchantId: string, label: string) => Promise<SetupCode>
   listOfflineTerminals: () => Promise<OfflineResult>
 }
 
@@ -224,6 +241,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     health: () => request<HealthResult>('/health', {}, { auth: false }),
     listMerchants: () => request<Merchant[]>('/api/merchants'),
     listTerminals: (merchantId) => request<Terminal[]>(merchantPath(merchantId, '/terminals')),
+    listRegisters: (merchantId) => request<Register[]>(merchantPath(merchantId, '/registers')),
     getSummary: (merchantId) => request<MerchantSummary>(merchantPath(merchantId, '/summary')),
     listScans: (merchantId, query = {}) =>
       request<Scan[]>(
@@ -239,6 +257,11 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         method: 'POST',
         body: JSON.stringify(label ? { code, label } : { code }),
       }),
+    issueSetupCode: (merchantId, label) =>
+      request<SetupCode>(
+        merchantPath(merchantId, `/registers/${encodeURIComponent(label)}/setup-code`),
+        { method: 'POST' },
+      ),
     listOfflineTerminals: () => request<OfflineResult>('/api/terminals/offline'),
   }
 }
