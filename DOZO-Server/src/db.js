@@ -96,6 +96,13 @@ const MIGRATIONS = [
        WHERE label IS NOT NULL AND TRIM(label) <> '';
     `,
   },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE terminals ADD COLUMN api_token_hash TEXT;
+      CREATE UNIQUE INDEX idx_terminals_api_token_hash ON terminals (api_token_hash);
+    `,
+  },
 ];
 
 export function openDatabase(dbPath = ':memory:') {

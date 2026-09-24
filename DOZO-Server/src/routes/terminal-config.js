@@ -5,6 +5,8 @@
  *   PUT   /api/terminals/:terminal_id/config   display fields only (R3)
  *   PATCH /api/terminals/:terminal_id          lifecycle: active + label (R3)
  */
+import { assertTerminalAccess } from '../middleware/terminal-auth.js';
+
 const MIN_DISPLAY_TIMEOUT_SECONDS = 5;
 const MAX_DISPLAY_TIMEOUT_SECONDS = 30;
 
@@ -49,6 +51,7 @@ export function registerTerminalConfigRoutes(app) {
 
   app.get('/api/terminals/:terminal_id/config', async (request, reply) => {
     const terminalId = request.params.terminal_id;
+    if (!assertTerminalAccess(request, reply, { terminalId })) return;
     const terminal = getTerminal.get(terminalId);
     if (!terminal) {
       return reply.code(404).send({ error: 'unknown_terminal', terminal_id: terminalId });
@@ -58,6 +61,7 @@ export function registerTerminalConfigRoutes(app) {
 
   app.put('/api/terminals/:terminal_id/config', async (request, reply) => {
     const terminalId = request.params.terminal_id;
+    if (!assertTerminalAccess(request, reply, { terminalId })) return;
     const terminal = getTerminal.get(terminalId);
     if (!terminal) {
       return reply.code(404).send({ error: 'unknown_terminal', terminal_id: terminalId });
@@ -93,6 +97,7 @@ export function registerTerminalConfigRoutes(app) {
 
   app.patch('/api/terminals/:terminal_id', async (request, reply) => {
     const terminalId = request.params.terminal_id;
+    if (!assertTerminalAccess(request, reply, { terminalId })) return;
     const terminal = getTerminal.get(terminalId);
     if (!terminal) {
       return reply.code(404).send({ error: 'unknown_terminal', terminal_id: terminalId });
