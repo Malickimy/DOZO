@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { debounceKey } from '../lib/hash.js';
 
 /**
@@ -10,18 +11,22 @@ import { debounceKey } from '../lib/hash.js';
  *
  * Unknown or inactive terminals return 404 with a small JSON body and do NOT
  * write a scan row.
+ *
+ * R2: each accepted scan is dual-written - a local DB row with a generated
+ * `event_id` plus a spool entry the connector forwards to the dashboard's
+ * `/scans` ingest (deduped by `event_id`).
  */
 export function registerRedirectRoute(app) {
   const { db, config, debouncer, now } = app;
 
   const findTerminal = db.prepare(
-    `SELECT t.terminal_id, t.active, m.google_place_id
+    `SELECT t.terminal_id, t.merchant_id, t.active, m.google_place_id
        FROM terminals t
        JOIN merchants m ON m.merchant_id = t.merchant_id
       WHERE t.terminal_id = ?`,
   );
   const insertScan = db.prepare(
-    `INSERT INTO scans (terminal_id, scanned_at, user_agent) VALUES (?, ?, ?)`,
+    `INSERT INTO scans (terminal_id, scanned_at, user_agent, event_id) VALUES (?, ?, ?, ?)`,
   );
 
   app.get('/r/:terminal_id', async (request, reply) => {
@@ -38,7 +43,20 @@ export function registerRedirectRoute(app) {
     const userAgent = request.headers['user-agent'] ?? '';
     const key = debounceKey(terminalId, request.ip, userAgent);
     if (!debouncer.seen(key)) {
-      insertScan.run(terminalId, now().toISOString(), userAgent);
+      const scannedAt = now().toISOString();
+      const eventId = randomUUID();
+      insertScan.run(terminalId, scannedAt, userAgent, eventId);
+
+      if (app.spool) {
+        app.spool.append({
+          event_id: eventId,
+          terminal_id: terminalId,
+          merchant_id: terminal.merchant_id,
+          scanned_at: scannedAt,
+          user_agent: userAgent,
+        });
+        app.forwarder?.drain();
+      }
     }
 
     const location = `${config.googleReviewBase}?placeid=${encodeURIComponent(
