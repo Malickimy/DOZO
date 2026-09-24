@@ -3,7 +3,6 @@ import cors from '@fastify/cors';
 import { createDebounce } from './lib/debounce.js';
 import { makeAuthHook } from './middleware/auth.js';
 import { registerRedirectRoute } from './routes/redirect.js';
-import { registerPairingRoutes } from './routes/pairing.js';
 import { registerModelBRoutes } from './routes/model-b.js';
 import { registerHeartbeatRoutes } from './routes/heartbeat.js';
 import { registerMerchantRoutes } from './routes/merchants.js';
@@ -63,7 +62,6 @@ export function registerConnectorRoutes(app) {
  * token).
  */
 export function registerDashboardRoutes(app) {
-  registerPairingRoutes(app);
   registerModelBRoutes(app);
   registerHeartbeatRoutes(app);
   registerMerchantRoutes(app);
