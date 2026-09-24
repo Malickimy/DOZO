@@ -4,17 +4,35 @@ import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { openDatabase, seedDemo } from './db.js';
 import { buildConnectorApp } from './app.js';
+import { createSpool } from './lib/spool.js';
+import { createForwarder } from './lib/forwarder.js';
 
 /**
- * Connector entrypoint (Release Board R4).
+ * Connector entrypoint (Release Board R4/R2).
  *
- * The public face of DOZO: `GET /health` and `GET /r/:terminal_id`. It keeps a
- * file-backed scan spool (wired in R2) and, for now, still resolves terminals
- * from the shared database. The dashboard entrypoint owns every `/api/*` route.
+ * The public face of DOZO: `GET /health` and `GET /r/:terminal_id`. Accepted
+ * scans are dual-written to the local database and a file-backed spool that is
+ * forwarded to the dashboard's `/scans` ingest. The dashboard entrypoint owns
+ * every `/api/*` route.
  */
-export async function createConnector({ config = loadConfig(), db } = {}) {
+export async function createConnector({ config = loadConfig(), db, logger = true } = {}) {
   const database = db ?? openDatabase(openDbPath(config));
-  return buildConnectorApp({ db: database, config, logger: true });
+  const app = buildConnectorApp({ db: database, config, logger });
+  attachSpool(app, config);
+  return app;
+}
+
+function attachSpool(app, config) {
+  if (!config.connectorSpoolPath) return;
+  const spool = createSpool({ filePath: config.connectorSpoolPath });
+  const forwarder = createForwarder({
+    spool,
+    ingestUrl: config.dashboardIngestUrl,
+    secret: config.connectorSecret,
+    logger: app.log,
+  });
+  app.decorate('spool', spool);
+  app.decorate('forwarder', forwarder);
 }
 
 function openDbPath(config) {
@@ -31,7 +49,7 @@ async function start() {
     seedDemo(db);
   }
 
-  const app = buildConnectorApp({ db, config, logger: true });
+  const app = await createConnector({ db, config, logger: true });
 
   async function shutdown(signal) {
     app.log.info({ signal }, 'shutting down');
@@ -48,6 +66,7 @@ async function start() {
 
   try {
     await app.listen({ port: config.port, host: '0.0.0.0' });
+    await app.forwarder?.drain();
   } catch (error) {
     app.log.error(error);
     process.exit(1);

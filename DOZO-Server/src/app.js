@@ -9,6 +9,7 @@ import { registerMerchantRoutes } from './routes/merchants.js';
 import { registerTerminalConfigRoutes } from './routes/terminal-config.js';
 import { registerRegisterRoutes } from './routes/registers.js';
 import { registerConnectorConfigRoute } from './routes/connector-config.js';
+import { registerScanRoutes } from './routes/scans.js';
 
 /**
  * Shared shell for both entrypoints: Fastify instance, CORS, the decorators
@@ -68,6 +69,7 @@ export function registerDashboardRoutes(app) {
   registerTerminalConfigRoutes(app);
   registerRegisterRoutes(app);
   registerConnectorConfigRoute(app);
+  registerScanRoutes(app);
 }
 
 /** Connector-only app (used by `src/connector.js`). */

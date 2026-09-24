@@ -11,6 +11,8 @@ const DEFAULTS = {
   DASHBOARD_ORIGIN: '*',
   DASHBOARD_CONNECTOR_SECRET: '',
   DASHBOARD_DIST_PATH: '../DOZO-Dashboard/dist',
+  DASHBOARD_INGEST_URL: 'http://localhost:3000',
+  CONNECTOR_SPOOL_PATH: './data/scan-spool.jsonl',
 };
 
 function asBool(value) {
@@ -39,6 +41,11 @@ export function loadConfig(env = process.env) {
       .filter(Boolean),
     connectorSecret: raw.DASHBOARD_CONNECTOR_SECRET ? String(raw.DASHBOARD_CONNECTOR_SECRET) : '',
     dashboardDistPath: String(raw.DASHBOARD_DIST_PATH || '../DOZO-Dashboard/dist'),
+    dashboardIngestUrl: String(raw.DASHBOARD_INGEST_URL || 'http://localhost:3000').replace(
+      /\/+$/,
+      '',
+    ),
+    connectorSpoolPath: String(raw.CONNECTOR_SPOOL_PATH || './data/scan-spool.jsonl'),
   };
 }
 

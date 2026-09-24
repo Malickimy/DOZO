@@ -67,6 +67,13 @@ const MIGRATIONS = [
     `,
   },
   {
+    version: 4,
+    sql: `
+      ALTER TABLE scans ADD COLUMN event_id TEXT;
+      CREATE UNIQUE INDEX idx_scans_event_id ON scans (event_id);
+    `,
+  },
+  {
     version: 5,
     sql: `
       CREATE TABLE registers (
@@ -99,9 +106,20 @@ export function openDatabase(dbPath = ':memory:') {
   return db;
 }
 
+function hasColumn(db, table, column) {
+  return db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((entry) => entry.name === column);
+}
+
 export function migrate(db) {
   const current = db.pragma('user_version', { simple: true });
-  for (const migration of MIGRATIONS) {
+  // Apply in ascending order. A database that ran a higher-numbered migration
+  // before a lower one was added (e.g. v5 before v4) would otherwise skip it, so
+  // `reconcile` repairs the scans.event_id column/index afterwards.
+  const ordered = [...MIGRATIONS].sort((a, b) => a.version - b.version);
+  for (const migration of ordered) {
     if (migration.version <= current) continue;
     const apply = db.transaction(() => {
       db.exec(migration.sql);
@@ -109,6 +127,15 @@ export function migrate(db) {
     });
     apply();
   }
+  reconcile(db);
+}
+
+/** Idempotently add schema that a version gap may have skipped. */
+function reconcile(db) {
+  if (!hasColumn(db, 'scans', 'event_id')) {
+    db.exec('ALTER TABLE scans ADD COLUMN event_id TEXT');
+  }
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_scans_event_id ON scans (event_id)');
 }
 
 /** Insert a demo merchant + terminal so a fresh instance is curl-able. */
