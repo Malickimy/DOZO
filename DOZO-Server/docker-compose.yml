@@ -1,10 +1,20 @@
+# Two containers from one image (Release Board R4):
+#   dashboard - owns the database, every /api/* route and the built SPA
+#   connector - the public /health + /r/:terminal_id surface
+#
+# The build context is the monorepo root so the image can compile the dashboard
+# SPA (DOZO-Dashboard/) and serve its dist. Run `docker compose up --build` from
+# this directory.
 services:
-  dozo-server:
-    build: .
+  dashboard:
+    build:
+      context: ..
+      dockerfile: DOZO-Server/Dockerfile
     image: dozo-server:local
+    command: ["node", "src/dashboard.js"]
     ports:
       - "3000:3000"
-    # Runtime config comes from .env (copy .env.production.example -> .env).
+    # Runtime config comes from DOZO-Server/.env (copy .env.production.example).
     env_file:
       - .env
     environment:
@@ -12,6 +22,24 @@ services:
       DB_PATH: /data/dozo.db
     volumes:
       - dozo-data:/data
+    restart: unless-stopped
+
+  connector:
+    build:
+      context: ..
+      dockerfile: DOZO-Server/Dockerfile
+    image: dozo-server:local
+    command: ["node", "src/connector.js"]
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    environment:
+      DB_PATH: /data/dozo.db
+    volumes:
+      - dozo-data:/data
+    depends_on:
+      - dashboard
     restart: unless-stopped
 
 volumes:

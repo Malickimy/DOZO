@@ -9,8 +9,8 @@ read-only and change it first when an interface changes.
 | Path | Project | Toolchain |
 | --- | --- | --- |
 | `DOZO-App/` | Android terminal app (`:app`) + mock caller (`:mockpay`) | Gradle, JDK 17 |
-| `DOZO-Server/` | Fastify + SQLite redirect server | Node 20+ |
-| `DOZO-Dashboard/` | Vite + React merchant portal | Node 20+ |
+| `DOZO-Server/` | Fastify + SQLite redirect server | Node 22+ |
+| `DOZO-Dashboard/` | Vite + React merchant portal | Node 22+ |
 | repo root | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, CI, `.opencode/` | — |
 
 Each project keeps its own build config (loose monorepo). The root `Makefile` shells
