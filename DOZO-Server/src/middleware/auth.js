@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
+import { hashToken } from '../lib/token.js';
 
 export function constantTimeEqual(a, b) {
   const left = Buffer.from(String(a));
@@ -17,25 +18,44 @@ function extractToken(request) {
 }
 
 /**
- * Guard every `/api/*` route with a shared token. The redirect route (`/r/:id`)
- * and `/health` stay public by design.
+ * Guard every `/api/*` route.
  *
- * Accepts `X-Api-Token: <token>` or `Authorization: Bearer <token>`.
- * NOTE: the token is currently the single placeholder from env (API_TOKEN).
- * Per-terminal tokens are a documented follow-up.
+ * Two credential kinds are accepted:
+ *   - the operator `API_TOKEN` (shared) for dashboard routes; and
+ *   - a per-terminal token issued at redeem (R6), which is matched by hash and
+ *     recorded on `request.terminalAuth` so terminal-scoped routes can reject
+ *     cross-terminal access.
  *
- * `/api/connector/*` is owned by the connector-secret guard instead: the
- * connector (not an operator) calls it, so it authenticates with
- * `X-Connector-Secret` at the route level.
+ * `/api/connector/*` stays with the connector-secret guard instead.
  */
-export function makeAuthHook(config) {
+export function makeAuthHook(config, db) {
+  const findByHash = db?.prepare(
+    'SELECT terminal_id, merchant_id FROM terminals WHERE api_token_hash = ?',
+  );
+
   return async function authHook(request, reply) {
     if (!request.url.startsWith('/api/')) return;
     if (request.url.startsWith('/api/connector/')) return;
     if (request.method === 'OPTIONS') return;
+
     const token = extractToken(request);
-    if (!token || !constantTimeEqual(token, config.apiToken)) {
+    if (!token) {
       return reply.code(401).send({ error: 'unauthorized' });
     }
+
+    if (constantTimeEqual(token, config.apiToken)) {
+      return;
+    }
+
+    const terminal = findByHash?.get(hashToken(token));
+    if (terminal) {
+      request.terminalAuth = {
+        terminalId: terminal.terminal_id,
+        merchantId: terminal.merchant_id,
+      };
+      return;
+    }
+
+    return reply.code(401).send({ error: 'unauthorized' });
   };
 }
