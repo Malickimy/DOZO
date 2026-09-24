@@ -4,7 +4,7 @@ Frozen interfaces shared by the Android app, redirect server, and merchant dashb
 Treat this file as **read-only**. To change a contract: update this file first, then update
 every consumer, and flag the other workstream owners.
 
-_Last synced from code on 2026-09-22. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
+_Last synced from code on 2026-09-23. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
 
 _Release Board R1–R6 are drafted below ahead of their implementations; each ships on its own expand/contract branch (see §11)._
 
@@ -73,13 +73,13 @@ allowed headers `X-Api-Token`, `Content-Type`; methods `GET, POST, PUT, OPTIONS`
 | GET | `/api/merchants/:id/registers` | — | `200 [{label, terminal_id, active, last_seen}]` | `404` |
 | POST | `/api/merchants/:id/registers/:label/setup-code` | — | `201 {code, merchant_id, label, expires_at, expires_in_seconds}` | `400 invalid_label`, `404 unknown_merchant`, `503 code_generation_failed` |
 | PUT | `/api/merchants/:id/google-place-id` | `{google_place_id}` | `200 {merchant_id, google_place_id}` | `400`, `404` |
-| POST | `/api/merchants/:id/registers/:label/setup-code` | — | `201 {code, label, expires_at, expires_in_seconds}` | `400 invalid_label`, `404 unknown_merchant`, `503 code_generation_failed` |
-| POST | `/api/terminals/redeem` | `{code, device_serial, terminal_id?}` | `200 {status:"redeemed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` |
 | GET | `/api/connector/config` | — | `200 {generated_at, redirect_base_url, terminals:[{terminal_id, merchant_id, google_place_id, label, active}]}` | — |
+
+The four legacy pairing endpoints above — `register`, `pair-status/:code`, `claim`, and `adopt` — are replaced by `setup-code` + `redeem` (model-B) and will be removed in `feat/model-b-retire`.
 
 Notes:
 
-- **R1 (proposed).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. `register`, `pair-status`, `claim`, and `adopt` are **deprecated by R1**; Step 4 removes them once the app and dashboard round-trip a setup code. Redeeming a code for an occupied register deactivates the prior terminal.
+- **R1 (proposed).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. `register`, `pair-status`, `claim`, and `adopt` are **deprecated by R1**; `feat/model-b-retire` (Step 4) removes them once the app and dashboard round-trip a setup code. Redeeming a code for an occupied register deactivates the prior terminal.
 - **R3 (proposed).** `PATCH /api/terminals/:id` owns `active` and `label`; `PUT /api/terminals/:id/config` keeps `display_enabled` and `display_timeout_seconds`. Both responses gain `static_review_url`.
 - **R5 (proposed).** The series bucket groups `scanned_at` by the Europe/Warsaw day; `scanned_at` stays an ISO UTC timestamp.
 - **R6 (proposed).** `api_token` becomes per-terminal: issued at `claim` / `redeem`, hashed at rest, validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs.
