@@ -1,5 +1,5 @@
 import { deriveTerminalId, isValidTerminalId } from '../lib/terminal-id.js';
-import { generateCode, MAX_CODE_ATTEMPTS, storeConfig } from './pairing.js';
+import { generateCode, MAX_CODE_ATTEMPTS, storeConfig } from '../lib/setup-code.js';
 
 /**
  * Model-B pairing API (Release Board R1).
