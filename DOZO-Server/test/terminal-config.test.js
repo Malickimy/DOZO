@@ -41,6 +41,7 @@ test('GET /api/terminals/:id/config returns the full config shape', async (t) =>
     display_enabled: true,
     display_timeout_seconds: 15,
     redirect_base_url: 'http://localhost:3000',
+    static_review_url: `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`,
   });
 });
 
@@ -165,6 +166,89 @@ test('PUT /api/terminals/:id/config 404s for unknown terminal', async (t) => {
   assert.equal(res.statusCode, 404);
 });
 
+test('PATCH /api/terminals/:id updates active and label and returns the config', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { active: false, label: 'Back counter' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.active, false);
+  assert.equal(body.label, 'Back counter');
+  assert.equal(
+    body.static_review_url,
+    `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`,
+  );
+
+  const row = db
+    .prepare('SELECT active, label FROM terminals WHERE terminal_id = ?')
+    .get(TEST_TERMINAL_ID);
+  assert.equal(row.active, 0);
+  assert.equal(row.label, 'Back counter');
+});
+
+test('PATCH /api/terminals/:id accepts a partial update and rejects bad input', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const noop = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: {},
+  });
+  assert.equal(noop.statusCode, 200);
+  assert.equal(noop.json().active, true);
+  assert.equal(noop.json().label, 'Front counter');
+
+  const badActive = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { active: 'yes' },
+  });
+  assert.equal(badActive.statusCode, 400);
+  assert.equal(badActive.json().error, 'invalid_active');
+
+  const badLabel = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { label: '   ' },
+  });
+  assert.equal(badLabel.statusCode, 400);
+  assert.equal(badLabel.json().error, 'invalid_label');
+});
+
+test('PATCH /api/terminals/:id 404s for an unknown terminal', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: '/api/terminals/NOPE9999',
+    headers: authHeaders(),
+    payload: { active: false },
+  });
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.json().error, 'unknown_terminal');
+});
+
 test('CORS preflight is answered without a token and allows dashboard headers', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
@@ -186,7 +270,9 @@ test('CORS preflight is answered without a token and allows dashboard headers', 
   assert.equal(res.headers['access-control-allow-origin'], '*');
   assert.match(res.headers['access-control-allow-methods'], /GET/);
   assert.match(res.headers['access-control-allow-methods'], /PUT/);
+  assert.match(res.headers['access-control-allow-methods'], /PATCH/);
   assert.match(res.headers['access-control-allow-headers'].toLowerCase(), /x-api-token/);
+  assert.match(res.headers['access-control-allow-headers'].toLowerCase(), /x-connector-secret/);
 });
 
 test('DASHBOARD_ORIGIN restricts allowed origins when configured', async (t) => {

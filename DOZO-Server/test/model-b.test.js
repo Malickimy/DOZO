@@ -98,6 +98,10 @@ test('redeem binds the derived terminal to the register and returns token + stor
   assert.equal(body.store.label, 'Front counter');
   assert.equal(body.store.google_place_id, TEST_PLACE_ID);
   assert.equal(body.store.redirect_url, 'http://localhost:3000/r/DX8000SN000123');
+  assert.equal(
+    body.store.static_review_url,
+    `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`,
+  );
 
   const terminal = db
     .prepare('SELECT merchant_id, label, active FROM terminals WHERE terminal_id = ?')
