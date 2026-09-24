@@ -3,6 +3,7 @@ import { GooglePlaceIdForm } from './components/GooglePlaceIdForm'
 import { MerchantPicker } from './components/MerchantPicker'
 import { OfflinePanel } from './components/OfflinePanel'
 import { PairingForm } from './components/PairingForm'
+import { RegistersView } from './components/RegistersView'
 import { ScansView } from './components/ScansView'
 import { ErrorState, Empty, Loading, NotAvailable } from './components/StateMessage'
 import { SummaryCards } from './components/SummaryCards'
@@ -18,7 +19,7 @@ interface DashboardProps {
   onOpenSettings: () => void
 }
 
-type Tab = 'overview' | 'scans' | 'pair'
+type Tab = 'overview' | 'scans' | 'pair' | 'registers'
 
 export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) {
   const [tab, setTab] = useState<Tab>('overview')
@@ -93,6 +94,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
             ['overview', 'Overview'],
             ['scans', 'Scans'],
             ['pair', 'Pair terminal'],
+            ['registers', 'Registers & setup codes'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -154,6 +156,10 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
 
         {tab === 'pair' ? (
           <PairingForm client={client} onClaimed={refreshAfterPairing} />
+        ) : null}
+
+        {activeMerchantId && tab === 'registers' ? (
+          <RegistersView client={client} merchantId={activeMerchantId} />
         ) : null}
       </main>
 

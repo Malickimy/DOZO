@@ -69,6 +69,70 @@ describe('createApiClient', () => {
     expect((init.headers as Headers).get('Content-Type')).toBe('application/json')
   })
 
+  it('GETs the merchant registers', async () => {
+    const registers = [
+      { label: 'Front', terminal_id: 'TERM1', active: true, last_seen: '2026-01-01T00:00:00.000Z' },
+      { label: 'Back', terminal_id: null, active: false, last_seen: null },
+    ]
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(registers)))
+    const result = await client.listRegisters('m1')
+    expect(result).toEqual(registers)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://example.test:3000/api/merchants/m1/registers')
+    expect(init.method).toBeUndefined()
+    expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
+  it('POSTs the setup code with no body and encodes the label', async () => {
+    const setup = {
+      code: 'ABC123',
+      merchant_id: 'm1',
+      label: 'Front Desk',
+      expires_at: '2026-01-01T00:05:00.000Z',
+      expires_in_seconds: 300,
+    }
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(setup)))
+    const result = await client.issueSetupCode('m1', 'Front Desk')
+    expect(result).toEqual(setup)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      'http://example.test:3000/api/merchants/m1/registers/Front%20Desk/setup-code',
+    )
+    expect(init.method).toBe('POST')
+    expect(init.body).toBeUndefined()
+    expect((init.headers as Headers).get('Content-Type')).toBeNull()
+    expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
+  it('flags not-found on the new methods when the server returns 404', async () => {
+    stubFetch(() => Promise.resolve(jsonResponse({ message: 'Route not found' }, 404)))
+    const listError = await client.listRegisters('m1').catch((err: unknown) => err)
+    expect(listError).toBeInstanceOf(ApiError)
+    expect((listError as ApiError).isNotFound).toBe(true)
+    expect(isNotAvailable(listError)).toBe(true)
+
+    stubFetch(() => Promise.resolve(jsonResponse({ message: 'Route not found' }, 404)))
+    const codeError = await client.issueSetupCode('m1', 'Front').catch((err: unknown) => err)
+    expect(codeError).toBeInstanceOf(ApiError)
+    expect((codeError as ApiError).status).toBe(404)
+    expect((codeError as ApiError).isNotFound).toBe(true)
+    expect(isNotAvailable(codeError)).toBe(true)
+  })
+
+  it('flags unauthorized on the new methods when the server returns 401', async () => {
+    stubFetch(() => Promise.resolve(jsonResponse({ message: 'Unauthorized' }, 401)))
+    const listError = await client.listRegisters('m1').catch((err: unknown) => err)
+    expect(listError).toBeInstanceOf(ApiError)
+    expect((listError as ApiError).status).toBe(401)
+    expect((listError as ApiError).isUnauthorized).toBe(true)
+
+    stubFetch(() => Promise.resolve(jsonResponse({ message: 'Unauthorized' }, 401)))
+    const codeError = await client.issueSetupCode('m1', 'Front').catch((err: unknown) => err)
+    expect(codeError).toBeInstanceOf(ApiError)
+    expect((codeError as ApiError).status).toBe(401)
+    expect((codeError as ApiError).isUnauthorized).toBe(true)
+  })
+
   it('throws an ApiError flagged not-found on 404', async () => {
     stubFetch(() => Promise.resolve(jsonResponse({ message: 'Route not found' }, 404)))
     const error = await client.listMerchants().catch((err: unknown) => err)
