@@ -11,10 +11,11 @@
 #   scripts/local-multiterminal.sh restart            # stop + start
 #   scripts/local-multiterminal.sh status             # health + row counts
 #   scripts/local-multiterminal.sh inspect            # dump operational tables
-#   scripts/local-multiterminal.sh claim CODE [LABEL] # operator claim (current flow)
+#   scripts/local-multiterminal.sh setup-code LABEL   # issue a register setup code
+#   scripts/local-multiterminal.sh redeem CODE [SERIAL] # redeem a setup code from here
 #   scripts/local-multiterminal.sh reset              # delete the DB only
 #
-# Environment overrides: PORT (3000), DB_PATH (./data/dozo.db), API_TOKEN.
+# Environment overrides: PORT (3000), DB_PATH (./data/dozo.db), API_TOKEN, MERCHANT_ID.
 
 set -euo pipefail
 
@@ -25,6 +26,7 @@ cd "$PROJECT_DIR"
 PORT="${PORT:-3000}"
 DB_PATH="${DB_PATH:-./data/dozo.db}"
 API_TOKEN="${API_TOKEN:-dev-placeholder-token}"
+MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
 PID_FILE="data/local-server.pid"
 LOG_FILE="data/local-server.log"
 BASE_URL="http://127.0.0.1:${PORT}"
@@ -90,8 +92,8 @@ log:    $LOG_FILE
   api_token         = $API_TOKEN
   merchant_id       = demo-merchant
 
-Then per terminal: Settings -> Generate pairing code, and claim it from here:
-  scripts/local-multiterminal.sh claim <CODE> "Till 1"
+Then per register: issue a setup code here and redeem it on the terminal:
+  scripts/local-multiterminal.sh setup-code "Till 1"
 
 Give each emulator its own AVD instance so ANDROID_ID (and terminal_id) differ.
 Check progress with: scripts/local-multiterminal.sh status
@@ -100,35 +102,47 @@ EOF
 
 show_status() {
     curl -fsS "$BASE_URL/health" && echo
-    node -e "const D=require('better-sqlite3');const db=new D(process.argv[1],{readonly:true});for(const t of ['merchants','terminals','scans','pairing_codes']){let c=0;try{c=db.prepare('select count(*) c from '+t).get().c}catch(e){}console.log(t.padEnd(14)+String(c))}" "$DB_PATH"
+    node -e "const D=require('better-sqlite3');const db=new D(process.argv[1],{readonly:true});for(const t of ['merchants','terminals','scans','registers','setup_codes']){let c=0;try{c=db.prepare('select count(*) c from '+t).get().c}catch(e){}console.log(t.padEnd(14)+String(c))}" "$DB_PATH"
 }
 
 inspect_db() {
-    node -e "const D=require('better-sqlite3');const db=new D(process.argv[1],{readonly:true});for(const t of ['merchants','terminals','scans','pairing_codes']){try{console.log('== '+t);console.table(db.prepare('select * from '+t).all())}catch(e){console.log('== '+t+' (missing)')}}" "$DB_PATH"
+    node -e "const D=require('better-sqlite3');const db=new D(process.argv[1],{readonly:true});for(const t of ['merchants','terminals','scans','registers','setup_codes']){try{console.log('== '+t);console.table(db.prepare('select * from '+t).all())}catch(e){console.log('== '+t+' (missing)')}}" "$DB_PATH"
 }
 
-claim() {
-    local code="${1:-}"
-    local label="${2:-}"
-    if [[ -z "$code" ]]; then
-        echo "usage: $0 claim CODE [LABEL]" >&2
+setup_code() {
+    local label="${1:-}"
+    if [[ -z "$label" ]]; then
+        echo "usage: $0 setup-code LABEL (URL-safe, no spaces)" >&2
         exit 2
     fi
-    curl -fsS -X POST "$BASE_URL/api/terminals/claim" \
+    curl -fsS -X POST "$BASE_URL/api/merchants/$MERCHANT_ID/registers/$label/setup-code" \
+        -H "X-Api-Token: $API_TOKEN"
+    echo
+}
+
+redeem() {
+    local code="${1:-}"
+    local serial="${2:-local-device-0001}"
+    if [[ -z "$code" ]]; then
+        echo "usage: $0 redeem CODE [DEVICE_SERIAL]" >&2
+        exit 2
+    fi
+    curl -fsS -X POST "$BASE_URL/api/terminals/redeem" \
         -H "X-Api-Token: $API_TOKEN" \
         -H 'Content-Type: application/json' \
-        -d "{\"code\":\"$code\",\"label\":\"$label\"}"
+        -d "{\"code\":\"$code\",\"device_serial\":\"$serial\"}"
     echo
 }
 
 case "${1:-}" in
-    start)   start_server ;;
-    stop)    stop_server ;;
-    restart) stop_server; start_server ;;
-    status)  show_status ;;
-    inspect) inspect_db ;;
-    claim)   shift; claim "$@" ;;
-    reset)   stop_server; reset_db ;;
+    start)       start_server ;;
+    stop)        stop_server ;;
+    restart)     stop_server; start_server ;;
+    status)      show_status ;;
+    inspect)     inspect_db ;;
+    setup-code)  shift; setup_code "$@" ;;
+    redeem)      shift; redeem "$@" ;;
+    reset)       stop_server; reset_db ;;
     -h|--help|"") usage ;;
     *) echo "unknown command: $1" >&2; usage >&2; exit 2 ;;
 esac
