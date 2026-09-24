@@ -25,5 +25,8 @@ export function storeConfig(config, terminal) {
     google_place_id: terminal.google_place_id,
     label: terminal.label,
     redirect_url: `${config.redirectDomain}/r/${terminal.terminal_id}`,
+    static_review_url: `${config.googleReviewBase}?placeid=${encodeURIComponent(
+      terminal.google_place_id,
+    )}`,
   };
 }

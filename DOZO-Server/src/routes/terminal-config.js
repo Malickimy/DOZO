@@ -1,11 +1,16 @@
 /**
- * Per-terminal display configuration.
+ * Per-terminal configuration and lifecycle.
  *
- *   GET /api/terminals/:terminal_id/config
- *   PUT /api/terminals/:terminal_id/config
+ *   GET   /api/terminals/:terminal_id/config   read the config
+ *   PUT   /api/terminals/:terminal_id/config   display fields only (R3)
+ *   PATCH /api/terminals/:terminal_id          lifecycle: active + label (R3)
  */
 const MIN_DISPLAY_TIMEOUT_SECONDS = 5;
 const MAX_DISPLAY_TIMEOUT_SECONDS = 30;
+
+export function staticReviewUrl(config, googlePlaceId) {
+  return `${config.googleReviewBase}?placeid=${encodeURIComponent(googlePlaceId)}`;
+}
 
 export function configPayload(row, config) {
   return {
@@ -17,6 +22,7 @@ export function configPayload(row, config) {
     display_enabled: Boolean(row.display_enabled),
     display_timeout_seconds: row.display_timeout_seconds,
     redirect_base_url: config.redirectDomain,
+    static_review_url: staticReviewUrl(config, row.google_place_id),
   };
 }
 
@@ -33,6 +39,11 @@ export function registerTerminalConfigRoutes(app) {
   const updateConfig = db.prepare(
     `UPDATE terminals
         SET display_enabled = ?, display_timeout_seconds = ?
+      WHERE terminal_id = ?`,
+  );
+  const updateLifecycle = db.prepare(
+    `UPDATE terminals
+        SET active = ?, label = ?
       WHERE terminal_id = ?`,
   );
 
@@ -77,6 +88,34 @@ export function registerTerminalConfigRoutes(app) {
     }
 
     updateConfig.run(displayEnabled ? 1 : 0, timeoutSeconds, terminalId);
+    return configPayload(getTerminal.get(terminalId), config);
+  });
+
+  app.patch('/api/terminals/:terminal_id', async (request, reply) => {
+    const terminalId = request.params.terminal_id;
+    const terminal = getTerminal.get(terminalId);
+    if (!terminal) {
+      return reply.code(404).send({ error: 'unknown_terminal', terminal_id: terminalId });
+    }
+
+    const body = request.body ?? {};
+    let active = terminal.active;
+    let label = terminal.label;
+
+    if (body.active !== undefined) {
+      if (typeof body.active !== 'boolean') {
+        return reply.code(400).send({ error: 'invalid_active' });
+      }
+      active = body.active ? 1 : 0;
+    }
+    if (body.label !== undefined) {
+      if (typeof body.label !== 'string' || !body.label.trim()) {
+        return reply.code(400).send({ error: 'invalid_label' });
+      }
+      label = body.label.trim();
+    }
+
+    updateLifecycle.run(active, label, terminalId);
     return configPayload(getTerminal.get(terminalId), config);
   });
 }

@@ -40,7 +40,7 @@ export function createAppShell({
   const origins = config?.dashboardOrigin?.length ? config.dashboardOrigin : ['*'];
   app.register(cors, {
     origin: origins.includes('*') ? '*' : origins,
-    methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['X-Api-Token', 'X-Connector-Secret', 'Content-Type'],
   });
 
