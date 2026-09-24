@@ -50,6 +50,22 @@ const MIGRATIONS = [
       ALTER TABLE terminals ADD COLUMN display_timeout_seconds INTEGER NOT NULL DEFAULT 15;
     `,
   },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE setup_codes (
+        code        TEXT PRIMARY KEY,
+        merchant_id TEXT NOT NULL REFERENCES merchants(merchant_id),
+        label       TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        expires_at  TEXT NOT NULL,
+        redeemed_at TEXT
+      );
+
+      CREATE INDEX idx_setup_codes_expires
+        ON setup_codes (expires_at);
+    `,
+  },
 ];
 
 export function openDatabase(dbPath = ':memory:') {
