@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeTestContext, authHeaders, TEST_TERMINAL_ID, TEST_PLACE_ID } from './helpers.js';
+import {
+  makeTestContext,
+  authHeaders,
+  insertRegister,
+  TEST_TERMINAL_ID,
+  TEST_PLACE_ID,
+} from './helpers.js';
 
 function insertTerminal(
   db,
@@ -12,25 +18,28 @@ function insertTerminal(
   ).run(terminalId, merchantId, label, active, lastSeen);
 }
 
-test('GET /api/merchants/:id/registers lists only labeled terminals', async (t) => {
+test('GET /api/merchants/:id/registers lists every register, occupied or not', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
     app.close();
     db.close();
   });
 
-  insertTerminal(db, { terminalId: 'TERM0002', label: null });
-  insertTerminal(db, { terminalId: 'TERM0003', label: '   ' });
+  insertTerminal(db, { terminalId: 'TERM0002', label: 'No register' });
   insertTerminal(db, {
     terminalId: 'TERM0004',
     label: 'Back counter',
     active: 0,
     lastSeen: '2026-01-01T05:00:00.000Z',
   });
+  insertRegister(db, { label: 'Back counter', terminalId: 'TERM0004', active: 0 });
+  insertRegister(db, { label: 'Front counter', terminalId: TEST_TERMINAL_ID, active: 1 });
+  insertRegister(db, { label: 'Spare till' });
   db.prepare(
     'INSERT INTO merchants (merchant_id, google_place_id, created_at) VALUES (?, ?, ?)',
   ).run('M2', 'ChIJ_OTHER', '2026-01-01T00:00:00.000Z');
   insertTerminal(db, { terminalId: 'TERM0005', merchantId: 'M2', label: 'Other till' });
+  insertRegister(db, { merchantId: 'M2', label: 'Other till', terminalId: 'TERM0005' });
 
   const res = await app.inject({
     method: 'GET',
@@ -49,6 +58,12 @@ test('GET /api/merchants/:id/registers lists only labeled terminals', async (t) 
     {
       label: 'Front counter',
       terminal_id: TEST_TERMINAL_ID,
+      active: true,
+      last_seen: null,
+    },
+    {
+      label: 'Spare till',
+      terminal_id: null,
       active: true,
       last_seen: null,
     },
@@ -210,6 +225,18 @@ test('POST /api/terminals/adopt 404s for unknown merchant', async (t) => {
   });
   assert.equal(res.statusCode, 404);
   assert.equal(res.json().error, 'unknown_merchant');
+});
+
+test('migration v5 creates registers with a unique (merchant_id, label)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  assert.ok(db.pragma('user_version', { simple: true }) >= 5);
+  insertRegister(db, { label: 'Duplicate' });
+  assert.throws(() => insertRegister(db, { label: 'Duplicate' }));
 });
 
 test('register routes require the API token', async (t) => {
