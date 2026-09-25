@@ -82,6 +82,7 @@
     <string name="status_sync_done">Config synced</string>
     <string name="status_terminal_not_found">Terminal not found</string>
     <string name="status_sync_failed">Sync failed</string>
+    <string name="status_session_expired">Session expired. Re-pair the terminal.</string>
     <string name="status_sending_heartbeat">Sending heartbeat…</string>
     <string name="status_heartbeat_sent">Heartbeat sent</string>
     <string name="status_heartbeat_failed">Heartbeat failed</string>

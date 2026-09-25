@@ -48,6 +48,12 @@ sealed interface ConfigResult {
     data object Failed : ConfigResult
 }
 
+sealed interface HeartbeatResult {
+    data object Ok : HeartbeatResult
+    data object Unauthorized : HeartbeatResult
+    data object Failed : HeartbeatResult
+}
+
 sealed interface RedeemResult {
     data class Success(val apiToken: String, val store: StoreConfig) : RedeemResult
     data object Invalid : RedeemResult
@@ -80,10 +86,10 @@ class DozoApi(
         parsePairStatus(response.code, response.body)
     }
 
-    suspend fun heartbeat(terminalId: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun heartbeat(terminalId: String): HeartbeatResult = withContext(Dispatchers.IO) {
         val body = JSONObject().put("terminal_id", terminalId).toString()
         val response = request("/api/heartbeat", "POST", body)
-        response.code == HTTP_OK && parseHeartbeat(response.body)
+        parseHeartbeatResult(response.code, response.body)
     }
 
     suspend fun config(terminalId: String): ConfigResult = withContext(Dispatchers.IO) {
@@ -183,6 +189,12 @@ fun parseStore(json: JSONObject?): StoreConfig = StoreConfig(
 
 fun parseHeartbeat(body: String): Boolean =
     runCatching { JSONObject(body).optBoolean("ok", false) }.getOrDefault(false)
+
+fun parseHeartbeatResult(httpStatus: Int, body: String): HeartbeatResult = when {
+    httpStatus == HTTP_UNAUTHORIZED -> HeartbeatResult.Unauthorized
+    httpStatus == HTTP_OK && parseHeartbeat(body) -> HeartbeatResult.Ok
+    else -> HeartbeatResult.Failed
+}
 
 fun parseConfigResponse(httpStatus: Int, body: String): ConfigResult = when {
     httpStatus == HTTP_OK -> parseTerminalConfig(body)

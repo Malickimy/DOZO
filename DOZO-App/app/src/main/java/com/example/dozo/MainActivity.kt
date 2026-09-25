@@ -64,6 +64,12 @@ class MainActivity : ComponentActivity() {
         } else {
             uiState = mapped.toUiState()
         }
+        if (mapped is MappedState.Idle &&
+            !DozoConfig.terminalId(this).isNullOrBlank() &&
+            !DozoConfig.hasStoredApiToken(this)
+        ) {
+            appScreen = AppScreen.SetupCode
+        }
         setContent {
             DozoTheme {
                 if (remoteApplying) {
@@ -257,8 +263,10 @@ class MainActivity : ComponentActivity() {
                         getString(R.string.status_sync_done)
                     }
                     ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
-                    // TODO(R6): on 401 clear api_token and route to pairing once Server Sprint 7 lands.
-                    ConfigResult.Unauthorized -> getString(R.string.status_sync_failed)
+                    ConfigResult.Unauthorized -> {
+                        onUnauthorized()
+                        getString(R.string.status_session_expired)
+                    }
                     ConfigResult.Failed -> getString(R.string.status_sync_failed)
                 }
             } catch (_: Exception) {
@@ -277,9 +285,17 @@ class MainActivity : ComponentActivity() {
         manualStatus = getString(R.string.status_sending_heartbeat)
         lifecycleScope.launch {
             manualStatus = try {
-                val ok = DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
-                    .heartbeat(terminalId)
-                if (ok) getString(R.string.status_heartbeat_sent) else getString(R.string.status_heartbeat_failed)
+                when (
+                    DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
+                        .heartbeat(terminalId)
+                ) {
+                    HeartbeatResult.Ok -> getString(R.string.status_heartbeat_sent)
+                    HeartbeatResult.Unauthorized -> {
+                        onUnauthorized()
+                        getString(R.string.status_session_expired)
+                    }
+                    HeartbeatResult.Failed -> getString(R.string.status_heartbeat_failed)
+                }
             } catch (_: Exception) {
                 getString(R.string.status_heartbeat_failed)
             }
@@ -296,6 +312,17 @@ class MainActivity : ComponentActivity() {
         uiState = UiState.DisplayQr(QrRenderer.render(payload), state.txnId)
         approvedPending = false
     }
+
+    private fun onUnauthorized() {
+        DozoConfig.clearApiToken(this)
+        if (uiState is UiState.Idle) {
+            appScreen = AppScreen.SetupCode
+        }
+        Toast.makeText(this, R.string.status_session_expired, Toast.LENGTH_LONG).show()
+    }
+
+    private fun currentResultCode(): Int =
+        if (approvedPending || uiState is UiState.DisplayQr) RESULT_APPROVED else RESULT_CANCELED
 
     private fun resolveApprovedPayload(paymentIntent: PaymentIntent, serverHealthy: Boolean): String {
         val terminalId = paymentIntent.terminalId?.takeIf { it.isNotBlank() }
@@ -319,7 +346,7 @@ class MainActivity : ComponentActivity() {
             }.getOrNull()
             when (result) {
                 is ConfigResult.Success -> onRemoteConfig(result.config)
-                ConfigResult.Unauthorized -> Unit
+                ConfigResult.Unauthorized -> onUnauthorized()
                 else -> Unit
             }
         }
@@ -353,9 +380,6 @@ class MainActivity : ComponentActivity() {
         pendingRemoteConfig = null
         DozoConfig.applyRemoteConfig(this, pending, DozoConfig.terminalId(this).orEmpty())
     }
-
-    private fun currentResultCode(): Int =
-        if (approvedPending || uiState is UiState.DisplayQr) RESULT_APPROVED else RESULT_CANCELED
 
     private fun closeAndFinish(code: Int) {
         setResult(code)

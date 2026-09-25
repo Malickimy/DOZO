@@ -42,6 +42,10 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_API_TOKEN
 
+    /** True only when a token has actually been persisted (R6 re-pair signal). */
+    fun hasStoredApiToken(context: Context): Boolean =
+        prefs(context).getString(DozoContract.KEY_API_TOKEN, null)?.isNotBlank() == true
+
     fun terminalId(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_TERMINAL_ID, null)
             ?.takeIf { it.isNotBlank() }
@@ -115,6 +119,11 @@ object DozoConfig {
 
     fun setApiToken(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_API_TOKEN, value).apply()
+    }
+
+    /** R6: a `401` invalidates the per-terminal token, forcing a re-pair. */
+    fun clearApiToken(context: Context) {
+        edit(context).remove(DozoContract.KEY_API_TOKEN).apply()
     }
 
     fun setLanguage(context: Context, value: String) {
