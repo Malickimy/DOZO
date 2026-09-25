@@ -51,6 +51,8 @@
     <string name="settings_language_pl">Polish</string>
     <string name="settings_language_en">English</string>
     <string name="settings_enter_setup_code">Enter setup code</string>
+    <string name="settings_updating">Updating settings…</string>
+    <string name="settings_updated_from_dashboard">Settings updated from the dashboard</string>
 
     <!-- Setup code (model-B redeem) -->
     <string name="setup_code_title">Setup code</string>

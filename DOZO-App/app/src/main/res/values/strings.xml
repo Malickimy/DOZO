@@ -51,6 +51,8 @@
     <string name="settings_language_pl">Polski</string>
     <string name="settings_language_en">English</string>
     <string name="settings_enter_setup_code">Wprowadź kod konfiguracyjny</string>
+    <string name="settings_updating">Aktualizowanie ustawień…</string>
+    <string name="settings_updated_from_dashboard">Ustawienia zaktualizowane z panelu</string>
 
     <!-- Setup code (model-B redeem) -->
     <string name="setup_code_title">Kod konfiguracyjny</string>

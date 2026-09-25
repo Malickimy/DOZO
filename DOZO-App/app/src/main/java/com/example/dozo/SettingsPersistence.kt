@@ -9,7 +9,9 @@ object SettingsPersistence {
     data class RedeemPrefs(
         val terminalId: String,
         val apiToken: String,
-        val redirectBaseUrl: String
+        val redirectBaseUrl: String,
+        val googlePlaceId: String? = null,
+        val staticReviewUrl: String? = null
     )
 
     /**
@@ -20,7 +22,9 @@ object SettingsPersistence {
     fun redeemPrefs(apiToken: String, store: StoreConfig): RedeemPrefs = RedeemPrefs(
         terminalId = store.terminalId,
         apiToken = apiToken,
-        redirectBaseUrl = deriveRedirectBaseUrl(store.redirectUrl, store.terminalId)
+        redirectBaseUrl = deriveRedirectBaseUrl(store.redirectUrl, store.terminalId),
+        googlePlaceId = store.googlePlaceId,
+        staticReviewUrl = store.staticReviewUrl
     )
 
     fun normalizeLanguage(value: String?): String =
