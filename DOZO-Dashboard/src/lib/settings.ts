@@ -17,7 +17,10 @@ function envBaseUrl(): string {
   return typeof fromEnv === 'string' ? fromEnv.trim() : ''
 }
 
-export const DEFAULT_API_BASE_URL = envBaseUrl() || 'http://130.162.185.144:3000'
+// Precedence: saved localStorage (applied in `loadSettings`), then the
+// `VITE_API_BASE_URL` build/dev override, then the origin serving the SPA.
+export const DEFAULT_API_BASE_URL =
+  envBaseUrl() || (typeof window !== 'undefined' ? window.location.origin : '')
 
 function safeGet(key: string): string | null {
   try {
