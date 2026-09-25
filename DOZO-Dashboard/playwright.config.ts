@@ -1,13 +1,26 @@
 import { defineConfig, devices } from '@playwright/test'
+import {
+  API_BASE_URL,
+  API_PORT,
+  API_TOKEN,
+  CONNECTOR_SECRET,
+  WEB_BASE_URL,
+  WEB_PORT,
+} from './e2e/env'
 
 /**
  * Browser E2E for the DOZO merchant dashboard.
  *
  * `npm run test:e2e` boots two servers via `webServer`:
- *   1. the redirect server from the sibling checkout `../DOZO-Server` on :3100,
- *      seeded with the demo merchant/terminal (`SEED_DEMO=true`, DB at
- *      `/tmp/dozo-e2e.db`);
+ *   1. the backend from the sibling checkout `../DOZO-Server` on :3100, seeded
+ *      with the demo merchant/terminal (`SEED_DEMO=true`, DB at
+ *      `/tmp/dozo-e2e.db`). `npm start` runs `src/server.js`, the legacy
+ *      single-process builder that mounts both the connector and the dashboard
+ *      route groups, so it owns `POST /scans`, every `/api/*`, and `/health`;
  *   2. the Vite dev server on :5273, pointed at that API via `VITE_API_BASE_URL`.
+ *
+ * `DASHBOARD_CONNECTOR_SECRET` guards `POST /scans` (fail-closed when unset),
+ * so the specs can exercise the real ingest with `X-Connector-Secret`.
  *
  * Requires the server checkout's dependencies to be installed once
  * (`npm install` in `../DOZO-Server`).
@@ -15,11 +28,6 @@ import { defineConfig, devices } from '@playwright/test'
  * Specs use the `*.e2e.ts` suffix so Vitest's default `*.{test,spec}` glob
  * never picks them up and `tsc -b` (which only includes `src`) ignores them.
  */
-const API_PORT = 3100
-const WEB_PORT = 5273
-const API_BASE_URL = `http://127.0.0.1:${API_PORT}`
-const WEB_BASE_URL = `http://127.0.0.1:${WEB_PORT}`
-
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
@@ -47,7 +55,8 @@ export default defineConfig({
         PORT: String(API_PORT),
         DB_PATH: '/tmp/dozo-e2e.db',
         SEED_DEMO: 'true',
-        API_TOKEN: 'dev-placeholder-token',
+        API_TOKEN,
+        DASHBOARD_CONNECTOR_SECRET: CONNECTOR_SECRET,
         DASHBOARD_ORIGIN: '*',
       },
     },
