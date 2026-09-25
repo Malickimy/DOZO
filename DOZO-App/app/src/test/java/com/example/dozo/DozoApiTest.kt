@@ -119,7 +119,8 @@ class DozoApiTest {
             {"terminal_id":"DEMOTERM01","merchant_id":"demo-merchant",
              "google_place_id":"ChIJ","label":"Demo terminal","active":true,
              "display_enabled":true,"display_timeout_seconds":15,
-             "redirect_base_url":"http://130.162.185.144:3000"}
+             "redirect_base_url":"http://130.162.185.144:3000",
+             "static_review_url":"https://search.google.com/local/writereview?placeid=ChIJ"}
         """.trimIndent()
         val config = parseTerminalConfig(body)!!
         assertEquals("DEMOTERM01", config.terminalId)
@@ -130,6 +131,16 @@ class DozoApiTest {
         assertTrue(config.displayEnabled)
         assertEquals(15, config.displayTimeoutSeconds)
         assertEquals("http://130.162.185.144:3000", config.redirectBaseUrl)
+        assertEquals(
+            "https://search.google.com/local/writereview?placeid=ChIJ",
+            config.staticReviewUrl
+        )
+    }
+
+    @Test
+    fun terminalConfigWithoutStaticReviewUrlIsNull() {
+        val config = parseTerminalConfig("""{"terminal_id":"T1"}""")!!
+        assertNull(config.staticReviewUrl)
     }
 
     @Test
@@ -167,65 +178,5 @@ class DozoApiTest {
             "https://track.papier.app",
             deriveRedirectBaseUrl("https://track.papier.app", "DX8000SN000123")
         )
-    }
-
-    @Test
-    fun registersParsesAllFields() {
-        val body = """
-            [{"label":"Front counter","terminal_id":"TERM0001","active":true,
-              "last_seen":"2026-01-01T05:00:00.000Z"},
-             {"label":"Back counter","terminal_id":"TERM0002","active":false,"last_seen":null}]
-        """.trimIndent()
-        val registers = parseRegisters(body)
-        assertEquals(2, registers.size)
-        assertEquals("Front counter", registers[0].label)
-        assertEquals("TERM0001", registers[0].terminalId)
-        assertTrue(registers[0].active)
-        assertEquals("2026-01-01T05:00:00.000Z", registers[0].lastSeen)
-        assertEquals("Back counter", registers[1].label)
-        assertFalse(registers[1].active)
-        assertNull(registers[1].lastSeen)
-    }
-
-    @Test
-    fun registersHandlesIntegerBooleansAndMissingLastSeen() {
-        val body = """[{"label":"Till","terminal_id":"TERM0001","active":1}]"""
-        val registers = parseRegisters(body)
-        assertEquals(1, registers.size)
-        assertTrue(registers[0].active)
-        assertNull(registers[0].lastSeen)
-    }
-
-    @Test
-    fun registersSkipsEntriesWithoutTerminalId() {
-        val body = """[{"label":"No id","active":true},{"terminal_id":"TERM0001","label":"Ok"}]"""
-        val registers = parseRegisters(body)
-        assertEquals(1, registers.size)
-        assertEquals("TERM0001", registers[0].terminalId)
-    }
-
-    @Test
-    fun registersInvalidJsonIsEmpty() {
-        assertTrue(parseRegisters("not json").isEmpty())
-    }
-
-    @Test
-    fun adoptedConfigParsesConfigShape() {
-        val body = """
-            {"terminal_id":"NEWTERM99","merchant_id":"M1","google_place_id":"ChIJ",
-             "label":"Front counter","active":true,"display_enabled":true,
-             "display_timeout_seconds":15,"redirect_base_url":"http://localhost:3000"}
-        """.trimIndent()
-        val config = parseAdoptedConfig(body)!!
-        assertEquals("NEWTERM99", config.terminalId)
-        assertEquals("M1", config.merchantId)
-        assertEquals("Front counter", config.label)
-        assertTrue(config.active)
-        assertEquals("http://localhost:3000", config.redirectBaseUrl)
-    }
-
-    @Test
-    fun adoptedConfigWithoutIdIsNull() {
-        assertNull(parseAdoptedConfig("""{"merchant_id":"M1"}"""))
     }
 }

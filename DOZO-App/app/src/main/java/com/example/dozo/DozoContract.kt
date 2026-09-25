@@ -40,8 +40,10 @@ object DozoContract {
     const val KEY_PAIRING_CODE = "pairing_code"
     const val KEY_PIN = "pin"
     const val KEY_AUTO_CLOSE = "auto_close_enabled"
+    const val KEY_GOOGLE_PLACE_ID = "google_place_id"
+    const val KEY_STATIC_REVIEW_URL = "static_review_url"
 
-    const val DEFAULT_REDIRECT_BASE_URL = "http://130.162.185.144:3000"
+    const val DEFAULT_REDIRECT_BASE_URL = "http://130.162.185.144:3001"
     const val DEFAULT_DISPLAY_TIMEOUT_SECONDS = 15
     const val MIN_DISPLAY_TIMEOUT_SECONDS = 5
     const val MAX_DISPLAY_TIMEOUT_SECONDS = 30
@@ -49,4 +51,7 @@ object DozoContract {
     const val DEFAULT_API_TOKEN = "dev-placeholder-token"
     const val DEFAULT_MERCHANT_ID = "demo-merchant"
     const val DEFAULT_PIN = "0000"
+
+    const val GOOGLE_REVIEW_BASE = "https://search.google.com/local/writereview"
+    const val HEALTH_PROBE_TIMEOUT_MS = 800
 }

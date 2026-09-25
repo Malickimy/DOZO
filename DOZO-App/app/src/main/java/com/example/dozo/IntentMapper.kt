@@ -40,14 +40,27 @@ fun launchDecisionFor(mapped: MappedState, activated: Boolean): LaunchDecision =
 
 object IntentMapper {
 
-    fun map(intent: PaymentIntent, redirectBaseUrl: String): MappedState {
+    fun map(
+        intent: PaymentIntent,
+        redirectBaseUrl: String,
+        staticReviewUrl: String? = null,
+        googlePlaceId: String? = null,
+        serverHealthy: Boolean = true
+    ): MappedState {
         val txnId = intent.txnId?.takeIf { it.isNotBlank() } ?: DozoContract.DEFAULT_TXN_ID
         val amountCents = intent.amountCents
         val reviewUrl = intent.reviewUrl?.takeIf { it.isNotBlank() }
         val terminalId = intent.terminalId?.takeIf { it.isNotBlank() }
 
         fun approved(): MappedState.Approved = MappedState.Approved(
-            payload = payloadFor(terminalId, reviewUrl, redirectBaseUrl),
+            payload = payloadFor(
+                terminalId = terminalId,
+                reviewUrl = reviewUrl,
+                redirectBaseUrl = redirectBaseUrl,
+                staticReviewUrl = staticReviewUrl,
+                googlePlaceId = googlePlaceId,
+                serverHealthy = serverHealthy
+            ),
             txnId = txnId,
             amountCents = amountCents
         )
@@ -74,10 +87,18 @@ object IntentMapper {
     private fun payloadFor(
         terminalId: String?,
         reviewUrl: String?,
-        redirectBaseUrl: String
-    ): String = when {
-        terminalId != null -> "$redirectBaseUrl/r/$terminalId"
-        reviewUrl != null -> reviewUrl
-        else -> DozoContract.DEFAULT_REVIEW_URL
+        redirectBaseUrl: String,
+        staticReviewUrl: String?,
+        googlePlaceId: String?,
+        serverHealthy: Boolean
+    ): String {
+        val primaryUrl = terminalId?.let { "$redirectBaseUrl/r/$it" }
+        return QrPayloadResolver.resolve(
+            primaryUrl = primaryUrl,
+            serverHealthy = serverHealthy,
+            staticReviewUrl = staticReviewUrl,
+            googlePlaceId = googlePlaceId,
+            intentReviewUrl = reviewUrl
+        )
     }
 }

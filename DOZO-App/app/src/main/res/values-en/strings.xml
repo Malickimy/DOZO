@@ -35,7 +35,6 @@
     <string name="settings_sync_now">Sync now</string>
     <string name="settings_heartbeat_now">Send heartbeat now</string>
     <string name="settings_generate_pairing">Generate pairing code</string>
-    <string name="settings_adopt_register">Adopt existing register</string>
     <string name="settings_change_pin">Change PIN</string>
     <string name="settings_unpair">Unpair &amp; wipe</string>
     <string name="settings_back">Back</string>
@@ -51,6 +50,8 @@
     <string name="settings_language_pl">Polish</string>
     <string name="settings_language_en">English</string>
     <string name="settings_enter_setup_code">Enter setup code</string>
+    <string name="settings_updating">Updating settings…</string>
+    <string name="settings_updated_from_dashboard">Settings updated from the dashboard</string>
 
     <!-- Setup code (model-B redeem) -->
     <string name="setup_code_title">Setup code</string>
@@ -69,15 +70,6 @@
     <string name="pairing_expired">Pairing code expired</string>
     <string name="pairing_not_found">Pairing code not found</string>
     <string name="pairing_timeout">Pairing timed out</string>
-
-    <!-- Adopt -->
-    <string name="adopt_title">Adopt existing register</string>
-    <string name="adopt_subtitle">Pick the register this terminal replaces</string>
-    <string name="adopt_empty">No registers available for this merchant</string>
-    <string name="adopt_merchant_not_found">Merchant not found</string>
-    <string name="adopt_register_not_found">Register not found</string>
-    <string name="adopt_invalid">Invalid register selection</string>
-    <string name="adopt_action">Adopt</string>
 
     <!-- Shared -->
     <string name="common_cancel">Cancel</string>

@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
-import com.example.dozo.ui.AdoptScreen
 import com.example.dozo.ui.IdleScreen
 import com.example.dozo.ui.PairingScreen
 import com.example.dozo.ui.PinScreen
@@ -24,7 +23,9 @@ import com.example.dozo.ui.QrRenderer
 import com.example.dozo.ui.SettingsScreen
 import com.example.dozo.ui.SetupCodeScreen
 import com.example.dozo.ui.UiState
+import com.example.dozo.ui.UpdatingOverlay
 import com.example.dozo.ui.theme.DozoTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private sealed interface AppScreen {
@@ -34,7 +35,6 @@ private sealed interface AppScreen {
     data object Settings : AppScreen
     data object SetupCode : AppScreen
     data object Pairing : AppScreen
-    data object Adopt : AppScreen
 }
 
 class MainActivity : ComponentActivity() {
@@ -45,6 +45,9 @@ class MainActivity : ComponentActivity() {
         DozoContract.DEFAULT_DISPLAY_TIMEOUT_SECONDS
     )
     private var manualStatus by mutableStateOf<String?>(null)
+    private var remoteApplying by mutableStateOf(false)
+    private var pendingRemoteConfig by mutableStateOf<TerminalConfig?>(null)
+    private var approvedPending by mutableStateOf(false)
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleManager.wrap(newBase))
@@ -54,8 +57,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val mapped = handleLaunch() ?: return
         enableEdgeToEdge()
-        uiState = mapped.toUiState()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
+        if (mapped is MappedState.Approved) {
+            approvedPending = true
+            lifecycleScope.launch { showApprovedQr(mapped) }
+        } else {
+            uiState = mapped.toUiState()
+        }
         if (mapped is MappedState.Idle &&
             !DozoConfig.terminalId(this).isNullOrBlank() &&
             !DozoConfig.hasStoredApiToken(this)
@@ -64,6 +72,9 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             DozoTheme {
+                if (remoteApplying) {
+                    UpdatingOverlay()
+                } else {
                 when (appScreen) {
                     AppScreen.Payment -> when (val state = uiState) {
                         is UiState.Idle -> IdleScreen(
@@ -76,7 +87,10 @@ class MainActivity : ComponentActivity() {
                             autoClose = DozoConfig.isAutoCloseEnabled(this),
                             merchantName = DozoConfig.merchantName(this),
                             promptText = DozoConfig.promptText(this),
-                            onDismiss = { closeAndFinish(RESULT_APPROVED) }
+                            onDismiss = {
+                                applyPendingRemoteConfigIfAny()
+                                closeAndFinish(RESULT_APPROVED)
+                            }
                         )
                     }
                     AppScreen.Pin -> PinScreen(
@@ -123,7 +137,6 @@ class MainActivity : ComponentActivity() {
                         onSyncNow = { syncConfigNow() },
                         onSendHeartbeatNow = { sendHeartbeatNow() },
                         onEnterSetupCode = { appScreen = AppScreen.SetupCode },
-                        onAdoptExistingRegister = { appScreen = AppScreen.Adopt },
                         onChangePin = { appScreen = AppScreen.SetPin },
                         onUnpair = {
                             DozoConfig.wipe(this)
@@ -141,7 +154,9 @@ class MainActivity : ComponentActivity() {
                                 this,
                                 prefs.terminalId,
                                 prefs.apiToken,
-                                prefs.redirectBaseUrl
+                                prefs.redirectBaseUrl,
+                                prefs.googlePlaceId,
+                                prefs.staticReviewUrl
                             )
                             appScreen = AppScreen.Settings
                         },
@@ -165,40 +180,34 @@ class MainActivity : ComponentActivity() {
                                 deriveRedirectBaseUrl(
                                     claimed.store.redirectUrl,
                                     claimed.store.terminalId
-                                )
+                                ),
+                                claimed.store.googlePlaceId,
+                                claimed.store.staticReviewUrl
                             )
-                            appScreen = AppScreen.Settings
-                        },
-                        onCancel = { appScreen = AppScreen.Settings }
-                    )
-                    AppScreen.Adopt -> AdoptScreen(
-                        apiBaseUrl = DozoConfig.apiBaseUrl(this),
-                        apiToken = DozoConfig.apiToken(this),
-                        merchantId = DozoConfig.merchantId(this),
-                        terminalId = ensureTerminalId(),
-                        onAdopted = { config ->
-                            DozoConfig.setTerminalId(this, config.terminalId)
-                            DozoConfig.setRedirectBaseUrl(
-                                this,
-                                deriveRedirectBaseUrl(config.redirectBaseUrl, config.terminalId)
-                            )
-                            DozoConfig.setActivated(this, true)
                             appScreen = AppScreen.Settings
                         },
                         onCancel = { appScreen = AppScreen.Settings }
                     )
                 }
+                }
             }
         }
+        pullRemoteConfigAtLaunch()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         val mapped = handleLaunch() ?: return
-        uiState = mapped.toUiState()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
         appScreen = AppScreen.Payment
+        if (mapped is MappedState.Approved) {
+            approvedPending = true
+            lifecycleScope.launch { showApprovedQr(mapped) }
+        } else {
+            approvedPending = false
+            uiState = mapped.toUiState()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -250,15 +259,7 @@ class MainActivity : ComponentActivity() {
                     .config(terminalId)) {
                     is ConfigResult.Success -> {
                         val config = result.config
-                        DozoConfig.setDisplayEnabled(this@MainActivity, config.displayEnabled)
-                        DozoConfig.setDisplayTimeoutSeconds(
-                            this@MainActivity,
-                            config.displayTimeoutSeconds
-                        )
-                        DozoConfig.setRedirectBaseUrl(
-                            this@MainActivity,
-                            deriveRedirectBaseUrl(config.redirectBaseUrl, terminalId)
-                        )
+                        DozoConfig.applyRemoteConfig(this@MainActivity, config, terminalId)
                         getString(R.string.status_sync_done)
                     }
                     ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
@@ -301,6 +302,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun showApprovedQr(state: MappedState.Approved) {
+        val paymentIntent = intent.toPaymentIntent()
+        val healthy = runCatching {
+            DozoApi(DozoConfig.redirectBaseUrl(this), "")
+                .health(DozoContract.HEALTH_PROBE_TIMEOUT_MS)
+        }.getOrDefault(false)
+        val payload = resolveApprovedPayload(paymentIntent, healthy)
+        uiState = UiState.DisplayQr(QrRenderer.render(payload), state.txnId)
+        approvedPending = false
+    }
+
     private fun onUnauthorized() {
         DozoConfig.clearApiToken(this)
         if (uiState is UiState.Idle) {
@@ -309,9 +321,64 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, R.string.status_session_expired, Toast.LENGTH_LONG).show()
     }
 
-    private fun currentResultCode(): Int = when (uiState) {
-        is UiState.Idle -> RESULT_CANCELED
-        is UiState.DisplayQr -> RESULT_APPROVED
+    private fun currentResultCode(): Int =
+        if (approvedPending || uiState is UiState.DisplayQr) RESULT_APPROVED else RESULT_CANCELED
+
+    private fun resolveApprovedPayload(paymentIntent: PaymentIntent, serverHealthy: Boolean): String {
+        val terminalId = paymentIntent.terminalId?.takeIf { it.isNotBlank() }
+        val primaryUrl = terminalId?.let { "${DozoConfig.redirectBaseUrl(this)}/r/$it" }
+        return QrPayloadResolver.resolve(
+            primaryUrl = primaryUrl,
+            serverHealthy = serverHealthy,
+            staticReviewUrl = DozoConfig.staticReviewUrl(this),
+            googlePlaceId = DozoConfig.googlePlaceId(this),
+            intentReviewUrl = paymentIntent.reviewUrl?.takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun pullRemoteConfigAtLaunch() {
+        val terminalId = DozoConfig.terminalId(this)
+        val apiToken = DozoConfig.apiToken(this)
+        if (terminalId.isNullOrBlank() || apiToken.isBlank()) return
+        lifecycleScope.launch {
+            val result = runCatching {
+                DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken).config(terminalId)
+            }.getOrNull()
+            when (result) {
+                is ConfigResult.Success -> onRemoteConfig(result.config)
+                ConfigResult.Unauthorized -> onUnauthorized()
+                else -> Unit
+            }
+        }
+    }
+
+    private fun onRemoteConfig(config: TerminalConfig) {
+        val qrDisplayed = approvedPending || uiState is UiState.DisplayQr
+        if (RemoteConfigPolicy.decide(qrDisplayed) == RemoteApplyDecision.Postpone) {
+            pendingRemoteConfig = config
+            return
+        }
+        applyRemoteConfigNow(config)
+    }
+
+    private fun applyRemoteConfigNow(config: TerminalConfig) {
+        remoteApplying = true
+        DozoConfig.applyRemoteConfig(this, config, DozoConfig.terminalId(this).orEmpty())
+        lifecycleScope.launch {
+            delay(REMOTE_APPLY_OVERLAY_MS)
+            remoteApplying = false
+            Toast.makeText(
+                this@MainActivity,
+                R.string.settings_updated_from_dashboard,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun applyPendingRemoteConfigIfAny() {
+        val pending = pendingRemoteConfig ?: return
+        pendingRemoteConfig = null
+        DozoConfig.applyRemoteConfig(this, pending, DozoConfig.terminalId(this).orEmpty())
     }
 
     private fun closeAndFinish(code: Int) {
@@ -319,6 +386,8 @@ class MainActivity : ComponentActivity() {
         finish()
     }
 }
+
+private const val REMOTE_APPLY_OVERLAY_MS = 600L
 
 private fun MappedState.toUiState(): UiState = when (this) {
     is MappedState.Idle -> UiState.Idle

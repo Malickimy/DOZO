@@ -73,7 +73,6 @@ fun SettingsScreen(
     onSyncNow: () -> Unit,
     onSendHeartbeatNow: () -> Unit,
     onEnterSetupCode: () -> Unit,
-    onAdoptExistingRegister: () -> Unit,
     onChangePin: () -> Unit,
     onUnpair: () -> Unit,
     onBack: () -> Unit,
@@ -265,13 +264,6 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.settings_enter_setup_code))
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = onAdoptExistingRegister,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.settings_adopt_register))
                     }
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(

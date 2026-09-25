@@ -17,16 +17,7 @@ class ConfigSyncWorker(
             val api = DozoApi(DozoConfig.apiBaseUrl(applicationContext), apiToken)
             when (val result = api.config(terminalId)) {
                 is ConfigResult.Success -> {
-                    val config = result.config
-                    DozoConfig.setDisplayEnabled(applicationContext, config.displayEnabled)
-                    DozoConfig.setDisplayTimeoutSeconds(
-                        applicationContext,
-                        config.displayTimeoutSeconds
-                    )
-                    DozoConfig.setRedirectBaseUrl(
-                        applicationContext,
-                        deriveRedirectBaseUrl(config.redirectBaseUrl, terminalId)
-                    )
+                    DozoConfig.applyRemoteConfig(applicationContext, result.config, terminalId)
                     Result.success()
                 }
                 ConfigResult.NotFound -> Result.success()

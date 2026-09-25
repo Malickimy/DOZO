@@ -12,7 +12,8 @@ class DozoApiRedeemTest {
             {"status":"redeemed","api_token":"tok-123","store":{
               "terminal_id":"DX8000SN000123","merchant_id":"demo-merchant",
               "google_place_id":"ChIJ","label":"Till 1",
-              "redirect_url":"https://track.papier.app/r/DX8000SN000123"}}
+              "redirect_url":"https://track.papier.app/r/DX8000SN000123",
+              "static_review_url":"https://search.google.com/local/writereview?placeid=ChIJ"}}
         """.trimIndent()
         val result = parseRedeem(200, body) as RedeemResult.Success
         assertEquals("tok-123", result.apiToken)
@@ -20,6 +21,10 @@ class DozoApiRedeemTest {
         assertEquals("demo-merchant", result.store.merchantId)
         assertEquals("Till 1", result.store.label)
         assertEquals("https://track.papier.app/r/DX8000SN000123", result.store.redirectUrl)
+        assertEquals(
+            "https://search.google.com/local/writereview?placeid=ChIJ",
+            result.store.staticReviewUrl
+        )
     }
 
     @Test

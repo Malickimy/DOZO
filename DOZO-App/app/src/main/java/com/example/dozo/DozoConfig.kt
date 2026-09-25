@@ -75,6 +75,14 @@ object DozoConfig {
             ?.takeIf { it.isNotBlank() }
             ?: DozoContract.DEFAULT_PIN
 
+    fun googlePlaceId(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_GOOGLE_PLACE_ID, null)
+            ?.takeIf { it.isNotBlank() }
+
+    fun staticReviewUrl(context: Context): String? =
+        prefs(context).getString(DozoContract.KEY_STATIC_REVIEW_URL, null)
+            ?.takeIf { it.isNotBlank() }
+
     fun setActivated(context: Context, value: Boolean) {
         edit(context).putBoolean(DozoContract.KEY_ACTIVATED, value).apply()
     }
@@ -139,11 +147,21 @@ object DozoConfig {
         edit(context).putString(DozoContract.KEY_PIN, value).apply()
     }
 
+    fun setGooglePlaceId(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_GOOGLE_PLACE_ID, value).apply()
+    }
+
+    fun setStaticReviewUrl(context: Context, value: String) {
+        edit(context).putString(DozoContract.KEY_STATIC_REVIEW_URL, value).apply()
+    }
+
     fun applyClaimed(
         context: Context,
         terminalId: String,
         apiToken: String,
-        redirectBaseUrl: String
+        redirectBaseUrl: String,
+        googlePlaceId: String? = null,
+        staticReviewUrl: String? = null
     ) {
         edit(context)
             .putString(DozoContract.KEY_TERMINAL_ID, terminalId)
@@ -151,6 +169,28 @@ object DozoConfig {
             .putString(DozoContract.KEY_REDIRECT_BASE_URL, redirectBaseUrl)
             .putBoolean(DozoContract.KEY_ACTIVATED, true)
             .apply()
+        googlePlaceId?.takeIf { it.isNotBlank() }?.let { setGooglePlaceId(context, it) }
+        staticReviewUrl?.takeIf { it.isNotBlank() }?.let { setStaticReviewUrl(context, it) }
+    }
+
+    /**
+     * Persists the last-known server config (App Sprint 4). Only the contract
+     * keys are written; the QR base has `/r/{id}` stripped when present.
+     */
+    fun applyRemoteConfig(context: Context, config: TerminalConfig, terminalId: String) {
+        edit(context)
+            .putBoolean(DozoContract.KEY_DISPLAY_ENABLED, config.displayEnabled)
+            .putInt(
+                DozoContract.KEY_DISPLAY_TIMEOUT_SECONDS,
+                clampTimeoutSeconds(config.displayTimeoutSeconds)
+            )
+            .putString(
+                DozoContract.KEY_REDIRECT_BASE_URL,
+                deriveRedirectBaseUrl(config.redirectBaseUrl, terminalId)
+            )
+            .apply()
+        config.googlePlaceId?.takeIf { it.isNotBlank() }?.let { setGooglePlaceId(context, it) }
+        config.staticReviewUrl?.takeIf { it.isNotBlank() }?.let { setStaticReviewUrl(context, it) }
     }
 
     fun wipe(context: Context) {
@@ -158,6 +198,8 @@ object DozoConfig {
             .remove(DozoContract.KEY_PAIRING_CODE)
             .remove(DozoContract.KEY_TERMINAL_ID)
             .remove(DozoContract.KEY_API_TOKEN)
+            .remove(DozoContract.KEY_GOOGLE_PLACE_ID)
+            .remove(DozoContract.KEY_STATIC_REVIEW_URL)
             .putBoolean(DozoContract.KEY_ACTIVATED, false)
             .apply()
     }
