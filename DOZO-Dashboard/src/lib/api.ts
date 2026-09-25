@@ -57,6 +57,23 @@ export interface Scan {
   user_agent: string | null
 }
 
+export interface SummaryQuery {
+  since?: string
+  until?: string
+}
+
+/** One day bucket from the series endpoint; `day` is a Europe/Warsaw `YYYY-MM-DD`. */
+export interface ScanSeriesPoint {
+  day: string
+  count: number
+}
+
+export interface ScanSeriesQuery {
+  since?: string
+  until?: string
+  bucket: 'day'
+}
+
 export interface ClaimedStore {
   terminal_id: string
   merchant_id: string
@@ -206,8 +223,12 @@ export interface ApiClient {
   listMerchants: () => Promise<Merchant[]>
   listTerminals: (merchantId: string) => Promise<Terminal[]>
   listRegisters: (merchantId: string) => Promise<Register[]>
-  getSummary: (merchantId: string) => Promise<MerchantSummary>
+  getSummary: (merchantId: string, query?: SummaryQuery) => Promise<MerchantSummary>
   listScans: (merchantId: string, query?: ScansQuery) => Promise<Scan[]>
+  getScanSeries: (
+    merchantId: string,
+    query: ScanSeriesQuery,
+  ) => Promise<ScanSeriesPoint[]>
   getTerminalConfig: (id: string) => Promise<TerminalConfig>
   patchTerminal: (
     id: string,
@@ -283,10 +304,15 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     listMerchants: () => request<Merchant[]>('/api/merchants'),
     listTerminals: (merchantId) => request<Terminal[]>(merchantPath(merchantId, '/terminals')),
     listRegisters: (merchantId) => request<Register[]>(merchantPath(merchantId, '/registers')),
-    getSummary: (merchantId) => request<MerchantSummary>(merchantPath(merchantId, '/summary')),
+    getSummary: (merchantId, query = {}) =>
+      request<MerchantSummary>(merchantPath(merchantId, `/summary${buildQuery({ ...query })}`)),
     listScans: (merchantId, query = {}) =>
       request<Scan[]>(
         merchantPath(merchantId, `/scans${buildQuery({ ...query })}`),
+      ),
+    getScanSeries: (merchantId, query) =>
+      request<ScanSeriesPoint[]>(
+        merchantPath(merchantId, `/scans/series${buildQuery({ ...query })}`),
       ),
     getTerminalConfig: (id) => request<TerminalConfig>(terminalPath(id, '/config')),
     patchTerminal: (id, fields) =>
