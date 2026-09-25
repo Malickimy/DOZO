@@ -1,0 +1,11 @@
+# Docker build context is the monorepo root (see DOZO-Server/docker-compose.yml).
+**/node_modules
+**/dist
+**/.gradle
+**/build
+**/.env
+**/.env.*
+.gradle
+.git
+DOZO-App
+DOZO-Server/data

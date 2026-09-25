@@ -9,6 +9,8 @@ const DEFAULTS = {
   TRUST_PROXY: 'false',
   SEED_DEMO: 'false',
   DASHBOARD_ORIGIN: '*',
+  DASHBOARD_CONNECTOR_SECRET: '',
+  DASHBOARD_DIST_PATH: '../DOZO-Dashboard/dist',
 };
 
 function asBool(value) {
@@ -35,6 +37,8 @@ export function loadConfig(env = process.env) {
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
+    connectorSecret: raw.DASHBOARD_CONNECTOR_SECRET ? String(raw.DASHBOARD_CONNECTOR_SECRET) : '',
+    dashboardDistPath: String(raw.DASHBOARD_DIST_PATH || '../DOZO-Dashboard/dist'),
   };
 }
 

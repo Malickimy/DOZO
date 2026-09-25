@@ -29,6 +29,9 @@ DRY_RUN="${DRY_RUN:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# The dashboard image builds the SPA, so the build context is the repo root.
+REPO_DIR="$(cd "$PROJECT_DIR/.." && pwd)"
+COMPOSE_FILE="DOZO-Server/docker-compose.yml"
 
 usage() {
     cat <<EOF
@@ -64,13 +67,20 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
     exit 1
 fi
 
+# Sync the monorepo root (minus the Android app and build artifacts) because the
+# dashboard image compiles DOZO-Dashboard/. rsync never uses --delete, so remote
+# data/ and .env stay intact.
 RSYNC_CMD=(
     "$RSYNC" -az
     --exclude node_modules
+    --exclude dist
+    --exclude build
+    --exclude .gradle
     --exclude data
     --exclude .git
     --exclude .env
-    "$PROJECT_DIR/"
+    --exclude 'DOZO-App'
+    "$REPO_DIR/"
     "$SERVER_HOST:$REMOTE_DIR/"
 )
 
@@ -80,12 +90,12 @@ REMOTE_SCRIPT=$(cat <<REMOTE
 set -eu
 mkdir -p $REMOTE_DIR
 cd $REMOTE_DIR
-if [ ! -f .env ]; then
-  cp .env.production.example .env
-  echo "WARN: created .env from .env.production.example; set a strong API_TOKEN before exposing publicly" >&2
+if [ ! -f DOZO-Server/.env ]; then
+  cp DOZO-Server/.env.production.example DOZO-Server/.env
+  echo "WARN: created DOZO-Server/.env from .env.production.example; set a strong API_TOKEN before exposing publicly" >&2
 fi
-docker compose up -d --build
-docker compose ps
+docker compose -f $COMPOSE_FILE up -d --build
+docker compose -f $COMPOSE_FILE ps
 REMOTE
 )
 
@@ -110,7 +120,7 @@ for bin in "$RSYNC" "$SSH"; do
     fi
 done
 
-echo "==> rsync $PROJECT_DIR/ -> $SERVER_HOST:$REMOTE_DIR/"
+echo "==> rsync $REPO_DIR/ -> $SERVER_HOST:$REMOTE_DIR/"
 "${RSYNC_CMD[@]}"
 
 echo "==> ssh $SERVER_HOST (docker compose up -d --build)"
