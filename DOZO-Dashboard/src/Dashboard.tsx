@@ -3,6 +3,7 @@ import { GooglePlaceIdForm } from './components/GooglePlaceIdForm'
 import { MerchantPicker } from './components/MerchantPicker'
 import { OfflinePanel } from './components/OfflinePanel'
 import { PairingForm } from './components/PairingForm'
+import { RangePicker } from './components/RangePicker'
 import { RegistersView } from './components/RegistersView'
 import { ScansView } from './components/ScansView'
 import { ErrorState, Empty, Loading, NotAvailable } from './components/StateMessage'
@@ -11,6 +12,7 @@ import { TerminalDrawer } from './components/TerminalDrawer'
 import { TerminalsTable } from './components/TerminalsTable'
 import { isNotAvailable } from './lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from './lib/api'
+import { initialRange } from './lib/range'
 import type { Settings } from './lib/settings'
 import { useAsync } from './lib/useAsync'
 
@@ -26,6 +28,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
   const [tab, setTab] = useState<Tab>('overview')
   const [merchantId, setMerchantId] = useState('')
   const [managingId, setManagingId] = useState<string | null>(null)
+  const [range, setRange] = useState(initialRange)
 
   const merchantsState = useAsync(() => client.listMerchants(), [client])
   const merchants = merchantsState.data ?? []
@@ -39,8 +42,14 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
     [client, activeMerchantId],
   )
   const summaryState = useAsync<MerchantSummary | null>(
-    () => (activeMerchantId ? client.getSummary(activeMerchantId) : Promise.resolve(null)),
-    [client, activeMerchantId],
+    () =>
+      activeMerchantId
+        ? client.getSummary(activeMerchantId, {
+            since: range.since || undefined,
+            until: range.until || undefined,
+          })
+        : Promise.resolve(null),
+    [client, activeMerchantId, range.since, range.until],
   )
 
   const terminals = terminalsState.data ?? []
@@ -119,6 +128,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
 
         {activeMerchantId && tab === 'overview' ? (
           <div className="stack">
+            <RangePicker value={range} onChange={setRange} />
             {summaryState.loading ? <Loading label="Loading summary…" /> : null}
             {summaryState.error && isNotAvailable(summaryState.error) ? (
               <NotAvailable label="The merchant summary" />
@@ -158,7 +168,14 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
         ) : null}
 
         {activeMerchantId && tab === 'scans' ? (
-          <ScansView client={client} merchantId={activeMerchantId} terminals={terminals} />
+          <ScansView
+            client={client}
+            merchantId={activeMerchantId}
+            terminals={terminals}
+            range={range}
+            onRangeChange={setRange}
+            summary={summaryState.data}
+          />
         ) : null}
 
         {tab === 'pair' ? (
