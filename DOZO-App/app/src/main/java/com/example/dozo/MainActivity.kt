@@ -14,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
-import com.example.dozo.ui.AdoptScreen
 import com.example.dozo.ui.IdleScreen
 import com.example.dozo.ui.PairingScreen
 import com.example.dozo.ui.PinScreen
@@ -33,7 +32,6 @@ private sealed interface AppScreen {
     data object Settings : AppScreen
     data object SetupCode : AppScreen
     data object Pairing : AppScreen
-    data object Adopt : AppScreen
 }
 
 class MainActivity : ComponentActivity() {
@@ -116,7 +114,6 @@ class MainActivity : ComponentActivity() {
                         onSyncNow = { syncConfigNow() },
                         onSendHeartbeatNow = { sendHeartbeatNow() },
                         onEnterSetupCode = { appScreen = AppScreen.SetupCode },
-                        onAdoptExistingRegister = { appScreen = AppScreen.Adopt },
                         onChangePin = { appScreen = AppScreen.SetPin },
                         onUnpair = {
                             DozoConfig.wipe(this)
@@ -160,22 +157,6 @@ class MainActivity : ComponentActivity() {
                                     claimed.store.terminalId
                                 )
                             )
-                            appScreen = AppScreen.Settings
-                        },
-                        onCancel = { appScreen = AppScreen.Settings }
-                    )
-                    AppScreen.Adopt -> AdoptScreen(
-                        apiBaseUrl = DozoConfig.apiBaseUrl(this),
-                        apiToken = DozoConfig.apiToken(this),
-                        merchantId = DozoConfig.merchantId(this),
-                        terminalId = ensureTerminalId(),
-                        onAdopted = { config ->
-                            DozoConfig.setTerminalId(this, config.terminalId)
-                            DozoConfig.setRedirectBaseUrl(
-                                this,
-                                deriveRedirectBaseUrl(config.redirectBaseUrl, config.terminalId)
-                            )
-                            DozoConfig.setActivated(this, true)
                             appScreen = AppScreen.Settings
                         },
                         onCancel = { appScreen = AppScreen.Settings }
