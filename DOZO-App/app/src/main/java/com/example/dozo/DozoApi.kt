@@ -2,7 +2,6 @@ package com.example.dozo
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -12,13 +11,6 @@ data class RegisterResult(
     val terminalId: String,
     val expiresAt: String,
     val expiresInSeconds: Int
-)
-
-data class Register(
-    val label: String,
-    val terminalId: String,
-    val active: Boolean,
-    val lastSeen: String?
 )
 
 data class StoreConfig(
@@ -63,19 +55,6 @@ sealed interface RedeemResult {
     data object Failed : RedeemResult
 }
 
-sealed interface RegistersResult {
-    data class Success(val registers: List<Register>) : RegistersResult
-    data object NotFound : RegistersResult
-    data object Failed : RegistersResult
-}
-
-sealed interface AdoptResult {
-    data class Success(val config: TerminalConfig) : AdoptResult
-    data object Invalid : AdoptResult
-    data object NotFound : AdoptResult
-    data object Failed : AdoptResult
-}
-
 class DozoApi(
     private val baseUrl: String,
     private val apiToken: String
@@ -118,33 +97,6 @@ class DozoApi(
                 .toString()
             val response = request("/api/terminals/redeem", "POST", body)
             parseRedeem(response.code, response.body)
-        }
-
-    suspend fun registers(merchantId: String): RegistersResult = withContext(Dispatchers.IO) {
-        val response = request("/api/merchants/$merchantId/registers", "GET", null)
-        when {
-            response.code == HTTP_OK -> RegistersResult.Success(parseRegisters(response.body))
-            response.code == HTTP_NOT_FOUND -> RegistersResult.NotFound
-            else -> RegistersResult.Failed
-        }
-    }
-
-    suspend fun adopt(terminalId: String, merchantId: String, label: String): AdoptResult =
-        withContext(Dispatchers.IO) {
-            val body = JSONObject()
-                .put("terminal_id", terminalId)
-                .put("merchant_id", merchantId)
-                .put("label", label)
-                .toString()
-            val response = request("/api/terminals/adopt", "POST", body)
-            when {
-                response.code == HTTP_OK -> parseAdoptedConfig(response.body)
-                    ?.let { AdoptResult.Success(it) }
-                    ?: AdoptResult.Failed
-                response.code == HTTP_BAD_REQUEST -> AdoptResult.Invalid
-                response.code == HTTP_NOT_FOUND -> AdoptResult.NotFound
-                else -> AdoptResult.Failed
-            }
         }
 
     private fun post(path: String, body: String): String =
@@ -271,23 +223,6 @@ private fun JSONObject.optBooleanLoose(key: String, default: Boolean): Boolean =
         is String -> value.equals("true", ignoreCase = true) || value == "1"
         else -> default
     }
-
-fun parseRegisters(body: String): List<Register> {
-    val array = runCatching { JSONArray(body) }.getOrNull() ?: return emptyList()
-    return (0 until array.length()).mapNotNull { index ->
-        val json = array.optJSONObject(index) ?: return@mapNotNull null
-        val terminalId = json.optString("terminal_id")
-        if (terminalId.isBlank()) return@mapNotNull null
-        Register(
-            label = json.optString("label"),
-            terminalId = terminalId,
-            active = json.optBooleanLoose("active", true),
-            lastSeen = json.optString("last_seen").takeIf { it.isNotBlank() }
-        )
-    }
-}
-
-fun parseAdoptedConfig(body: String): TerminalConfig? = parseTerminalConfig(body)
 
 fun deriveRedirectBaseUrl(redirectUrl: String, terminalId: String): String {
     val suffix = "/r/$terminalId"
