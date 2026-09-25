@@ -1,16 +1,19 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { API_BASE_URL, API_TOKEN, MERCHANT_ID } from './env'
 
 /**
  * End-to-end coverage for the "Registers & setup codes" tab (Release Board R1).
  *
- * Golden path and the occupied-swap guard run against the real (seeded) server.
- * The unoccupied-register branch and the error states stub the HTTP responses
- * with `page.route` because the server can never return an unoccupied register
- * (`terminal_id` is the terminals PK, always non-null — see QA Round 1 Bug B).
+ * The server now models a register as its own row (R7): `POST .../setup-code`
+ * creates it with `terminal_id` null, so the unoccupied branch is exercised
+ * against the real server instead of being stubbed. Only the error states
+ * (401/404 on the list and on issue) route-stub the HTTP responses.
+ *
+ * Each spec self-provisions its registers through the public API (issue, then
+ * redeem) instead of relying on the seed, which on a fresh DB creates no
+ * register for `DEMOTERM01` (migration v5 runs before `seedDemo`). Labels and
+ * terminals are unique per run because `/tmp/dozo-e2e.db` is shared.
  */
-const API_BASE_URL = 'http://127.0.0.1:3100'
-const API_TOKEN = 'dev-placeholder-token'
-
 const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 const TOKEN_KEY = 'dozo.dashboard.apiToken'
 
@@ -63,6 +66,14 @@ function stubRegistersList(page: Page, body: unknown, status = 200) {
   })
 }
 
+/** `POST .../registers/:label/setup-code`; creates the register row as a side effect. */
+function issueSetupCode(request: APIRequestContext, label: string) {
+  return request.post(
+    `${API_BASE_URL}/api/merchants/${MERCHANT_ID}/registers/${encodeURIComponent(label)}/setup-code`,
+    { headers: { 'X-Api-Token': API_TOKEN } },
+  )
+}
+
 const OCCUPIED_REGISTER = {
   label: 'Demo terminal',
   terminal_id: 'DEMOTERM01',
@@ -72,7 +83,31 @@ const OCCUPIED_REGISTER = {
 
 test('occupied register: confirmation gates the POST, then shows code + expiry', async ({
   page,
+  request,
 }) => {
+  const suffix = String(Date.now())
+  const label = `qa-swap-${suffix}`
+  const terminalId = `QASWAP${suffix.slice(-8)}`
+  const deviceSerial = `qa-swap-device-${suffix}`
+
+  // Self-provision an occupied register through the public API. On a fresh DB
+  // the server does not backfill a register for the seeded DEMOTERM01 (v5 runs
+  // before `seedDemo`), so issue a setup code for a unique label and redeem it
+  // to bind a fresh terminal. Unique values keep reruns deterministic.
+  const issued = await issueSetupCode(request, label)
+  expect(issued.status()).toBe(201)
+  const { code } = await issued.json()
+  expect(code).toMatch(/^[A-Z0-9]{8}$/)
+
+  const redeemed = await request.post(`${API_BASE_URL}/api/terminals/redeem`, {
+    headers: { 'X-Api-Token': API_TOKEN },
+    data: { code, device_serial: deviceSerial, terminal_id: terminalId },
+  })
+  expect(redeemed.status()).toBe(200)
+
+  await page.reload()
+  await openRegisters(page)
+
   const posts: string[] = []
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().includes('/setup-code')) {
@@ -80,19 +115,20 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
     }
   })
 
-  await openRegisters(page)
+  // Scope every assertion to this run's row: the DB accumulates registers
+  // across runs, so unscoped cell matches (`Active`, `never`) are ambiguous.
+  await expect(page.getByRole('table')).toBeVisible()
+  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(row.getByRole('cell', { name: label })).toBeVisible()
+  await expect(row.getByRole('cell', { name: terminalId })).toBeVisible()
+  await expect(row.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
+  await expect(row.getByRole('cell', { name: 'never' })).toBeVisible()
 
-  const table = page.getByRole('table')
-  await expect(table.getByRole('cell', { name: 'Demo terminal' })).toBeVisible()
-  await expect(table.getByRole('cell', { name: 'DEMOTERM01' })).toBeVisible()
-  await expect(table.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
-  await expect(table.getByRole('cell', { name: 'never' })).toBeVisible()
-
-  await page.getByRole('button', { name: 'Issue' }).click()
+  await row.getByRole('button', { name: 'Issue' }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Confirm device swap' })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText('Current device:')
-  await expect(dialog).toContainText('DEMOTERM01')
+  await expect(dialog).toContainText(terminalId)
   // The POST must not fire until the merchant confirms the device swap.
   expect(posts).toHaveLength(0)
 
@@ -106,15 +142,15 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
 
   const body = await response.json()
   expect(body).toMatchObject({
-    merchant_id: 'demo-merchant',
-    label: 'Demo terminal',
+    merchant_id: MERCHANT_ID,
+    label,
     expires_in_seconds: 300,
   })
   expect(body.code).toMatch(/^[A-Z0-9]{8}$/)
 
   const card = setupCodeCard(page)
   await expect(card).toBeVisible()
-  await expect(card).toContainText('Demo terminal')
+  await expect(card).toContainText(label)
   await expect(card.getByText(body.code)).toBeVisible()
   await expect(card).toContainText('(300s)')
   expect(posts).toHaveLength(1)
@@ -122,34 +158,79 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
 
 test('unoccupied register: issues immediately (no confirmation) and shows code + expiry', async ({
   page,
+  request,
 }) => {
-  // Server gap: `terminal_id` can never be null, so stub the list to expose the
-  // unoccupied branch. The POST still goes to the real server.
-  await stubRegistersList(page, [OCCUPIED_REGISTER, { ...OCCUPIED_REGISTER, label: 'Till 2', terminal_id: null }])
+  const label = `qa-unclaimed-${Date.now()}`
 
+  // R7: a setup-code POST finds-or-creates the register with `terminal_id` null,
+  // so the server really can return an unoccupied row — no stub needed.
+  const created = await issueSetupCode(request, label)
+  expect(created.status()).toBe(201)
+
+  await page.reload()
   await openRegisters(page)
 
-  const till2 = page.getByRole('row', { name: /Till 2/ })
-  await expect(till2).toContainText('Unclaimed')
+  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(row).toContainText('Unclaimed')
 
   const [response] = await Promise.all([
     page.waitForResponse(
       (r) => r.request().method() === 'POST' && r.url().includes('/setup-code'),
     ),
-    till2.getByRole('button', { name: 'Issue' }).click(),
+    row.getByRole('button', { name: 'Issue' }).click(),
   ])
   expect(response.status()).toBe(201)
 
   const body = await response.json()
-  expect(body).toMatchObject({ merchant_id: 'demo-merchant', label: 'Till 2', expires_in_seconds: 300 })
+  expect(body).toMatchObject({ merchant_id: MERCHANT_ID, label, expires_in_seconds: 300 })
   expect(body.code).toMatch(/^[A-Z0-9]{8}$/)
 
   // No swap confirmation for an unclaimed register.
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   const card = setupCodeCard(page)
   await expect(card).toBeVisible()
+  await expect(card).toContainText(label)
   await expect(card.getByText(body.code)).toBeVisible()
   await expect(card).toContainText('(300s)')
+})
+
+test('new register round-trip: setup code redeems and the row becomes occupied', async ({
+  page,
+  request,
+}) => {
+  const suffix = String(Date.now())
+  const label = `qa-redeem-${suffix}`
+  // `isValidTerminalId` accepts [A-Za-z0-9_-]{8,64} and redeem uppercases it.
+  const terminalId = `QATERM${suffix.slice(-8)}`
+  const deviceSerial = `qa-device-${suffix}`
+
+  const issued = await issueSetupCode(request, label)
+  expect(issued.status()).toBe(201)
+  const { code } = await issued.json()
+  expect(code).toMatch(/^[A-Z0-9]{8}$/)
+
+  const redeemed = await request.post(`${API_BASE_URL}/api/terminals/redeem`, {
+    headers: { 'X-Api-Token': API_TOKEN },
+    data: { code, device_serial: deviceSerial, terminal_id: terminalId },
+  })
+  expect(redeemed.status()).toBe(200)
+  const body = await redeemed.json()
+  expect(body).toMatchObject({ status: 'redeemed' })
+  expect(typeof body.api_token).toBe('string')
+  expect(body.api_token.length).toBeGreaterThan(0)
+  // `store` is the config shape, not the register row: shape-alias check per §3.
+  expect(body.store).toMatchObject({
+    terminal_id: terminalId,
+    merchant_id: MERCHANT_ID,
+    label,
+  })
+
+  await page.reload()
+  await openRegisters(page)
+
+  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(row).not.toContainText('Unclaimed')
+  await expect(row.locator('code')).toHaveText(terminalId)
 })
 
 test('401 from the registers list shows the unauthorized error', async ({ page }) => {
