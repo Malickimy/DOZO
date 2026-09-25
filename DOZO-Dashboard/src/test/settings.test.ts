@@ -44,4 +44,13 @@ describe('settings migration', () => {
     expect(window.localStorage.getItem(LEGACY_BASE_URL_KEY)).toBeNull()
     expect(window.localStorage.getItem(LEGACY_TOKEN_KEY)).toBeNull()
   })
+
+  it('defaults to the SPA origin when nothing is saved and no env override is set', () => {
+    expect(loadSettings().baseUrl).toBe(window.location.origin)
+  })
+
+  it('prefers a saved base URL over the SPA origin default', () => {
+    window.localStorage.setItem(BASE_URL_KEY, 'http://saved:3000')
+    expect(loadSettings().baseUrl).toBe('http://saved:3000')
+  })
 })
