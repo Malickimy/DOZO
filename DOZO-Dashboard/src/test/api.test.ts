@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
   createApiClient,
+  errorCode,
   isNotAvailable,
   normalizeBaseUrl,
 } from '../lib/api'
@@ -81,6 +82,66 @@ describe('createApiClient', () => {
     expect(url).toBe('http://example.test:3000/api/merchants/m1/registers')
     expect(init.method).toBeUndefined()
     expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
+  const terminalConfig = {
+    terminal_id: 'TERM1',
+    merchant_id: 'm1',
+    google_place_id: 'ChIJ1',
+    label: 'Front',
+    active: true,
+    display_enabled: true,
+    display_timeout_seconds: 15,
+    redirect_base_url: 'http://redirect.test',
+    static_review_url: 'https://search.google.com/local/writereview?placeid=ChIJ1',
+  }
+
+  it('GETs a terminal config with the token header', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(terminalConfig)))
+    const result = await client.getTerminalConfig('TERM 1')
+    expect(result).toEqual(terminalConfig)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://example.test:3000/api/terminals/TERM%201/config')
+    expect(init.method).toBeUndefined()
+    expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
+  it('PATCHes terminal lifecycle fields as JSON', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(terminalConfig)))
+    const result = await client.patchTerminal('TERM1', { active: false, label: 'Back till' })
+    expect(result).toEqual(terminalConfig)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://example.test:3000/api/terminals/TERM1')
+    expect(init.method).toBe('PATCH')
+    expect(init.body).toBe(JSON.stringify({ active: false, label: 'Back till' }))
+    expect((init.headers as Headers).get('Content-Type')).toBe('application/json')
+    expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
+  it('PUTs terminal display config as JSON', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(terminalConfig)))
+    const result = await client.putTerminalConfig('TERM1', {
+      display_enabled: false,
+      display_timeout_seconds: 30,
+    })
+    expect(result).toEqual(terminalConfig)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://example.test:3000/api/terminals/TERM1/config')
+    expect(init.method).toBe('PUT')
+    expect(init.body).toBe(
+      JSON.stringify({ display_enabled: false, display_timeout_seconds: 30 }),
+    )
+  })
+
+  it('exposes the server machine error code', async () => {
+    stubFetch(() => Promise.resolve(jsonResponse({ error: 'label_in_use', label: 'Front' }, 400)))
+    const error = await client.patchTerminal('TERM1', { label: 'Front' }).catch((err: unknown) => err)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(errorCode(error)).toBe('label_in_use')
+
+    stubFetch(() => Promise.resolve(jsonResponse({ error: 'unknown_terminal' }, 404)))
+    const missing = await client.getTerminalConfig('NOPE').catch((err: unknown) => err)
+    expect(errorCode(missing)).toBe('unknown_terminal')
   })
 
   it('POSTs the setup code with no body and encodes the label', async () => {

@@ -2,7 +2,12 @@ import type { Terminal } from '../lib/api'
 import { formatDateTime, formatRelative, isActive } from '../lib/format'
 import { Empty } from './StateMessage'
 
-export function TerminalsTable({ terminals }: { terminals: Terminal[] }) {
+interface TerminalsTableProps {
+  terminals: Terminal[]
+  onManage?: (terminal: Terminal) => void
+}
+
+export function TerminalsTable({ terminals, onManage }: TerminalsTableProps) {
   if (terminals.length === 0) {
     return <Empty>No terminals paired yet. Pair one from the “Pair terminal” tab.</Empty>
   }
@@ -18,6 +23,8 @@ export function TerminalsTable({ terminals }: { terminals: Terminal[] }) {
             <th>Last seen</th>
             <th className="num">Scans</th>
             <th>Last scan</th>
+            <th>Review link</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -40,6 +47,26 @@ export function TerminalsTable({ terminals }: { terminals: Terminal[] }) {
               <td className="num">{terminal.scan_count}</td>
               <td title={formatDateTime(terminal.last_scan_at)}>
                 {formatRelative(terminal.last_scan_at)}
+              </td>
+              <td>
+                {terminal.static_review_url ? (
+                  <a href={terminal.static_review_url} target="_blank" rel="noreferrer">
+                    Review
+                  </a>
+                ) : (
+                  <span className="muted">—</span>
+                )}
+              </td>
+              <td>
+                {onManage ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => onManage(terminal)}
+                  >
+                    Manage
+                  </button>
+                ) : null}
               </td>
             </tr>
           ))}

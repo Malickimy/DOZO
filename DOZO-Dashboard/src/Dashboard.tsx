@@ -7,6 +7,7 @@ import { RegistersView } from './components/RegistersView'
 import { ScansView } from './components/ScansView'
 import { ErrorState, Empty, Loading, NotAvailable } from './components/StateMessage'
 import { SummaryCards } from './components/SummaryCards'
+import { TerminalDrawer } from './components/TerminalDrawer'
 import { TerminalsTable } from './components/TerminalsTable'
 import { isNotAvailable } from './lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from './lib/api'
@@ -24,6 +25,7 @@ type Tab = 'overview' | 'scans' | 'pair' | 'registers'
 export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) {
   const [tab, setTab] = useState<Tab>('overview')
   const [merchantId, setMerchantId] = useState('')
+  const [managingId, setManagingId] = useState<string | null>(null)
 
   const merchantsState = useAsync(() => client.listMerchants(), [client])
   const merchants = merchantsState.data ?? []
@@ -44,8 +46,10 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
   const terminals = terminalsState.data ?? []
   const selectedMerchant =
     merchants.find((merchant) => merchant.merchant_id === activeMerchantId) ?? null
+  const managingTerminal =
+    terminals.find((terminal) => terminal.terminal_id === managingId) ?? null
 
-  function refreshAfterPairing() {
+  function refreshAfterWrite() {
     terminalsState.reload()
     summaryState.reload()
   }
@@ -134,7 +138,10 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
                 <ErrorState error={terminalsState.error} onRetry={terminalsState.reload} />
               ) : null}
               {!terminalsState.loading && !terminalsState.error ? (
-                <TerminalsTable terminals={terminals} />
+                <TerminalsTable
+                  terminals={terminals}
+                  onManage={(terminal) => setManagingId(terminal.terminal_id)}
+                />
               ) : null}
             </div>
 
@@ -155,13 +162,23 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
         ) : null}
 
         {tab === 'pair' ? (
-          <PairingForm client={client} onClaimed={refreshAfterPairing} />
+          <PairingForm client={client} onClaimed={refreshAfterWrite} />
         ) : null}
 
         {activeMerchantId && tab === 'registers' ? (
           <RegistersView client={client} merchantId={activeMerchantId} />
         ) : null}
       </main>
+
+      {managingTerminal ? (
+        <TerminalDrawer
+          client={client}
+          terminal={managingTerminal}
+          terminals={terminals}
+          onClose={() => setManagingId(null)}
+          onSaved={refreshAfterWrite}
+        />
+      ) : null}
 
       <footer className="footer">
         <span>
