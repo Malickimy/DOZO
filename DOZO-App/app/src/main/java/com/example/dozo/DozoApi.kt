@@ -18,7 +18,8 @@ data class StoreConfig(
     val merchantId: String,
     val googlePlaceId: String?,
     val label: String?,
-    val redirectUrl: String
+    val redirectUrl: String,
+    val staticReviewUrl: String? = null
 )
 
 data class TerminalConfig(
@@ -29,7 +30,8 @@ data class TerminalConfig(
     val active: Boolean,
     val displayEnabled: Boolean,
     val displayTimeoutSeconds: Int,
-    val redirectBaseUrl: String
+    val redirectBaseUrl: String,
+    val staticReviewUrl: String? = null
 )
 
 sealed interface PairStatusResult {
@@ -89,6 +91,11 @@ class DozoApi(
         parseConfigResponse(response.code, response.body)
     }
 
+    suspend fun health(timeoutMs: Int = DozoContract.HEALTH_PROBE_TIMEOUT_MS): Boolean =
+        withContext(Dispatchers.IO) {
+            request("/health", "GET", null, timeoutMs).code == HTTP_OK
+        }
+
     suspend fun redeem(code: String, deviceSerial: String): RedeemResult =
         withContext(Dispatchers.IO) {
             val body = JSONObject()
@@ -102,12 +109,17 @@ class DozoApi(
     private fun post(path: String, body: String): String =
         request(path, "POST", body).body
 
-    private fun request(path: String, method: String, body: String?): HttpResponse {
+    private fun request(
+        path: String,
+        method: String,
+        body: String?,
+        timeoutMs: Int = TIMEOUT_MS
+    ): HttpResponse {
         val connection = (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection)
         return try {
             connection.requestMethod = method
-            connection.connectTimeout = TIMEOUT_MS
-            connection.readTimeout = TIMEOUT_MS
+            connection.connectTimeout = timeoutMs
+            connection.readTimeout = timeoutMs
             connection.setRequestProperty("X-Api-Token", apiToken)
             connection.setRequestProperty("Accept", "application/json")
             if (body != null) {
@@ -165,7 +177,8 @@ fun parseStore(json: JSONObject?): StoreConfig = StoreConfig(
     merchantId = json?.optString("merchant_id").orEmpty(),
     googlePlaceId = json?.optString("google_place_id").orEmpty().takeIf { it.isNotBlank() },
     label = json?.optString("label").orEmpty().takeIf { it.isNotBlank() },
-    redirectUrl = json?.optString("redirect_url").orEmpty()
+    redirectUrl = json?.optString("redirect_url").orEmpty(),
+    staticReviewUrl = json?.optString("static_review_url").orEmpty().takeIf { it.isNotBlank() }
 )
 
 fun parseHeartbeat(body: String): Boolean =
@@ -212,7 +225,8 @@ fun parseTerminalConfig(body: String): TerminalConfig? {
             "display_timeout_seconds",
             DozoContract.DEFAULT_DISPLAY_TIMEOUT_SECONDS
         ),
-        redirectBaseUrl = json.optString("redirect_base_url")
+        redirectBaseUrl = json.optString("redirect_base_url"),
+        staticReviewUrl = json.optString("static_review_url").takeIf { it.isNotBlank() }
     )
 }
 

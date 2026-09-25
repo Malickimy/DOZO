@@ -98,7 +98,8 @@ class DozoApiTest {
             {"terminal_id":"DEMOTERM01","merchant_id":"demo-merchant",
              "google_place_id":"ChIJ","label":"Demo terminal","active":true,
              "display_enabled":true,"display_timeout_seconds":15,
-             "redirect_base_url":"http://130.162.185.144:3000"}
+             "redirect_base_url":"http://130.162.185.144:3000",
+             "static_review_url":"https://search.google.com/local/writereview?placeid=ChIJ"}
         """.trimIndent()
         val config = parseTerminalConfig(body)!!
         assertEquals("DEMOTERM01", config.terminalId)
@@ -109,6 +110,16 @@ class DozoApiTest {
         assertTrue(config.displayEnabled)
         assertEquals(15, config.displayTimeoutSeconds)
         assertEquals("http://130.162.185.144:3000", config.redirectBaseUrl)
+        assertEquals(
+            "https://search.google.com/local/writereview?placeid=ChIJ",
+            config.staticReviewUrl
+        )
+    }
+
+    @Test
+    fun terminalConfigWithoutStaticReviewUrlIsNull() {
+        val config = parseTerminalConfig("""{"terminal_id":"T1"}""")!!
+        assertNull(config.staticReviewUrl)
     }
 
     @Test

@@ -27,7 +27,9 @@ class SettingsPersistenceTest {
             DozoContract.KEY_LANGUAGE to "language",
             DozoContract.KEY_PAIRING_CODE to "pairing_code",
             DozoContract.KEY_PIN to "pin",
-            DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled"
+            DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled",
+            DozoContract.KEY_GOOGLE_PLACE_ID to "google_place_id",
+            DozoContract.KEY_STATIC_REVIEW_URL to "static_review_url"
         )
         assertEquals("dozo_prefs", DozoContract.PREFS_NAME)
         expected.forEach { (constant, literal) ->
@@ -43,12 +45,18 @@ class SettingsPersistenceTest {
             merchantId = "demo-merchant",
             googlePlaceId = "ChIJ",
             label = "Till 1",
-            redirectUrl = "https://track.papier.app/r/DX8000SN000123"
+            redirectUrl = "https://track.papier.app/r/DX8000SN000123",
+            staticReviewUrl = "https://search.google.com/local/writereview?placeid=ChIJ"
         )
         val prefs = SettingsPersistence.redeemPrefs("tok-123", store)
         assertEquals("DX8000SN000123", prefs.terminalId)
         assertEquals("tok-123", prefs.apiToken)
         assertEquals("https://track.papier.app", prefs.redirectBaseUrl)
+        assertEquals("ChIJ", prefs.googlePlaceId)
+        assertEquals(
+            "https://search.google.com/local/writereview?placeid=ChIJ",
+            prefs.staticReviewUrl
+        )
     }
 
     @Test
