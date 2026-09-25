@@ -4,9 +4,9 @@ Frozen interfaces shared by the Android app, redirect server, and merchant dashb
 Treat this file as **read-only**. To change a contract: update this file first, then update
 every consumer, and flag the other workstream owners.
 
-_Last synced from code on 2026-09-24. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
+_Last synced from code on 2026-09-25. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
 
-_Release Board R1–R7 are drafted below ahead of their implementations. R1's `setup-code` + `redeem` endpoints are shipped; the rest ship on their own expand/contract branches (see §11)._
+_Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. App and Dashboard consumers are still catching up (see §3 and §8)._
 
 ---
 
@@ -22,7 +22,7 @@ _Release Board R1–R7 are drafted below ahead of their implementations. R1's `s
 
 > Repo root: the monorepo checkout (main `/Users/malicky/l/DOZO`; worktrees such as `/Users/malicky/l/workspace-server` mirror the same layout). Paths in this file are repo-relative so they hold in any worktree. If a path moves again, update this table, the app `scripts/*` `PROJECT_DIR` defaults, `~/.config/opencode/opencode.json` (`ANDROID_PROJECT_DIR`), and the `android-build` skill.
 
-> **R4 (proposed).** The Node backend lives in `DOZO-Server/` as one package with two entrypoints: `src/connector.js` (public) and `src/dashboard.js` (dashboard API + SPA). `DOZO-Dashboard/` stays a frontend and gains no Fastify or better-sqlite3 dependency.
+> **R4 (server shipped 2026-09-25).** The Node backend lives in `DOZO-Server/` as one package with two entrypoints: `src/connector.js` (public) and `src/dashboard.js` (dashboard API + SPA). `DOZO-Dashboard/` stays a frontend and gains no Fastify or better-sqlite3 dependency.
 
 ---
 
@@ -42,7 +42,7 @@ All `/api/*` require header `X-Api-Token: <token>` (or `Authorization: Bearer <t
 `OPTIONS` preflight is unauthenticated. CORS origins from `DASHBOARD_ORIGIN` (default `*`);
 allowed headers `X-Api-Token`, `X-Connector-Secret`, `Content-Type`; methods `GET, POST, PUT, PATCH, OPTIONS`.
 
-> **R4 topology (proposed).** From Release Board R4 the redirect server becomes a connector that keeps only `GET /health` and `GET /r/:terminal_id`. The dashboard entrypoint, in the same package, owns every `/api/*` path, the database, and `GET /api/connector/config`. Paths do not change for consumers: the app's `api_base_url` points at the dashboard backend and its `redirect_base_url` points at the connector. The connector authenticates with `X-Connector-Secret` on `POST /scans` and `GET /api/connector/config`; the operator `X-Api-Token` covers the rest of `/api/*`.
+> **R4 topology (server shipped 2026-09-25).** From Release Board R4 the redirect server becomes a connector that keeps only `GET /health` and `GET /r/:terminal_id`. The dashboard entrypoint, in the same package, owns every `/api/*` path, the database, and `GET /api/connector/config`. Paths do not change for consumers: the app's `api_base_url` points at the dashboard backend and its `redirect_base_url` points at the connector. The connector authenticates with `X-Connector-Secret` on `POST /scans` and `GET /api/connector/config`; the operator `X-Api-Token` covers the rest of `/api/*`.
 
 ### Public
 
@@ -57,10 +57,6 @@ allowed headers `X-Api-Token`, `X-Connector-Secret`, `Content-Type`; methods `GE
 
 | Method | Path | Request body | Success | Errors |
 | --- | --- | --- | --- | --- |
-| POST | `/api/terminals/register` | `{device_serial, merchant_id, terminal_id?}` | `201 {code, terminal_id, expires_at, expires_in_seconds}` | `400 invalid_device_serial`, `404 unknown_merchant`, `503 code_generation_failed` _(deprecated — model-B)_ |
-| GET | `/api/terminals/pair-status/:code` | — | `202 {status:"pending", code, expires_at}` / `200 {status:"claimed", api_token, store}` | `404 {status:"unknown"}`, `410 {status:"expired"}` _(deprecated — model-B)_ |
-| POST | `/api/terminals/claim` | `{code, label?}` | `200 {status:"claimed", api_token, store}` | `400 invalid_code`, `404 unknown_code`, `410 expired_code` _(deprecated — model-B)_ |
-| POST | `/api/terminals/adopt` | `{terminal_id, merchant_id, label}` | `200 <config>` | `400`, `404 unknown_merchant` _(deprecated — model-B)_ |
 | POST | `/api/terminals/redeem` | `{code, device_serial, terminal_id?}` | `200 {status:"redeemed", api_token, store}` | `400 invalid_code`, `400 invalid_terminal_id`, `400 invalid_device_serial`, `404 unknown_code`, `410 expired_code`, `410 redeemed_code` |
 | POST | `/api/heartbeat` | `{terminal_id}` | `200 {ok, terminal_id, last_seen}` | `400`, `404 unknown_terminal` |
 | GET | `/api/terminals/offline` | — | `200 {threshold_seconds, cutoff, terminals:[{terminal_id, merchant_id, label, active, last_seen}]}` | — |
@@ -68,27 +64,28 @@ allowed headers `X-Api-Token`, `X-Connector-Secret`, `Content-Type`; methods `GE
 | PUT | `/api/terminals/:terminal_id/config` | `{display_enabled?, display_timeout_seconds?}` | `200 <config>` | `404` |
 | PATCH | `/api/terminals/:terminal_id` | `{active?, label?}` | `200 <config>` | `400`, `404 unknown_terminal` |
 | GET | `/api/merchants` | — | `200 [{merchant_id, google_place_id, created_at}]` | — |
-| GET | `/api/merchants/:id/terminals` | — | `200 [{terminal_id, label, active, last_seen, scan_count, last_scan_at}]` | `404` |
+| GET | `/api/merchants/:id/terminals` | — | `200 [{terminal_id, label, active, last_seen, scan_count, last_scan_at, static_review_url}]` | `404` |
 | GET | `/api/merchants/:id/summary` | query `?since=&until=` (optional) | `200 {merchant_id, total_scans, terminal_count, scans_by_terminal:[{terminal_id, label, scan_count}]}` | `404` |
 | GET | `/api/merchants/:id/scans` | query `?terminal_id=&since=&until=&limit=` (default 100, max 1000) | `200 [{id, terminal_id, scanned_at, user_agent}]` | `404` |
 | GET | `/api/merchants/:id/scans/series` | query `?since=&until=&bucket=day` | `200 [{day, count}]` | `404` |
-| GET | `/api/merchants/:id/registers` | — | `200 [{label, terminal_id, active, last_seen}]` (`terminal_id` null when unoccupied) | `404` |
+| GET | `/api/merchants/:id/registers` | — | `200 [{label, terminal_id, active, last_seen, static_review_url}]` (`terminal_id` and `static_review_url` null when unoccupied; `active` derived from the bound terminal) | `404` |
 | POST | `/api/merchants/:id/registers/:label/setup-code` | — | `201 {code, merchant_id, label, expires_at, expires_in_seconds}` | `400 invalid_label`, `404 unknown_merchant`, `503 code_generation_failed` |
 | PUT | `/api/merchants/:id/google-place-id` | `{google_place_id}` | `200 {merchant_id, google_place_id}` | `400`, `404` |
 | GET | `/api/connector/config` | — | `200 {generated_at, redirect_base_url, terminals:[{terminal_id, merchant_id, google_place_id, label, active}]}` | `401` |
 | POST | `/scans` | `{event_id, terminal_id, merchant_id, scanned_at, user_agent}` | `202 {status:"accepted"}` or `202 {status:"duplicate"}` | `400 malformed`, `401 unauthorized` |
 
-The four legacy pairing endpoints above — `register`, `pair-status/:code`, `claim`, and `adopt` — are replaced by `setup-code` + `redeem` (model-B) and will be removed in `feat/model-b-retire`.
+The four legacy pairing endpoints (`register`, `pair-status/:code`, `claim`, `adopt`) were removed on the server in `feat/model-b-retire` (commit `eeac451`). The Android app still ships an `AdoptScreen` that calls the removed `adopt` route; removing it is App R1 close-out work.
 
 Notes:
 
-- **R1 (shipped 2026-09-24).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. `register`, `pair-status`, `claim`, and `adopt` are **deprecated by R1**; `feat/model-b-retire` (Step 4) removes them once the app and dashboard round-trip a setup code for a new register (blocked on R7). Redeeming a code for an occupied register deactivates the prior terminal.
-- **R2 (proposed).** `POST /scans` is the connector ingest on the dashboard entrypoint. It authenticates with `X-Connector-Secret`, is idempotent on `event_id`, returns `202` for both a new and a duplicate event, and never returns `404` (an unknown terminal is logged and dropped).
-- **R3 (proposed).** `PATCH /api/terminals/:id` owns `active` and `label`; `PUT /api/terminals/:id/config` keeps `display_enabled` and `display_timeout_seconds`. Both responses gain `static_review_url`.
-- **R4 (proposed).** One backend package, two entrypoints, two containers per client. The connector keeps `/health`, `/r/:id`, the file-backed spool, and a last-known config cache; the dashboard entrypoint owns the DB and all `/api/*`.
-- **R5 (proposed).** The series bucket groups `scanned_at` by the Europe/Warsaw day; `scanned_at` stays an ISO UTC timestamp.
-- **R6 (proposed).** `api_token` becomes per-terminal: issued at `claim` / `redeem`, hashed at rest, validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs.
-- **R7 (proposed).** A `registers` table lets a register exist unoccupied (`terminal_id` null). `GET /registers` returns every register, `setup-code` finds or creates it, and `redeem` binds the terminal and deactivates the prior one.
+- **R1 (server shipped 2026-09-24; retire shipped 2026-09-25).** `POST /api/merchants/:id/registers/:label/setup-code` and `POST /api/terminals/redeem` are the model-B pairing flow. The legacy `register`, `pair-status`, `claim`, and `adopt` routes were removed in `eeac451`; the app-side `adopt` removal is pending. Redeeming a code for an occupied register deactivates the prior terminal.
+- **R2 (server shipped 2026-09-25).** `POST /scans` is the connector ingest on the dashboard entrypoint. It authenticates with `X-Connector-Secret`, is idempotent on `event_id`, returns `202` for both a new and a duplicate event, and never returns `404` (an unknown terminal is logged and dropped). The dashboard ingest and its own DB are still pending.
+- **R3 (server shipped 2026-09-25).** `PATCH /api/terminals/:id` owns `active` and `label`; `PUT /api/terminals/:id/config` keeps `display_enabled` and `display_timeout_seconds`. `config`, `store`, and the two dashboard list rows (§8) carry `static_review_url`, computed on read. Dashboard and app consumers pending.
+- **R4 (server shipped 2026-09-25).** One backend package, two entrypoints, two containers per client. The connector keeps `/health`, `/r/:id`, the file-backed spool, and a last-known config cache; the dashboard entrypoint owns the DB and all `/api/*`. App defaults and the dashboard SPA are pending.
+- **R5 (server shipped 2026-09-25).** The series endpoint groups `scanned_at` by the Europe/Warsaw day and returns `[{day, count}]`; `scanned_at` stays an ISO UTC timestamp. The dashboard renders `day` verbatim and renders other timestamps in browser-local time.
+- **R6 (server shipped 2026-09-25).** `api_token` is per-terminal: issued at `redeem`, hashed at rest (`terminals.api_token_hash`, migration v6), and validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs. The operator token is unchanged. App-side re-pair pending.
+- **R7 (server shipped 2026-09-25).** A `registers` table lets a register exist unoccupied (`terminal_id` null). `GET /registers` returns every register, `setup-code` finds or creates it, and `redeem` binds the terminal and deactivates the prior one. `registers.label` is the label source of truth; `registers.active` is derived from the bound terminal.
+- **Labels (R3/R7, decided 2026-09-25).** `registers.label` is the source of truth. `PATCH /api/terminals/:id` with a `label` syncs the bound register row and the terminal cache in one transaction; a collision with another register for the same merchant returns `400 label_in_use`, and a terminal with no register row gains one.
 
 Shape aliases:
 
@@ -100,16 +97,17 @@ store   = {terminal_id, merchant_id, google_place_id, label, redirect_url,
            static_review_url}
 ```
 
-`redirect_base_url` is the redirect domain (no `/r/:id`); `store.redirect_url` is the full `{domain}/r/{terminal_id}`. `static_review_url` is `{GOOGLE_REVIEW_BASE}?placeid={google_place_id}` built at setup time.
+`redirect_base_url` is the redirect domain (no `/r/:id`); `store.redirect_url` is the full `{domain}/r/{terminal_id}`. `static_review_url` is `{GOOGLE_REVIEW_BASE}?placeid={google_place_id}`, computed on read from the current `google_place_id` (it tracks a `PUT /api/merchants/:id/google-place-id` change; "static" means a direct Google URL, not a frozen one). It appears on `config`, `store`, `GET /api/merchants/:id/terminals`, and `GET /api/merchants/:id/registers`. The connector derives it from its own cached `google_place_id` and does not receive it in `/api/connector/config`.
 
 ---
 
-## 4. Database schema (SQLite, `PRAGMA user_version` migrations v1–v5)
+## 4. Database schema (SQLite, `PRAGMA user_version` migrations v1–v6)
 
 ```
 merchants(merchant_id PK, google_place_id NOT NULL, created_at NOT NULL)
 terminals(terminal_id PK, merchant_id FK, label, active INT DEFAULT 1, last_seen,
-          created_at NOT NULL, display_enabled INT DEFAULT 1, display_timeout_seconds INT DEFAULT 15)
+          created_at NOT NULL, display_enabled INT DEFAULT 1, display_timeout_seconds INT DEFAULT 15,
+          api_token_hash TEXT UNIQUE NULL)
 scans(id INTEGER PK AUTOINCREMENT, terminal_id FK, scanned_at, user_agent, event_id TEXT UNIQUE)
 pairing_codes(code PK, device_serial, merchant_id FK, terminal_id,
               created_at, expires_at, claimed_at)
@@ -120,9 +118,9 @@ registers(register_id PK, merchant_id FK, label, terminal_id FK NULL,
 
 Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `ChIJN1t_tDeuEmsRUsoyG83frY4`), terminal `DEMOTERM01`.
 
-> **R4 (proposed).** The dashboard entrypoint owns these tables per client. The connector keeps only a file-backed scan spool (R2/R4) and no longer owns the `scans` table as the source of truth, though it dual-writes until ingest is proven.
+> **R4 (server shipped 2026-09-25).** The dashboard entrypoint owns these tables per client. The connector keeps only a file-backed scan spool (R2/R4) and no longer owns the `scans` table as the source of truth, though it dual-writes until ingest is proven.
 >
-> **R2/R7 (proposed).** Migration v4 adds `scans.event_id` (unique, the dedupe key). Migration v5 adds `registers` (issue #26). `terminals.terminal_id` stays the device key; `registers.terminal_id` is null until redemption.
+> **Migrations (server shipped 2026-09-25).** v3 adds `setup_codes`; v4 adds `scans.event_id` (unique, the dedupe key); v5 adds `registers`; v6 adds `terminals.api_token_hash` (unique). `terminals.terminal_id` stays the device key; `registers.terminal_id` is null until redemption.
 
 ---
 
@@ -154,9 +152,9 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 | `pin` | string | `0000` | settings PIN |
 | `pairing_code` | string | — | last code, for config re-sync |
 
-> **R4 (proposed).** The keys and types do not change. `api_base_url` points at the dashboard backend and `redirect_base_url` at the connector; this is a deployment/default change, recorded in App Sprint 4.
+> **R4 (server shipped 2026-09-25; app defaults pending).** The keys and types do not change. `api_base_url` points at the dashboard backend and `redirect_base_url` at the connector; this is a deployment/default change, recorded in App Sprint 4.
 >
-> **R6 (proposed).** `api_token` holds the per-terminal token returned by `claim` / `redeem` instead of the shared env token. A `401` clears it and prompts re-pair.
+> **R6 (server shipped 2026-09-25; app pending).** `api_token` holds the per-terminal token returned by `redeem` instead of the shared env token. A `401` clears it and prompts re-pair.
 
 ---
 
@@ -167,19 +165,20 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 - Manual: Settings → **Sync now** / **Send heartbeat now**.
 - Both skip silently when `terminal_id` or token is absent. Server marks a terminal offline after 2 missed 12 h pings (24 h).
 
-> **R4 (proposed).** Both calls resolve to the dashboard backend through `api_base_url`; no path change.
+> **R4 (server shipped 2026-09-25).** Both calls resolve to the dashboard backend through `api_base_url`; no path change.
 
 ---
 
 ## 8. Dashboard contract
 
-- Env `VITE_API_BASE_URL` (default `http://130.162.185.144:3000`); token entered on the login screen.
+- SPA base URL precedence: saved `localStorage`, then `VITE_API_BASE_URL` (build/dev override), then `window.location.origin`. Token entered on the login screen.
 - `localStorage` keys: `dozo.dashboard.apiBaseUrl`, `dozo.dashboard.apiToken`.
+- The dashboard entrypoint serves `GET /health` on the SPA's own origin, so "Test connection" targets its own origin.
 - Consumes: `/health`, `/api/merchants`, `/api/merchants/:id/terminals|summary|scans|registers`, `PUT /api/merchants/:id/google-place-id`, `POST /api/merchants/:id/registers/:label/setup-code`, `/api/terminals/offline`.
-- **R3/R5 (proposed):** the dashboard also calls `PATCH /api/terminals/:id` and `GET /api/merchants/:id/scans/series`.
-- **R1 (shipped):** the dashboard consumes `registers` + `setup-code`; `adopt` is deprecated and unused.
+- **R3/R5 (server shipped 2026-09-25; dashboard pending):** the dashboard also calls `PATCH /api/terminals/:id` and `GET /api/merchants/:id/scans/series`, and displays `static_review_url` per row. Series `day` strings render verbatim (Europe/Warsaw); other timestamps render browser-local.
+- **R1 (shipped):** the dashboard consumes `registers` + `setup-code`; `adopt` is removed.
 
-> **R4 (proposed).** The dashboard entrypoint serves the SPA and the API on the same origin, so the SPA defaults `apiBaseUrl` to `window.location.origin`; the token stays.
+> **R4 (server shipped 2026-09-25).** The dashboard entrypoint serves the SPA and the API on the same origin, so the SPA defaults `apiBaseUrl` to `window.location.origin`; the token stays.
 
 ---
 
@@ -206,7 +205,7 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 | Connector | `DASHBOARD_INGEST_URL` | `http://localhost:3000` (dashboard backend base; posts to `{url}/scans`, reads `{url}/api/connector/config`) |
 | Connector | `DASHBOARD_CONNECTOR_SECRET` | — (sent as `X-Connector-Secret`) |
 | Dashboard | `DASHBOARD_CONNECTOR_SECRET` | — (validates `X-Connector-Secret`) |
-| Dashboard | `VITE_API_BASE_URL` | `http://130.162.185.144:3000` |
+| Dashboard | `VITE_API_BASE_URL` | unset; the SPA uses `window.location.origin` (dev override) |
 
 ---
 
