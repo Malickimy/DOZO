@@ -21,6 +21,20 @@ export interface Terminal {
   last_seen: string | null
   scan_count: number
   last_scan_at: string | null
+  static_review_url?: string | null
+}
+
+/** Per-terminal configuration returned by the config/lifecycle endpoints. */
+export interface TerminalConfig {
+  terminal_id: string
+  merchant_id: string
+  google_place_id: string | null
+  label: string | null
+  active: boolean
+  display_enabled: boolean
+  display_timeout_seconds: number
+  redirect_base_url: string
+  static_review_url: string | null
 }
 
 export interface ScansByTerminal {
@@ -76,6 +90,7 @@ export interface Register {
   terminal_id: string | null
   active: ActiveFlag
   last_seen: string | null
+  static_review_url?: string | null
 }
 
 export interface SetupCode {
@@ -143,6 +158,20 @@ export function isNotAvailable(error: unknown): boolean {
   return isApiError(error) && error.isNotFound
 }
 
+/**
+ * The server's machine-readable `error` code from a JSON body (e.g.
+ * `label_in_use`, `inactive_terminal`), or `null` when absent.
+ */
+export function errorCode(error: unknown): string | null {
+  if (!isApiError(error)) return null
+  const body = error.body
+  if (body && typeof body === 'object' && 'error' in body) {
+    const value = (body as { error: unknown }).error
+    if (typeof value === 'string' && value) return value
+  }
+  return null
+}
+
 export function normalizeBaseUrl(baseUrl: string): string {
   const trimmed = (baseUrl ?? '').trim()
   if (!trimmed) return ''
@@ -179,6 +208,15 @@ export interface ApiClient {
   listRegisters: (merchantId: string) => Promise<Register[]>
   getSummary: (merchantId: string) => Promise<MerchantSummary>
   listScans: (merchantId: string, query?: ScansQuery) => Promise<Scan[]>
+  getTerminalConfig: (id: string) => Promise<TerminalConfig>
+  patchTerminal: (
+    id: string,
+    fields: { active?: boolean; label?: string },
+  ) => Promise<TerminalConfig>
+  putTerminalConfig: (
+    id: string,
+    fields: { display_enabled?: boolean; display_timeout_seconds?: number },
+  ) => Promise<TerminalConfig>
   setGooglePlaceId: (merchantId: string, googlePlaceId: string) => Promise<{ merchant_id: string; google_place_id: string | null }>
   claimTerminal: (code: string, label?: string) => Promise<ClaimResult>
   issueSetupCode: (merchantId: string, label: string) => Promise<SetupCode>
@@ -235,6 +273,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   const merchantPath = (merchantId: string, suffix = '') =>
     `/api/merchants/${encodeURIComponent(merchantId)}${suffix}`
 
+  const terminalPath = (id: string, suffix = '') =>
+    `/api/terminals/${encodeURIComponent(id)}${suffix}`
+
   return {
     baseUrl,
     token,
@@ -247,6 +288,17 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       request<Scan[]>(
         merchantPath(merchantId, `/scans${buildQuery({ ...query })}`),
       ),
+    getTerminalConfig: (id) => request<TerminalConfig>(terminalPath(id, '/config')),
+    patchTerminal: (id, fields) =>
+      request<TerminalConfig>(terminalPath(id), {
+        method: 'PATCH',
+        body: JSON.stringify(fields),
+      }),
+    putTerminalConfig: (id, fields) =>
+      request<TerminalConfig>(terminalPath(id, '/config'), {
+        method: 'PUT',
+        body: JSON.stringify(fields),
+      }),
     setGooglePlaceId: (merchantId, googlePlaceId) =>
       request<{ merchant_id: string; google_place_id: string | null }>(
         merchantPath(merchantId, '/google-place-id'),
