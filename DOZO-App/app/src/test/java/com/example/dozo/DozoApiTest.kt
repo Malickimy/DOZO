@@ -83,6 +83,27 @@ class DozoApiTest {
     }
 
     @Test
+    fun heartbeatOkMapsToOkResult() {
+        assertEquals(
+            HeartbeatResult.Ok,
+            parseHeartbeatResult(200, """{"ok":true,"terminal_id":"DX8000SN000123"}""")
+        )
+    }
+
+    @Test
+    fun heartbeatUnauthorizedMapsToUnauthorizedResult() {
+        assertEquals(
+            HeartbeatResult.Unauthorized,
+            parseHeartbeatResult(401, """{"error":"unauthorized"}""")
+        )
+    }
+
+    @Test
+    fun heartbeatServerErrorMapsToFailedResult() {
+        assertEquals(HeartbeatResult.Failed, parseHeartbeatResult(500, ""))
+    }
+
+    @Test
     fun missingOptionalStoreFieldsBecomeNull() {
         val store = parseStore(
             JSONObject("""{"terminal_id":"DX8000SN000123","merchant_id":"m","redirect_url":"u"}""")

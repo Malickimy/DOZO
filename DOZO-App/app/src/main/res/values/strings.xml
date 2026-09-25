@@ -90,6 +90,7 @@
     <string name="status_sync_done">Konfiguracja zsynchronizowana</string>
     <string name="status_terminal_not_found">Nie znaleziono terminala</string>
     <string name="status_sync_failed">Synchronizacja nie powiodła się</string>
+    <string name="status_session_expired">Sesja wygasła. Ponów parowanie terminala.</string>
     <string name="status_sending_heartbeat">Wysyłanie sygnału…</string>
     <string name="status_heartbeat_sent">Sygnał wysłany</string>
     <string name="status_heartbeat_failed">Sygnał nie powiódł się</string>

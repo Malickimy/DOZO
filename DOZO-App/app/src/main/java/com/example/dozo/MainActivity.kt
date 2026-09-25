@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -55,6 +56,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         uiState = mapped.toUiState()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
+        if (mapped is MappedState.Idle &&
+            !DozoConfig.terminalId(this).isNullOrBlank() &&
+            !DozoConfig.hasStoredApiToken(this)
+        ) {
+            appScreen = AppScreen.SetupCode
+        }
         setContent {
             DozoTheme {
                 when (appScreen) {
@@ -255,8 +262,10 @@ class MainActivity : ComponentActivity() {
                         getString(R.string.status_sync_done)
                     }
                     ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
-                    // TODO(R6): on 401 clear api_token and route to pairing once Server Sprint 7 lands.
-                    ConfigResult.Unauthorized -> getString(R.string.status_sync_failed)
+                    ConfigResult.Unauthorized -> {
+                        onUnauthorized()
+                        getString(R.string.status_session_expired)
+                    }
                     ConfigResult.Failed -> getString(R.string.status_sync_failed)
                 }
             } catch (_: Exception) {
@@ -275,13 +284,29 @@ class MainActivity : ComponentActivity() {
         manualStatus = getString(R.string.status_sending_heartbeat)
         lifecycleScope.launch {
             manualStatus = try {
-                val ok = DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
-                    .heartbeat(terminalId)
-                if (ok) getString(R.string.status_heartbeat_sent) else getString(R.string.status_heartbeat_failed)
+                when (
+                    DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
+                        .heartbeat(terminalId)
+                ) {
+                    HeartbeatResult.Ok -> getString(R.string.status_heartbeat_sent)
+                    HeartbeatResult.Unauthorized -> {
+                        onUnauthorized()
+                        getString(R.string.status_session_expired)
+                    }
+                    HeartbeatResult.Failed -> getString(R.string.status_heartbeat_failed)
+                }
             } catch (_: Exception) {
                 getString(R.string.status_heartbeat_failed)
             }
         }
+    }
+
+    private fun onUnauthorized() {
+        DozoConfig.clearApiToken(this)
+        if (uiState is UiState.Idle) {
+            appScreen = AppScreen.SetupCode
+        }
+        Toast.makeText(this, R.string.status_session_expired, Toast.LENGTH_LONG).show()
     }
 
     private fun currentResultCode(): Int = when (uiState) {
