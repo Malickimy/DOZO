@@ -67,7 +67,7 @@
     "mobile-mcp": {
       "type": "local",
       "command": ["npx", "-y", "@mobilenext/mobile-mcp@latest"],
-      "enabled": false,
+      "enabled": true,
       "environment": {
         "MOBILEMCP_DISABLE_TELEMETRY": "1",
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -96,7 +96,7 @@
         "run",
         "server.py"
       ],
-      "enabled": false,
+      "enabled": true,
       "environment": {
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -104,7 +104,7 @@
     "uiautomator2-mcp-server": {
       "type": "local",
       "command": ["/Users/malicky/.local/bin/uiautomator2-mcp-server", "stdio"],
-      "enabled": false,
+      "enabled": true,
       "environment": {
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -113,14 +113,14 @@
       "type": "local",
       "command": [
         "/Users/malicky/.local/bin/uv",
-        "--directory",
-        "/Users/malicky/l/android-builder-mcp",
         "run",
-        "server.py"
+        "--project",
+        "/Users/malicky/l/android-builder-mcp",
+        "/Users/malicky/l/android-builder-mcp/server.py"
       ],
-      "enabled": false,
+      "enabled": true,
       "environment": {
-        "ANDROID_PROJECT_DIR": ".",
+        "ANDROID_PROJECT_DIR": "./DOZO-App",
         "JAVA_HOME": "/Users/malicky/Library/Java/JavaVirtualMachines/openjdk-25.0.1/Contents/Home",
         "PATH": "/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -139,12 +139,12 @@
     "sqlite_*": false,
     "docker_*": false,
     "ssh_*": false,
-    "mobile-mcp_*": false,
+    "mobile-mcp_*": true,
     "github_*": true,
     "maps_*": false,
-    "android-mcp-server_*": false,
-    "uiautomator2-mcp-server_*": false,
-    "android-builder-mcp_*": false,
+    "android-mcp-server_*": true,
+    "uiautomator2-mcp-server_*": true,
+    "android-builder-mcp_*": true,
     "jetbrains-psi-mcp-server_*": false
   }
 }
