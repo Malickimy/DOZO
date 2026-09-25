@@ -23,6 +23,19 @@ export function registerModelBRoutes(app) {
   const findSetupCode = db.prepare('SELECT * FROM setup_codes WHERE code = ?');
   const setupCodeExists = db.prepare('SELECT 1 FROM setup_codes WHERE code = ?');
   const markRedeemed = db.prepare('UPDATE setup_codes SET redeemed_at = ? WHERE code = ?');
+  // R7: a register can exist unoccupied. `setup-code` finds-or-creates it and
+  // `redeem` binds the terminal, deactivating whichever terminal held it before.
+  const ensureRegister = db.prepare(
+    `INSERT OR IGNORE INTO registers (merchant_id, label, terminal_id, active, created_at)
+     VALUES (?, ?, NULL, 1, ?)`,
+  );
+  const getRegister = db.prepare(
+    'SELECT register_id, terminal_id FROM registers WHERE merchant_id = ? AND label = ?',
+  );
+  const bindRegister = db.prepare(
+    'UPDATE registers SET terminal_id = ?, active = 1 WHERE register_id = ?',
+  );
+  const deactivateTerminal = db.prepare('UPDATE terminals SET active = 0 WHERE terminal_id = ?');
   const deactivateRegister = db.prepare(
     `UPDATE terminals
         SET active = 0
@@ -71,6 +84,7 @@ export function registerModelBRoutes(app) {
 
     const createdAt = now();
     const expiresAt = new Date(createdAt.getTime() + config.pairingTtlMs);
+    ensureRegister.run(merchantId, label, createdAt.toISOString());
     insertSetupCode.run(
       code,
       merchantId,
@@ -123,8 +137,14 @@ export function registerModelBRoutes(app) {
 
     const redeemedAt = now().toISOString();
     db.transaction(() => {
+      ensureRegister.run(record.merchant_id, record.label, redeemedAt);
+      const register = getRegister.get(record.merchant_id, record.label);
+      if (register.terminal_id && register.terminal_id !== terminalId) {
+        deactivateTerminal.run(register.terminal_id);
+      }
       deactivateRegister.run(record.merchant_id, record.label, terminalId);
       upsertTerminal.run(terminalId, record.merchant_id, record.label, redeemedAt);
+      bindRegister.run(terminalId, register.register_id);
       markRedeemed.run(redeemedAt, code);
     })();
 

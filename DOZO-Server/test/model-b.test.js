@@ -135,6 +135,45 @@ test('redeem deactivates the prior active terminal on that register (device swap
     .get('NEWDEVICE01');
   assert.equal(replacement.label, 'Front counter');
   assert.equal(replacement.active, 1);
+
+  const register = db
+    .prepare('SELECT terminal_id, active FROM registers WHERE merchant_id = ? AND label = ?')
+    .get('M1', 'Front counter');
+  assert.equal(register.terminal_id, 'NEWDEVICE01', 'the register now points at the replacement');
+  assert.equal(register.active, 1);
+});
+
+test('setup-code creates an unoccupied register when none exists', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const res = await issueSetupCode(app, { label: 'Lane 9' });
+  assert.equal(res.statusCode, 201);
+
+  const register = db
+    .prepare('SELECT merchant_id, label, terminal_id, active FROM registers WHERE merchant_id = ? AND label = ?')
+    .get('M1', 'Lane 9');
+  assert.equal(register.terminal_id, null, 'the register exists unoccupied before redemption');
+  assert.equal(register.active, 1);
+});
+
+test('setup-code reuses an existing register instead of creating a duplicate', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  await issueSetupCode(app, { label: 'Lane 9' });
+  await issueSetupCode(app, { label: 'Lane 9' });
+
+  const count = db
+    .prepare('SELECT COUNT(*) AS total FROM registers WHERE merchant_id = ? AND label = ?')
+    .get('M1', 'Lane 9');
+  assert.equal(count.total, 1);
 });
 
 test('redeem accepts an explicit terminal_id (uppercased)', async (t) => {

@@ -11,13 +11,14 @@ export function registerRegisterRoutes(app) {
   const { db, config, now } = app;
 
   const getMerchant = db.prepare('SELECT merchant_id FROM merchants WHERE merchant_id = ?');
+  // A register is first-class: it can exist unoccupied (terminal_id null), and
+  // last_seen is derived from whichever terminal is currently bound.
   const listRegisters = db.prepare(
-    `SELECT terminal_id, label, active, last_seen
-       FROM terminals
-      WHERE merchant_id = ?
-        AND label IS NOT NULL
-        AND TRIM(label) <> ''
-      ORDER BY label, terminal_id`,
+    `SELECT r.label, r.terminal_id, r.active, t.last_seen
+       FROM registers r
+       LEFT JOIN terminals t ON t.terminal_id = r.terminal_id
+      WHERE r.merchant_id = ?
+      ORDER BY r.label, r.terminal_id`,
   );
   const getTerminal = db.prepare(
     `SELECT t.terminal_id, t.merchant_id, t.label, t.active,

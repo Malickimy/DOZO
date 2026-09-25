@@ -66,6 +66,29 @@ const MIGRATIONS = [
         ON setup_codes (expires_at);
     `,
   },
+  {
+    version: 5,
+    sql: `
+      CREATE TABLE registers (
+        register_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        merchant_id TEXT NOT NULL REFERENCES merchants(merchant_id),
+        label       TEXT NOT NULL,
+        terminal_id TEXT REFERENCES terminals(terminal_id),
+        active      INTEGER NOT NULL DEFAULT 1,
+        created_at  TEXT NOT NULL
+      );
+
+      CREATE UNIQUE INDEX idx_registers_merchant_label
+        ON registers (merchant_id, label);
+
+      -- Backfill: existing labeled terminals become occupied registers so the
+      -- register list does not lose them when it moves off the terminals table.
+      INSERT OR IGNORE INTO registers (merchant_id, label, terminal_id, active, created_at)
+      SELECT merchant_id, TRIM(label), terminal_id, active, created_at
+        FROM terminals
+       WHERE label IS NOT NULL AND TRIM(label) <> '';
+    `,
+  },
 ];
 
 export function openDatabase(dbPath = ':memory:') {

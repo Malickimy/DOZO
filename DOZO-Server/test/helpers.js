@@ -43,3 +43,20 @@ export function makeTestContext({ env = {}, startTime = '2026-01-01T00:00:00.000
 export function authHeaders(token = TEST_TOKEN) {
   return { 'x-api-token': token };
 }
+
+export function insertRegister(
+  db,
+  {
+    registerId = null,
+    merchantId = 'M1',
+    label,
+    terminalId = null,
+    active = 1,
+    createdAt = '2026-01-01T00:00:00.000Z',
+  } = {},
+) {
+  db.prepare(
+    `INSERT INTO registers (register_id, merchant_id, label, terminal_id, active, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(registerId, merchantId, label, terminalId, active, createdAt);
+}
