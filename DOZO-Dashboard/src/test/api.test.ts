@@ -144,6 +144,41 @@ describe('createApiClient', () => {
     expect(errorCode(missing)).toBe('unknown_terminal')
   })
 
+  it('passes since/until to the summary query', async () => {
+    const summary = { merchant_id: 'm1', total_scans: 0, terminal_count: 0, scans_by_terminal: [] }
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(summary)))
+    await client.getSummary('merchant one', {
+      since: '2026-09-01T00:00:00.000Z',
+      until: '2026-09-24T23:59:59.999Z',
+    })
+    const [url] = fetchMock.mock.calls[0] as [string]
+    const parsed = new URL(url)
+    expect(parsed.pathname).toBe('/api/merchants/merchant%20one/summary')
+    expect(parsed.searchParams.get('since')).toBe('2026-09-01T00:00:00.000Z')
+    expect(parsed.searchParams.get('until')).toBe('2026-09-24T23:59:59.999Z')
+  })
+
+  it('GETs the daily scan series with since/until/bucket', async () => {
+    const series = [
+      { day: '2026-09-24', count: 2 },
+      { day: '2026-09-25', count: 1 },
+    ]
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(series)))
+    const result = await client.getScanSeries('m1', {
+      since: '2026-09-01T00:00:00.000Z',
+      until: '2026-09-25T23:59:59.999Z',
+      bucket: 'day',
+    })
+    expect(result).toEqual(series)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const parsed = new URL(url)
+    expect(parsed.pathname).toBe('/api/merchants/m1/scans/series')
+    expect(parsed.searchParams.get('since')).toBe('2026-09-01T00:00:00.000Z')
+    expect(parsed.searchParams.get('until')).toBe('2026-09-25T23:59:59.999Z')
+    expect(parsed.searchParams.get('bucket')).toBe('day')
+    expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
+  })
+
   it('POSTs the setup code with no body and encodes the label', async () => {
     const setup = {
       code: 'ABC123',
