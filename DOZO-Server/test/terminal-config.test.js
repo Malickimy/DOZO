@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeTestContext, authHeaders, TEST_TERMINAL_ID, TEST_PLACE_ID } from './helpers.js';
+import {
+  makeTestContext,
+  authHeaders,
+  insertRegister,
+  TEST_TERMINAL_ID,
+  TEST_PLACE_ID,
+} from './helpers.js';
 
 test('migration adds display defaults to existing terminals', async (t) => {
   const { app, db } = makeTestContext();
@@ -247,6 +253,84 @@ test('PATCH /api/terminals/:id 404s for an unknown terminal', async (t) => {
   });
   assert.equal(res.statusCode, 404);
   assert.equal(res.json().error, 'unknown_terminal');
+});
+
+test('PATCH label renames the bound register (R7 label source of truth)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  insertRegister(db, { label: 'Front counter', terminalId: TEST_TERMINAL_ID });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { label: 'Front desk' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().label, 'Front desk');
+
+  const row = db
+    .prepare('SELECT label FROM registers WHERE terminal_id = ?')
+    .get(TEST_TERMINAL_ID);
+  assert.equal(row.label, 'Front desk');
+
+  const list = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/registers',
+    headers: authHeaders(),
+  });
+  assert.equal(list.json()[0].label, 'Front desk');
+});
+
+test('PATCH label creates a register when the terminal has none', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { label: 'Back office' },
+  });
+  assert.equal(res.statusCode, 200);
+
+  const row = db
+    .prepare('SELECT label, terminal_id FROM registers WHERE merchant_id = ?')
+    .get('M1');
+  assert.equal(row.label, 'Back office');
+  assert.equal(row.terminal_id, TEST_TERMINAL_ID);
+});
+
+test('PATCH label rejects a collision with another register', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  insertRegister(db, { label: 'Front counter', terminalId: TEST_TERMINAL_ID });
+  insertRegister(db, { label: 'Back counter' });
+
+  const res = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { label: 'Back counter' },
+  });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.json().error, 'label_in_use');
+
+  const row = db
+    .prepare('SELECT label FROM terminals WHERE terminal_id = ?')
+    .get(TEST_TERMINAL_ID);
+  assert.equal(row.label, 'Front counter');
 });
 
 test('CORS preflight is answered without a token and allows dashboard headers', async (t) => {
