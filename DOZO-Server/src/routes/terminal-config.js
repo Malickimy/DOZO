@@ -29,7 +29,7 @@ export function configPayload(row, config) {
 }
 
 export function registerTerminalConfigRoutes(app) {
-  const { db, config } = app;
+  const { db, config, now } = app;
 
   const getTerminal = db.prepare(
     `SELECT t.terminal_id, t.merchant_id, t.label, t.active,
@@ -47,6 +47,19 @@ export function registerTerminalConfigRoutes(app) {
     `UPDATE terminals
         SET active = ?, label = ?
       WHERE terminal_id = ?`,
+  );
+  // R7: `registers.label` is the source of truth, so a PATCH label renames the
+  // bound register (and creates one when the terminal has none).
+  const findRegisterForTerminal = db.prepare(
+    'SELECT register_id FROM registers WHERE merchant_id = ? AND terminal_id = ?',
+  );
+  const findRegisterByLabel = db.prepare(
+    'SELECT register_id FROM registers WHERE merchant_id = ? AND label = ?',
+  );
+  const renameRegister = db.prepare('UPDATE registers SET label = ? WHERE register_id = ?');
+  const insertRegister = db.prepare(
+    `INSERT INTO registers (merchant_id, label, terminal_id, active, created_at)
+     VALUES (?, ?, ?, 1, ?)`,
   );
 
   app.get('/api/terminals/:terminal_id/config', async (request, reply) => {
@@ -120,7 +133,24 @@ export function registerTerminalConfigRoutes(app) {
       label = body.label.trim();
     }
 
-    updateLifecycle.run(active, label, terminalId);
+    if (label !== terminal.label) {
+      const bound = findRegisterForTerminal.get(terminal.merchant_id, terminalId);
+      const claimed = findRegisterByLabel.get(terminal.merchant_id, label);
+      if (claimed && (!bound || claimed.register_id !== bound.register_id)) {
+        return reply.code(400).send({ error: 'label_in_use', label });
+      }
+      db.transaction(() => {
+        if (bound) {
+          renameRegister.run(label, bound.register_id);
+        } else {
+          insertRegister.run(terminal.merchant_id, label, terminalId, now().toISOString());
+        }
+        updateLifecycle.run(active, label, terminalId);
+      })();
+    } else {
+      updateLifecycle.run(active, label, terminalId);
+    }
+
     return configPayload(getTerminal.get(terminalId), config);
   });
 }

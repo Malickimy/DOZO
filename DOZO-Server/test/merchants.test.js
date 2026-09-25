@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeTestContext, authHeaders, TEST_TERMINAL_ID } from './helpers.js';
+import {
+  makeTestContext,
+  authHeaders,
+  TEST_TERMINAL_ID,
+  TEST_PLACE_ID,
+} from './helpers.js';
 
 function insertScan(db, { id, terminalId = TEST_TERMINAL_ID, scannedAt, userAgent = 'UA' }) {
   db.prepare(
@@ -54,6 +59,10 @@ test('GET /api/merchants/:id/terminals reports scan_count and last_scan_at', asy
   assert.equal(terminals[0].active, true);
   assert.equal(terminals[0].scan_count, 2);
   assert.equal(terminals[0].last_scan_at, '2026-01-01T02:00:00.000Z');
+  assert.equal(
+    terminals[0].static_review_url,
+    `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`,
+  );
 });
 
 test('GET /api/merchants/:id/terminals returns zero counts without scans', async (t) => {

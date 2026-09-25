@@ -5,7 +5,10 @@ import {
   authHeaders,
   insertRegister,
   TEST_TERMINAL_ID,
+  TEST_PLACE_ID,
 } from './helpers.js';
+
+const STATIC_REVIEW_URL = `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`;
 
 function insertTerminal(
   db,
@@ -53,18 +56,21 @@ test('GET /api/merchants/:id/registers lists every register, occupied or not', a
       terminal_id: 'TERM0004',
       active: false,
       last_seen: '2026-01-01T05:00:00.000Z',
+      static_review_url: STATIC_REVIEW_URL,
     },
     {
       label: 'Front counter',
       terminal_id: TEST_TERMINAL_ID,
       active: true,
       last_seen: null,
+      static_review_url: STATIC_REVIEW_URL,
     },
     {
       label: 'Spare till',
       terminal_id: null,
-      active: true,
+      active: false,
       last_seen: null,
+      static_review_url: null,
     },
   ]);
 });

@@ -7,6 +7,8 @@
  *   GET /api/merchants/:merchant_id/scans
  *   PUT /api/merchants/:merchant_id/google-place-id
  */
+import { staticReviewUrl } from './terminal-config.js';
+
 const DEFAULT_SCAN_LIMIT = 100;
 const MAX_SCAN_LIMIT = 1000;
 const DEFAULT_SERIES_BUCKET = 'day';
@@ -47,7 +49,7 @@ function scanWindow(query, merchantId) {
 }
 
 export function registerMerchantRoutes(app) {
-  const { db } = app;
+  const { db, config } = app;
 
   const listMerchants = db.prepare(
     `SELECT merchant_id, google_place_id, created_at
@@ -58,8 +60,10 @@ export function registerMerchantRoutes(app) {
   const listTerminals = db.prepare(
     `SELECT t.terminal_id, t.label, t.active, t.last_seen,
             COUNT(s.id) AS scan_count,
-            MAX(s.scanned_at) AS last_scan_at
+            MAX(s.scanned_at) AS last_scan_at,
+            m.google_place_id
        FROM terminals t
+       JOIN merchants m ON m.merchant_id = t.merchant_id
        LEFT JOIN scans s ON s.terminal_id = t.terminal_id
       WHERE t.merchant_id = ?
       GROUP BY t.terminal_id
@@ -97,6 +101,7 @@ export function registerMerchantRoutes(app) {
       last_seen: row.last_seen,
       scan_count: row.scan_count,
       last_scan_at: row.last_scan_at,
+      static_review_url: staticReviewUrl(config, row.google_place_id),
     }));
     return terminals;
   });

@@ -8,15 +8,18 @@
  * legacy `POST /api/terminals/adopt` behavior was retired with model-A pairing.
  */
 import { assertTerminalAccess } from '../middleware/terminal-auth.js';
+import { staticReviewUrl } from './terminal-config.js';
 
 export function registerRegisterRoutes(app) {
-  const { db } = app;
+  const { db, config } = app;
 
   const getMerchant = db.prepare('SELECT merchant_id FROM merchants WHERE merchant_id = ?');
   const listRegisters = db.prepare(
-    `SELECT r.label, r.terminal_id, r.active, t.last_seen
+    `SELECT r.label, r.terminal_id, t.active AS terminal_active, t.last_seen,
+            m.google_place_id
        FROM registers r
        LEFT JOIN terminals t ON t.terminal_id = r.terminal_id
+       JOIN merchants m ON m.merchant_id = r.merchant_id
       WHERE r.merchant_id = ?
       ORDER BY r.label, r.terminal_id`,
   );
@@ -30,8 +33,11 @@ export function registerRegisterRoutes(app) {
     return listRegisters.all(merchantId).map((row) => ({
       label: row.label,
       terminal_id: row.terminal_id,
-      active: Boolean(row.active),
+      active: Boolean(row.terminal_active),
       last_seen: row.last_seen,
+      static_review_url: row.terminal_id
+        ? staticReviewUrl(config, row.google_place_id)
+        : null,
     }));
   });
 }
