@@ -9,7 +9,10 @@ import { API_BASE_URL, API_TOKEN, MERCHANT_ID } from './env'
  * against the real server instead of being stubbed. Only the error states
  * (401/404 on the list and on issue) route-stub the HTTP responses.
  *
- * Labels are unique per run because `/tmp/dozo-e2e.db` is shared and persists.
+ * Each spec self-provisions its registers through the public API (issue, then
+ * redeem) instead of relying on the seed, which on a fresh DB creates no
+ * register for `DEMOTERM01` (migration v5 runs before `seedDemo`). Labels and
+ * terminals are unique per run because `/tmp/dozo-e2e.db` is shared.
  */
 const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 const TOKEN_KEY = 'dozo.dashboard.apiToken'
@@ -80,7 +83,31 @@ const OCCUPIED_REGISTER = {
 
 test('occupied register: confirmation gates the POST, then shows code + expiry', async ({
   page,
+  request,
 }) => {
+  const suffix = String(Date.now())
+  const label = `qa-swap-${suffix}`
+  const terminalId = `QASWAP${suffix.slice(-8)}`
+  const deviceSerial = `qa-swap-device-${suffix}`
+
+  // Self-provision an occupied register through the public API. On a fresh DB
+  // the server does not backfill a register for the seeded DEMOTERM01 (v5 runs
+  // before `seedDemo`), so issue a setup code for a unique label and redeem it
+  // to bind a fresh terminal. Unique values keep reruns deterministic.
+  const issued = await issueSetupCode(request, label)
+  expect(issued.status()).toBe(201)
+  const { code } = await issued.json()
+  expect(code).toMatch(/^[A-Z0-9]{8}$/)
+
+  const redeemed = await request.post(`${API_BASE_URL}/api/terminals/redeem`, {
+    headers: { 'X-Api-Token': API_TOKEN },
+    data: { code, device_serial: deviceSerial, terminal_id: terminalId },
+  })
+  expect(redeemed.status()).toBe(200)
+
+  await page.reload()
+  await openRegisters(page)
+
   const posts: string[] = []
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().includes('/setup-code')) {
@@ -88,22 +115,20 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
     }
   })
 
-  await openRegisters(page)
-
-  // Scope every assertion to the demo row: the shared DB accumulates registers
+  // Scope every assertion to this run's row: the DB accumulates registers
   // across runs, so unscoped cell matches (`Active`, `never`) are ambiguous.
   await expect(page.getByRole('table')).toBeVisible()
-  const demoRow = page.getByRole('row', { name: /Demo terminal/ })
-  await expect(demoRow.getByRole('cell', { name: 'Demo terminal' })).toBeVisible()
-  await expect(demoRow.getByRole('cell', { name: 'DEMOTERM01' })).toBeVisible()
-  await expect(demoRow.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
-  await expect(demoRow.getByRole('cell', { name: 'never' })).toBeVisible()
+  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(row.getByRole('cell', { name: label })).toBeVisible()
+  await expect(row.getByRole('cell', { name: terminalId })).toBeVisible()
+  await expect(row.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
+  await expect(row.getByRole('cell', { name: 'never' })).toBeVisible()
 
-  await demoRow.getByRole('button', { name: 'Issue' }).click()
+  await row.getByRole('button', { name: 'Issue' }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Confirm device swap' })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText('Current device:')
-  await expect(dialog).toContainText('DEMOTERM01')
+  await expect(dialog).toContainText(terminalId)
   // The POST must not fire until the merchant confirms the device swap.
   expect(posts).toHaveLength(0)
 
@@ -117,15 +142,15 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
 
   const body = await response.json()
   expect(body).toMatchObject({
-    merchant_id: 'demo-merchant',
-    label: 'Demo terminal',
+    merchant_id: MERCHANT_ID,
+    label,
     expires_in_seconds: 300,
   })
   expect(body.code).toMatch(/^[A-Z0-9]{8}$/)
 
   const card = setupCodeCard(page)
   await expect(card).toBeVisible()
-  await expect(card).toContainText('Demo terminal')
+  await expect(card).toContainText(label)
   await expect(card.getByText(body.code)).toBeVisible()
   await expect(card).toContainText('(300s)')
   expect(posts).toHaveLength(1)
