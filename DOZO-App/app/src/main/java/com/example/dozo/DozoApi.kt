@@ -6,13 +6,6 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class RegisterResult(
-    val code: String,
-    val terminalId: String,
-    val expiresAt: String,
-    val expiresInSeconds: Int
-)
-
 data class StoreConfig(
     val terminalId: String,
     val merchantId: String,
@@ -33,13 +26,6 @@ data class TerminalConfig(
     val redirectBaseUrl: String,
     val staticReviewUrl: String? = null
 )
-
-sealed interface PairStatusResult {
-    data class Pending(val code: String, val expiresAt: String) : PairStatusResult
-    data class Claimed(val apiToken: String, val store: StoreConfig) : PairStatusResult
-    data class Expired(val code: String) : PairStatusResult
-    data object Unknown : PairStatusResult
-}
 
 sealed interface ConfigResult {
     data class Success(val config: TerminalConfig) : ConfigResult
@@ -68,24 +54,6 @@ class DozoApi(
     private val apiToken: String
 ) {
 
-    suspend fun register(
-        deviceSerial: String,
-        merchantId: String,
-        terminalId: String
-    ): RegisterResult = withContext(Dispatchers.IO) {
-        val body = JSONObject()
-            .put("device_serial", deviceSerial)
-            .put("merchant_id", merchantId)
-            .put("terminal_id", terminalId)
-            .toString()
-        parseRegister(post("/api/terminals/register", body))
-    }
-
-    suspend fun pairStatus(code: String): PairStatusResult = withContext(Dispatchers.IO) {
-        val response = request("/api/terminals/pair-status/$code", "GET", null)
-        parsePairStatus(response.code, response.body)
-    }
-
     suspend fun heartbeat(terminalId: String): HeartbeatResult = withContext(Dispatchers.IO) {
         val body = JSONObject().put("terminal_id", terminalId).toString()
         val response = request("/api/heartbeat", "POST", body)
@@ -111,9 +79,6 @@ class DozoApi(
             val response = request("/api/terminals/redeem", "POST", body)
             parseRedeem(response.code, response.body)
         }
-
-    private fun post(path: String, body: String): String =
-        request(path, "POST", body).body
 
     private fun request(
         path: String,
@@ -147,34 +112,6 @@ class DozoApi(
     private companion object {
         const val TIMEOUT_MS = 10_000
         const val HTTP_OK = 200
-    }
-}
-
-fun parseRegister(body: String): RegisterResult {
-    val json = JSONObject(body)
-    return RegisterResult(
-        code = json.getString("code"),
-        terminalId = json.getString("terminal_id"),
-        expiresAt = json.optString("expires_at"),
-        expiresInSeconds = json.optInt("expires_in_seconds", 0)
-    )
-}
-
-fun parsePairStatus(httpStatus: Int, body: String): PairStatusResult {
-    val json = runCatching { JSONObject(body) }.getOrNull()
-    val status = json?.optString("status").orEmpty()
-    return when {
-        httpStatus == HTTP_NOT_FOUND || status == "unknown" -> PairStatusResult.Unknown
-        httpStatus == HTTP_GONE || status == "expired" ->
-            PairStatusResult.Expired(json?.optString("code").orEmpty())
-        httpStatus == HTTP_OK && json != null -> PairStatusResult.Claimed(
-            apiToken = json.optString("api_token"),
-            store = parseStore(json.optJSONObject("store"))
-        )
-        else -> PairStatusResult.Pending(
-            code = json?.optString("code").orEmpty(),
-            expiresAt = json?.optString("expires_at").orEmpty()
-        )
     }
 }
 

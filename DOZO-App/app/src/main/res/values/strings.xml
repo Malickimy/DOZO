@@ -34,7 +34,6 @@
     <string name="settings_display_timeout">Czas wyświetlania: %1$d s</string>
     <string name="settings_sync_now">Synchronizuj teraz</string>
     <string name="settings_heartbeat_now">Wyślij sygnał teraz</string>
-    <string name="settings_generate_pairing">Wygeneruj kod parowania</string>
     <string name="settings_change_pin">Zmień PIN</string>
     <string name="settings_unpair">Odepnij i wyczyść</string>
     <string name="settings_back">Wstecz</string>
@@ -62,14 +61,6 @@
     <string name="setup_code_unknown">Nie znaleziono kodu</string>
     <string name="setup_code_expired">Kod wygasł</string>
     <string name="setup_code_redeemed">Ten kod został już użyty</string>
-
-    <!-- Pairing -->
-    <string name="pairing_title">Parowanie terminala</string>
-    <string name="pairing_enter_code">Wprowadź ten kod w panelu sprzedawcy</string>
-    <string name="pairing_requesting">Żądanie kodu parowania…</string>
-    <string name="pairing_expired">Kod parowania wygasł</string>
-    <string name="pairing_not_found">Nie znaleziono kodu parowania</string>
-    <string name="pairing_timeout">Parowanie przekroczyło limit czasu</string>
 
     <!-- Shared -->
     <string name="common_cancel">Anuluj</string>

@@ -66,10 +66,6 @@ object DozoConfig {
         prefs(context).getString(DozoContract.KEY_PROMPT_TEXT, null)
             ?.takeIf { it.isNotBlank() }
 
-    fun pairingCode(context: Context): String? =
-        prefs(context).getString(DozoContract.KEY_PAIRING_CODE, null)
-            ?.takeIf { it.isNotBlank() }
-
     fun pin(context: Context): String =
         prefs(context).getString(DozoContract.KEY_PIN, null)
             ?.takeIf { it.isNotBlank() }
@@ -139,10 +135,6 @@ object DozoConfig {
         edit(context).putString(DozoContract.KEY_PROMPT_TEXT, value).apply()
     }
 
-    fun setPairingCode(context: Context, value: String) {
-        edit(context).putString(DozoContract.KEY_PAIRING_CODE, value).apply()
-    }
-
     fun setPin(context: Context, value: String) {
         edit(context).putString(DozoContract.KEY_PIN, value).apply()
     }
@@ -195,7 +187,6 @@ object DozoConfig {
 
     fun wipe(context: Context) {
         edit(context)
-            .remove(DozoContract.KEY_PAIRING_CODE)
             .remove(DozoContract.KEY_TERMINAL_ID)
             .remove(DozoContract.KEY_API_TOKEN)
             .remove(DozoContract.KEY_GOOGLE_PLACE_ID)

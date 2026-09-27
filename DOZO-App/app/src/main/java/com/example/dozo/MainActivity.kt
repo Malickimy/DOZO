@@ -16,7 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.dozo.ui.IdleScreen
-import com.example.dozo.ui.PairingScreen
 import com.example.dozo.ui.PinScreen
 import com.example.dozo.ui.QrDisplayScreen
 import com.example.dozo.ui.QrRenderer
@@ -34,7 +33,6 @@ private sealed interface AppScreen {
     data object SetPin : AppScreen
     data object Settings : AppScreen
     data object SetupCode : AppScreen
-    data object Pairing : AppScreen
 }
 
 class MainActivity : ComponentActivity() {
@@ -162,32 +160,6 @@ class MainActivity : ComponentActivity() {
                         },
                         onCancel = { appScreen = AppScreen.Settings }
                     )
-                    AppScreen.Pairing -> PairingScreen(
-                        apiBaseUrl = DozoConfig.apiBaseUrl(this),
-                        apiToken = DozoConfig.apiToken(this),
-                        deviceSerial = deviceSerial(),
-                        merchantId = DozoConfig.merchantId(this),
-                        terminalId = ensureTerminalId(),
-                        onRegistered = {
-                            DozoConfig.setPairingCode(this, it.code)
-                            DozoConfig.setTerminalId(this, it.terminalId)
-                        },
-                        onPaired = { claimed ->
-                            DozoConfig.applyClaimed(
-                                this,
-                                claimed.store.terminalId,
-                                claimed.apiToken,
-                                deriveRedirectBaseUrl(
-                                    claimed.store.redirectUrl,
-                                    claimed.store.terminalId
-                                ),
-                                claimed.store.googlePlaceId,
-                                claimed.store.staticReviewUrl
-                            )
-                            appScreen = AppScreen.Settings
-                        },
-                        onCancel = { appScreen = AppScreen.Settings }
-                    )
                 }
                 }
             }
@@ -237,13 +209,6 @@ class MainActivity : ComponentActivity() {
 
     private fun deviceSerial(): String =
         Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
-
-    private fun ensureTerminalId(): String {
-        DozoConfig.terminalId(this)?.let { return it }
-        val derived = TerminalId.derive(deviceSerial())
-        DozoConfig.setTerminalId(this, derived)
-        return derived
-    }
 
     private fun syncConfigNow() {
         val terminalId = DozoConfig.terminalId(this)

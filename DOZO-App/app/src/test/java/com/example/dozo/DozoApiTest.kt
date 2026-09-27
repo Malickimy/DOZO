@@ -10,64 +10,6 @@ import org.junit.Test
 class DozoApiTest {
 
     @Test
-    fun registerParsesAllFields() {
-        val body = """
-            {"code":"ABCD2345","terminal_id":"DX8000SN000123",
-             "expires_at":"2026-01-01T00:05:00.000Z","expires_in_seconds":300}
-        """.trimIndent()
-        val result = parseRegister(body)
-        assertEquals("ABCD2345", result.code)
-        assertEquals("DX8000SN000123", result.terminalId)
-        assertEquals("2026-01-01T00:05:00.000Z", result.expiresAt)
-        assertEquals(300, result.expiresInSeconds)
-    }
-
-    @Test
-    fun pairStatusPending() {
-        val body = """
-            {"status":"pending","code":"ABCD2345","expires_at":"2026-01-01T00:05:00.000Z"}
-        """.trimIndent()
-        val result = parsePairStatus(202, body) as PairStatusResult.Pending
-        assertEquals("ABCD2345", result.code)
-        assertEquals("2026-01-01T00:05:00.000Z", result.expiresAt)
-    }
-
-    @Test
-    fun pairStatusClaimedParsesStore() {
-        val body = """
-            {"status":"claimed","api_token":"tok","store":{
-              "terminal_id":"DX8000SN000123","merchant_id":"demo-merchant",
-              "google_place_id":"ChIJ","label":"Till 1",
-              "redirect_url":"https://track.papier.app/r/DX8000SN000123"}}
-        """.trimIndent()
-        val result = parsePairStatus(200, body) as PairStatusResult.Claimed
-        assertEquals("tok", result.apiToken)
-        assertEquals("DX8000SN000123", result.store.terminalId)
-        assertEquals("demo-merchant", result.store.merchantId)
-        assertEquals("ChIJ", result.store.googlePlaceId)
-        assertEquals("Till 1", result.store.label)
-        assertEquals("https://track.papier.app/r/DX8000SN000123", result.store.redirectUrl)
-    }
-
-    @Test
-    fun pairStatusExpired() {
-        val result = parsePairStatus(410, """{"status":"expired","code":"ABCD2345"}""")
-        assertTrue(result is PairStatusResult.Expired)
-        assertEquals("ABCD2345", (result as PairStatusResult.Expired).code)
-    }
-
-    @Test
-    fun pairStatusUnknown() {
-        val result = parsePairStatus(404, """{"status":"unknown","code":"ABCD2345"}""")
-        assertEquals(PairStatusResult.Unknown, result)
-    }
-
-    @Test
-    fun pairStatusUnknownEvenWithoutBody() {
-        assertEquals(PairStatusResult.Unknown, parsePairStatus(404, ""))
-    }
-
-    @Test
     fun heartbeatParsesOk() {
         assertTrue(parseHeartbeat("""{"ok":true,"terminal_id":"DX8000SN000123"}"""))
     }

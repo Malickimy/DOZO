@@ -34,7 +34,6 @@
     <string name="settings_display_timeout">Display timeout: %1$d s</string>
     <string name="settings_sync_now">Sync now</string>
     <string name="settings_heartbeat_now">Send heartbeat now</string>
-    <string name="settings_generate_pairing">Generate pairing code</string>
     <string name="settings_change_pin">Change PIN</string>
     <string name="settings_unpair">Unpair &amp; wipe</string>
     <string name="settings_back">Back</string>
@@ -62,14 +61,6 @@
     <string name="setup_code_unknown">Code not found</string>
     <string name="setup_code_expired">Code expired</string>
     <string name="setup_code_redeemed">This code has already been used</string>
-
-    <!-- Pairing -->
-    <string name="pairing_title">Pair terminal</string>
-    <string name="pairing_enter_code">Enter this code in the merchant portal</string>
-    <string name="pairing_requesting">Requesting a pairing code…</string>
-    <string name="pairing_expired">Pairing code expired</string>
-    <string name="pairing_not_found">Pairing code not found</string>
-    <string name="pairing_timeout">Pairing timed out</string>
 
     <!-- Shared -->
     <string name="common_cancel">Cancel</string>

@@ -25,7 +25,6 @@ class SettingsPersistenceTest {
             DozoContract.KEY_MERCHANT_NAME to "merchant_name",
             DozoContract.KEY_PROMPT_TEXT to "prompt_text",
             DozoContract.KEY_LANGUAGE to "language",
-            DozoContract.KEY_PAIRING_CODE to "pairing_code",
             DozoContract.KEY_PIN to "pin",
             DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled",
             DozoContract.KEY_GOOGLE_PLACE_ID to "google_place_id",
