@@ -1,15 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "references": {
-    "dozo-app": {
+    "dozo-app-agent": {
       "path": "./DOZO-App",
       "description": "Use for the Android terminal app (Kotlin/Gradle, intents, pairing, mockpay). Read before writing QA for an app-side change."
     },
-    "dozo-server": {
+    "dozo-server-agent": {
       "path": "./DOZO-Server",
       "description": "Use for the Fastify + SQLite redirect server (routes, schema, tests). Read before writing API QA for a server change."
     },
-    "dozo-dashboard": {
+    "dozo-dashboard-agent": {
       "path": "./DOZO-Dashboard",
       "description": "Use for the Vite + React merchant portal (components, flows, vitest setup). Read before writing browser QA for a dashboard change."
     },
@@ -67,7 +67,7 @@
     "mobile-mcp": {
       "type": "local",
       "command": ["npx", "-y", "@mobilenext/mobile-mcp@latest"],
-      "enabled": true,
+      "enabled": false,
       "environment": {
         "MOBILEMCP_DISABLE_TELEMETRY": "1",
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -96,7 +96,7 @@
         "run",
         "server.py"
       ],
-      "enabled": true,
+      "enabled": false,
       "environment": {
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -104,7 +104,7 @@
     "uiautomator2-mcp-server": {
       "type": "local",
       "command": ["/Users/malicky/.local/bin/uiautomator2-mcp-server", "stdio"],
-      "enabled": true,
+      "enabled": false,
       "environment": {
         "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
       }
@@ -118,7 +118,7 @@
         "/Users/malicky/l/android-builder-mcp",
         "/Users/malicky/l/android-builder-mcp/server.py"
       ],
-      "enabled": true,
+      "enabled": false,
       "environment": {
         "ANDROID_PROJECT_DIR": "./DOZO-App",
         "JAVA_HOME": "/Users/malicky/Library/Java/JavaVirtualMachines/openjdk-25.0.1/Contents/Home",
@@ -139,12 +139,12 @@
     "sqlite_*": false,
     "docker_*": false,
     "ssh_*": false,
-    "mobile-mcp_*": true,
+    "mobile-mcp_*": false,
     "github_*": true,
     "maps_*": false,
-    "android-mcp-server_*": true,
-    "uiautomator2-mcp-server_*": true,
-    "android-builder-mcp_*": true,
+    "android-mcp-server_*": false,
+    "uiautomator2-mcp-server_*": false,
+    "android-builder-mcp_*": false,
     "jetbrains-psi-mcp-server_*": false
   }
 }
