@@ -109,6 +109,87 @@ test('GET /api/merchants/:id/summary aggregates scans per terminal', async (t) =
   ]);
 });
 
+test('GET /api/merchants/:id/summary narrows totals and per-terminal rows to ?since/?until', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare(
+    `INSERT INTO terminals (terminal_id, merchant_id, label, active, last_seen, created_at)
+     VALUES (?, ?, ?, 1, NULL, ?)`,
+  ).run('TERM0002', 'M1', 'Back counter', '2026-01-01T00:00:00.000Z');
+
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T01:00:00.000Z' });
+  insertScan(db, { id: 2, scannedAt: '2026-01-03T01:00:00.000Z' });
+  insertScan(db, { id: 3, terminalId: 'TERM0002', scannedAt: '2026-01-02T01:00:00.000Z' });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/summary?since=2026-01-02T00:00:00.000Z&until=2026-01-02T23:59:59.999Z',
+    headers: authHeaders(),
+  });
+
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.total_scans, 1, 'only the scan inside the window counts');
+  assert.equal(body.terminal_count, 2, 'every terminal stays listed');
+  assert.deepEqual(body.scans_by_terminal, [
+    { terminal_id: TEST_TERMINAL_ID, label: 'Front counter', scan_count: 0 },
+    { terminal_id: 'TERM0002', label: 'Back counter', scan_count: 1 },
+  ]);
+});
+
+test('GET /api/merchants/:id/summary absent/blank window stays unchanged', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T01:00:00.000Z' });
+  insertScan(db, { id: 2, scannedAt: '2026-01-05T01:00:00.000Z' });
+
+  const bare = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/summary',
+    headers: authHeaders(),
+  });
+  const blank = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/summary?since=&until=',
+    headers: authHeaders(),
+  });
+
+  assert.deepEqual(blank.json(), bare.json(), 'empty params are ignored');
+  assert.equal(bare.json().total_scans, 2);
+});
+
+test('GET /api/merchants/:id/summary returns zeroed rows for an empty window', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T01:00:00.000Z' });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/summary?since=2026-02-01T00:00:00.000Z',
+    headers: authHeaders(),
+  });
+
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.total_scans, 0);
+  assert.equal(body.terminal_count, 1);
+  assert.deepEqual(body.scans_by_terminal, [
+    { terminal_id: TEST_TERMINAL_ID, label: 'Front counter', scan_count: 0 },
+  ]);
+});
+
 test('GET /api/merchants/:id/scans filters by terminal, window and limit', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
