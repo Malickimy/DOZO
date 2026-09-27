@@ -26,8 +26,14 @@ cp .env.example .env        # optional — defaults are baked in
 npm run dev                 # http://localhost:5173
 ```
 
-Open the app, enter the API base URL and token, click **Test connection**, then
-**Continue**.
+The site has two pages:
+
+- `/` — the DooZo homepage (`index.html`, static). **Zaloguj się** and
+  **Zobacz panel** link to the dashboard.
+- `/panel/` — the dashboard (`panel/index.html`, React).
+
+Open `/panel/`, enter the API base URL and token, click **Test connection**,
+then **Continue**.
 
 ### Scripts
 
@@ -78,32 +84,44 @@ X-Api-Token: <token>
 | --- | --- | --- |
 | `GET` | `/health` | `{status:"ok"}` |
 | `GET` | `/api/merchants` | `[{merchant_id, google_place_id, created_at}]` |
-| `GET` | `/api/merchants/:merchant_id/terminals` | `[{terminal_id, label, active, last_seen, scan_count, last_scan_at}]` |
-| `GET` | `/api/merchants/:merchant_id/summary` | `{merchant_id, total_scans, terminal_count, scans_by_terminal:[{terminal_id, label, scan_count}]}` |
+| `GET` | `/api/merchants/:merchant_id/terminals` | `[{terminal_id, label, active, last_seen, scan_count, last_scan_at, static_review_url}]` |
 | `GET` | `/api/merchants/:merchant_id/scans?terminal_id=&since=&until=&limit=` | `[{id, terminal_id, scanned_at, user_agent}]` |
+| `GET` | `/api/merchants/:merchant_id/scans/series?since=&until=&bucket=day` | `[{day, count}]` (Europe/Warsaw days; empty days omitted) |
+| `GET` | `/api/merchants/:merchant_id/registers` | `[{label, terminal_id, active, last_seen, static_review_url}]` |
+| `POST` | `/api/merchants/:merchant_id/registers/:label/setup-code` | `{code, merchant_id, label, expires_at, expires_in_seconds}` |
 | `PUT` | `/api/merchants/:merchant_id/google-place-id` | body `{google_place_id}` → `{merchant_id, google_place_id}` |
-| `POST` | `/api/terminals/claim` | body `{code, label}` → `{status:"claimed", api_token, store:{terminal_id, merchant_id, google_place_id, label, redirect_url}}` |
-| `GET` | `/api/terminals/offline` | `{threshold_seconds, cutoff, terminals:[...]}` |
+| `GET` / `PUT` | `/api/terminals/:terminal_id/config` | config; `PUT` body `{display_enabled?, display_timeout_seconds?}` |
+| `PATCH` | `/api/terminals/:terminal_id` | body `{active?, label?}` → config |
+| `GET` | `/api/terminals/offline` | `{threshold_seconds, cutoff, terminals:[...]}` (all merchants; filtered client-side) |
 
 Some endpoints are implemented in parallel. If one returns **`404`**, the UI
 shows a clear “not available yet” state instead of crashing.
 
 ## Screens
 
-- **Login / settings** — API base URL + token, “Test connection” (calls
-  `/health`), reachable later from the top bar.
+The UI is Polish by default with a PL/EN switch (stored under `doozo-lang`,
+shared with the homepage). Sections follow the DooZo panel design:
+
+- **Sign-in layer** — without a saved token `/panel/` shows sign-in, sign-up
+  (company, NIP with checksum, email, password, terms) and password reset
+  (`#logowanie`, `#rejestracja`, `#reset-hasla`). They validate client-side but
+  send nothing: account auth awaits `/api/auth/*` on the server. “Use an
+  operator token” (`#operator`) is the working path: API base URL + token,
+  “Test connection” (calls `/health`). “Sign out” clears only the token.
 - **Merchant picker** — from `GET /api/merchants`. If the list endpoint is not
   available, you can type a merchant ID manually.
-- **Summary cards** — total scans and terminal count.
-- **Terminals table** — label, terminal ID, active, last seen, scan count, last
-  scan.
-- **Pairing** — enter the 8-character code + optional label, call
-  `POST /api/terminals/claim`, show the returned store config.
-- **Google Place ID** — assign the selected merchant’s Place ID.
-- **Scans** — per-terminal bar visualization (plain `div`s) plus a scan table
-  with a terminal filter.
-- **Offline terminals** — terminals that have not sent a heartbeat within the
-  server’s threshold.
+- **Overview** — 14/30-day range, scan KPI with change vs the previous period
+  and a daily chart (`/scans/series`), recent scans, per-terminal bars and the
+  scan log with a terminal filter.
+- **Terminals** — pairing wizard (name → `setup-code` → countdown → polls
+  `/registers` until a terminal redeems it), terminals table with scans today,
+  review link, “Manage” drawer (`PATCH` / config) and two-step “Disconnect”
+  (`active: false`), registers with re-issue, offline terminals.
+- **After-payment screen** — QR on/off and display time applied to every active
+  terminal (`PUT /config`), live preview, and the Google Place ID form.
+- **Contacts, Guide, Subscription** — the guide is static content; contacts,
+  billing and the views / sign-ups / −10% KPIs are designed but show an
+  “Awaiting API” state until the server exposes those endpoints.
 
 Loading, empty, error, and “not available yet” states are handled throughout.
 On day one the expected empty state is: terminals listed, zero scans.

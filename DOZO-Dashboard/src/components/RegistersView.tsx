@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { isApiError, isNotAvailable } from '../lib/api'
+import { isNotAvailable } from '../lib/api'
 import type { ApiClient, Register, SetupCode } from '../lib/api'
 import { formatDateTime, formatRelative, isActive, terminalName } from '../lib/format'
+import { useT } from '../lib/i18n'
+import { describeIssueError, isUnknownMerchant } from '../lib/setupCodeErrors'
 import { useAsync } from '../lib/useAsync'
 import { Empty, ErrorState, Loading, NotAvailable } from './StateMessage'
 
@@ -10,46 +12,8 @@ interface RegistersViewProps {
   merchantId: string
 }
 
-/** Server body for a merchant that does not exist; a real error, not a 404 route. */
-function isUnknownMerchant(error: unknown): boolean {
-  if (!isApiError(error)) return false
-  const body = error.body
-  return (
-    body !== null &&
-    typeof body === 'object' &&
-    'error' in body &&
-    (body as { error: unknown }).error === 'unknown_merchant'
-  )
-}
-
-function describeIssueError(
-  error: unknown,
-  merchantId: string,
-): { message: string; unavailable: boolean } {
-  if (isApiError(error)) {
-    if (error.isUnauthorized) {
-      return { message: 'Unauthorized — check the API token.', unavailable: false }
-    }
-    if (error.status === 503) {
-      return {
-        message: 'The setup-code service is temporarily unavailable. Please try again.',
-        unavailable: false,
-      }
-    }
-    if (isUnknownMerchant(error)) {
-      return { message: `Unknown merchant “${merchantId}”.`, unavailable: false }
-    }
-    if (isNotAvailable(error)) {
-      return { message: 'Issuing setup codes is not available yet.', unavailable: true }
-    }
-  }
-  return {
-    message: error instanceof Error ? error.message : String(error),
-    unavailable: false,
-  }
-}
-
 export function RegistersView({ client, merchantId }: RegistersViewProps) {
+  const t = useT()
   const registersState = useAsync(
     () => client.listRegisters(merchantId),
     [client, merchantId],
@@ -80,7 +44,7 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
       setResult(code)
       registersState.reload()
     } catch (err) {
-      setIssueError(describeIssueError(err, merchantId))
+      setIssueError(describeIssueError(err, merchantId, t))
     } finally {
       setIssuing(false)
     }
@@ -109,24 +73,30 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
   return (
     <div className="stack">
       <div className="card">
-        <h2 className="card__title">Registers &amp; setup codes</h2>
+        <h2 className="card__title">{t('Stanowiska i kody', 'Registers & setup codes')}</h2>
         <p className="muted">
-          A register is a merchant-defined slot. Issue a one-time code and enter it on a
-          terminal to bind that device to the register.
+          {t(
+            'Stanowisko to stałe miejsce na terminal, np. „Kasa 1”. Nowy kod jednorazowy przypisuje do stanowiska inne urządzenie — przydaje się przy wymianie terminala.',
+            'A register is a merchant-defined slot. Issue a one-time code and enter it on a terminal to bind that device to the register.',
+          )}
         </p>
 
-        {registersState.loading ? <Loading label="Loading registers…" /> : null}
-
-        {listUnavailable ? <NotAvailable label="The registers list" /> : null}
-
-        {listError ? (
-          <ErrorState error={listError} onRetry={registersState.reload} />
+        {registersState.loading ? (
+          <Loading label={t('Ładowanie stanowisk…', 'Loading registers…')} />
         ) : null}
+
+        {listUnavailable ? (
+          <NotAvailable label={t('Lista stanowisk', 'The registers list')} />
+        ) : null}
+
+        {listError ? <ErrorState error={listError} onRetry={registersState.reload} /> : null}
 
         {!registersState.loading && !registersState.error && registers.length === 0 ? (
           <Empty>
-            No registers defined yet. Create one on the server, then issue its setup code
-            here.
+            {t(
+              'Nie ma jeszcze stanowisk. Połącz pierwszy terminal powyżej.',
+              'No registers defined yet. Pair your first terminal above.',
+            )}
           </Empty>
         ) : null}
 
@@ -135,11 +105,11 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Label</th>
-                  <th>Terminal</th>
-                  <th>Status</th>
-                  <th>Last seen</th>
-                  <th>Action</th>
+                  <th>{t('Nazwa', 'Label')}</th>
+                  <th>{t('Terminal', 'Terminal')}</th>
+                  <th>{t('Status', 'Status')}</th>
+                  <th>{t('Ostatnia aktywność', 'Last seen')}</th>
+                  <th>{t('Akcja', 'Action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,15 +120,17 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
                       {register.terminal_id ? (
                         <code>{register.terminal_id}</code>
                       ) : (
-                        <span className="muted">Unclaimed</span>
+                        <span className="muted">{t('Wolne', 'Unclaimed')}</span>
                       )}
                     </td>
                     <td>
-                      {register.terminal_id
-                        ? isActive(register.active)
-                          ? 'Active'
-                          : 'Inactive'
-                        : <span className="muted">—</span>}
+                      {register.terminal_id ? (
+                        <span className={isActive(register.active) ? 'badge badge--ok' : 'badge badge--off'}>
+                          {isActive(register.active) ? t('Aktywne', 'Active') : t('Nieaktywne', 'Inactive')}
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td>{formatRelative(register.last_seen)}</td>
                     <td>
@@ -168,7 +140,7 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
                         disabled={issuing}
                         onClick={() => handleIssue(register)}
                       >
-                        Issue
+                        {t('Nowy kod', 'Issue')}
                       </button>
                     </td>
                   </tr>
@@ -180,13 +152,20 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
       </div>
 
       {pending ? (
-        <div className="card" role="alertdialog" aria-label="Confirm device swap">
-          <h2 className="card__title">Swap device?</h2>
+        <div
+          className="card"
+          role="alertdialog"
+          aria-label={t('Potwierdź wymianę urządzenia', 'Confirm device swap')}
+        >
+          <h2 className="card__title">{t('Wymienić urządzenie?', 'Swap device?')}</h2>
           <p className="muted">
-            This register is occupied — issuing a new code will swap the device.
+            {t(
+              'To stanowisko jest zajęte — nowy kod przypisze do niego inne urządzenie, a obecne zostanie odłączone.',
+              'This register is occupied — issuing a new code will swap the device.',
+            )}
           </p>
           <p className="muted">
-            Current device: <code>{pending.terminal_id}</code>
+            {t('Obecne urządzenie:', 'Current device:')} <code>{pending.terminal_id}</code>
           </p>
           <div className="form__actions">
             <button
@@ -199,7 +178,7 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
                 void issue(label)
               }}
             >
-              Confirm
+              {t('Potwierdź', 'Confirm')}
             </button>
             <button
               type="button"
@@ -207,14 +186,14 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
               disabled={issuing}
               onClick={() => setPending(null)}
             >
-              Cancel
+              {t('Anuluj', 'Cancel')}
             </button>
           </div>
         </div>
       ) : null}
 
       {issueError?.unavailable ? (
-        <NotAvailable label="Issuing setup codes" />
+        <NotAvailable label={t('Wydawanie kodów', 'Issuing setup codes')} />
       ) : null}
 
       {issueError && !issueError.unavailable ? (
@@ -226,13 +205,13 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
       {result ? (
         <div className="claim" role="status">
           <p className="claim__title">
-            Setup code for <code>{result.label}</code>
+            {t('Kod konfiguracyjny dla', 'Setup code for')} <code>{result.label}</code>
           </p>
           <p className="claim__code">
             <code>{result.code}</code>
           </p>
           <dl className="claim__list">
-            <dt>Expires</dt>
+            <dt>{t('Wygasa', 'Expires')}</dt>
             <dd>
               {formatDateTime(result.expires_at)}
               {typeof result.expires_in_seconds === 'number' ? (
@@ -242,7 +221,7 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
           </dl>
           {canCopy ? (
             <button type="button" className="btn btn--ghost" onClick={copyCode}>
-              {copied ? 'Copied' : 'Copy code'}
+              {copied ? t('Skopiowano', 'Copied') : t('Kopiuj kod', 'Copy code')}
             </button>
           ) : null}
         </div>
