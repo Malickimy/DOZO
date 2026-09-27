@@ -34,26 +34,30 @@ This repository is standalone; the Android app is not required to run it.
 
 ```bash
 npm install
-SEED_DEMO=true npm start        # combined connector + dashboard on :3000
+npm start                       # dashboard entrypoint (API + SPA) on :3000
 # or run the pieces separately:
 SEED_DEMO=true npm run start:dashboard   # API + SPA on :3000
 SEED_DEMO=true npm run start:connector   # redirect surface (defaults to :3000)
+# local/demo: both surfaces as two processes (dashboard :3000, connector :3001)
+SEED_DEMO=true npm run start:all
 ```
 
-Then:
+Then (the redirect lives on the connector, the API on the dashboard):
 
 ```bash
-curl -i http://localhost:3000/r/DEMOTERM01
+curl -i http://localhost:3001/r/DEMOTERM01
+curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/merchants
 ```
 
 ## Scripts
 
 | Command | Description |
 | --- | --- |
-| `npm start` | Combined connector + dashboard (single process, legacy/local) |
-| `npm run dev` | Combined with `node --watch` |
+| `npm start` | Dashboard entrypoint (API + SPA) |
+| `npm run dev` | Dashboard entrypoint with `node --watch` |
 | `npm run start:connector` | Connector entrypoint |
 | `npm run start:dashboard` | Dashboard entrypoint (API + SPA) |
+| `npm run start:all` | Connector (`:3001`) + dashboard (`:3000`) as two processes (local/demo); Ctrl-C stops both |
 | `npm run dev:connector` / `dev:dashboard` | Entrypoints with `node --watch` |
 | `npm test` | Run the `node:test` suite |
 | `npm run seed` | Insert demo merchant/terminal into `DB_PATH` |
@@ -62,9 +66,10 @@ curl -i http://localhost:3000/r/DEMOTERM01
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PORT` | `3000` | HTTP listen port |
+| `PORT` | `3000` | Dashboard HTTP listen port |
+| `CONNECTOR_PORT` | `3001` | Connector HTTP listen port used by `npm run start:all` |
 | `DB_PATH` | `./data/dozo.db` | SQLite file (`:memory:` supported) |
-| `REDIRECT_DOMAIN` | `http://localhost:3000` | Public base used to build `redirect_url` |
+| `REDIRECT_DOMAIN` | `http://localhost:3000` | Public base used to build `redirect_url` (`start:all` defaults it to the connector port) |
 | `GOOGLE_REVIEW_BASE` | `https://search.google.com/local/writereview` | Google endpoint (no query string) |
 | `API_TOKEN` | `dev-placeholder-token` | Shared operator token guarding `/api/*` |
 | `DEBOUNCE_SECONDS` | `120` | Scan debounce window |
@@ -241,10 +246,11 @@ rebuild on the 1 GB VPS; use the copy-and-commit method in
 
 - On boot: `SEED_DEMO=true`.
 - One-off: `docker compose exec dashboard node scripts/seed.js`.
-- Bare Node: `SEED_DEMO=true npm start` or `npm run seed`.
+- Bare Node: `SEED_DEMO=true npm run start:all` or `npm run seed`.
 
-This inserts merchant `demo-merchant` and terminal `DEMOTERM01`. A model-B
-round-trip works:
+This inserts merchant `demo-merchant`, terminal `DEMOTERM01`, and a register
+bound to it. Under `npm run start:all` the operator API is on `:3000` and the
+redirect on `:3001`. A model-B round-trip works:
 
 ```bash
 curl -s -X POST \
@@ -280,15 +286,19 @@ binding, device swap, TTL, single-use), merchant listing/summary/scans/series,
 terminal display config (defaults, clamping, validation), lifecycle `PATCH`,
 register listing (unoccupied registers), connector entrypoint isolation,
 `/api/connector/config` and `POST /scans` (secret, idempotency, malformed,
-unknown terminal), spool dual-write and forwarding, and CORS.
+unknown terminal), spool dual-write and forwarding, the two-process `start:all`
+launcher, and CORS.
 
 ## Decisions & open questions
 
 ### Decisions
 
 - **Two entrypoints, one database.** The connector keeps the public redirect
-  surface and a spool; the dashboard owns `/api/*` and the DB. The combined
-  `src/server.js` remains for local/single-process use.
+  surface and a spool; the dashboard owns `/api/*` and the DB. `npm start` runs
+  the dashboard entrypoint on `:3000`; `npm run start:all` runs both as two
+  processes via `scripts/start-all.js` (dashboard `:3000`, connector `:3001`).
+  The combined `src/server.js` remains only for local single-process use and
+  tests.
 - **Unknown/inactive terminals → `404`** on the redirect, with no scan row.
 - **`terminal_id` format.** URL-safe `[A-Za-z0-9_-]{8,64}` (stored uppercase). If
   redeem omits it, it is derived from `device_serial` (uppercase, non-alphanumerics

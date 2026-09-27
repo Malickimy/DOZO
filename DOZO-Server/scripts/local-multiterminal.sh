@@ -2,12 +2,13 @@
 #
 # local-multiterminal.sh - fresh, seeded local server for the 3-emulator test.
 #
-# Resets the local SQLite DB, starts the server with SEED_DEMO=true, and prints
-# the emulator-side steps. Server output goes to data/local-server.log.
+# Resets the local SQLite DB, starts the dashboard (:3000) and connector (:3001)
+# as two processes with SEED_DEMO=true, and prints the emulator-side steps.
+# Output goes to data/local-server.log.
 #
 # Usage:
-#   scripts/local-multiterminal.sh start              # reset DB + start seeded server
-#   scripts/local-multiterminal.sh stop               # stop the background server
+#   scripts/local-multiterminal.sh start              # reset DB + start seeded servers
+#   scripts/local-multiterminal.sh stop               # stop both background servers
 #   scripts/local-multiterminal.sh restart            # stop + start
 #   scripts/local-multiterminal.sh status             # health + row counts
 #   scripts/local-multiterminal.sh inspect            # dump operational tables
@@ -15,7 +16,8 @@
 #   scripts/local-multiterminal.sh redeem CODE [SERIAL] # redeem a setup code from here
 #   scripts/local-multiterminal.sh reset              # delete the DB only
 #
-# Environment overrides: PORT (3000), DB_PATH (./data/dozo.db), API_TOKEN, MERCHANT_ID.
+# Environment overrides: PORT (3000), CONNECTOR_PORT (3001), DB_PATH
+# (./data/dozo.db), API_TOKEN, MERCHANT_ID.
 
 set -euo pipefail
 
@@ -24,15 +26,17 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
 PORT="${PORT:-3000}"
+CONNECTOR_PORT="${CONNECTOR_PORT:-3001}"
 DB_PATH="${DB_PATH:-./data/dozo.db}"
 API_TOKEN="${API_TOKEN:-dev-placeholder-token}"
 MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
 PID_FILE="data/local-server.pid"
 LOG_FILE="data/local-server.log"
 BASE_URL="http://127.0.0.1:${PORT}"
+CONNECTOR_BASE_URL="http://127.0.0.1:${CONNECTOR_PORT}"
 
 usage() {
-    sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 server_pid() {
@@ -62,7 +66,8 @@ reset_db() {
 
 wait_for_health() {
     for _ in $(seq 1 50); do
-        if curl -fsS "$BASE_URL/health" >/dev/null 2>&1; then
+        if curl -fsS "$BASE_URL/health" >/dev/null 2>&1 \
+            && curl -fsS "$CONNECTOR_BASE_URL/health" >/dev/null 2>&1; then
             return 0
         fi
         sleep 0.2
@@ -74,21 +79,24 @@ start_server() {
     stop_server
     reset_db
     mkdir -p "$(dirname "$DB_PATH")"
-    SEED_DEMO=true PORT="$PORT" DB_PATH="$DB_PATH" API_TOKEN="$API_TOKEN" \
-        nohup node src/server.js >"$LOG_FILE" 2>&1 &
+    # Two processes from one launcher (package.json "start:all"): the dashboard
+    # owns /api/* on $PORT, the connector owns /r/:id on $CONNECTOR_PORT.
+    SEED_DEMO=true PORT="$PORT" CONNECTOR_PORT="$CONNECTOR_PORT" DB_PATH="$DB_PATH" \
+        API_TOKEN="$API_TOKEN" REDIRECT_DOMAIN="http://10.0.2.2:${CONNECTOR_PORT}" \
+        nohup node scripts/start-all.js >"$LOG_FILE" 2>&1 &
     echo $! >"$PID_FILE"
     if ! wait_for_health; then
-        echo "ERROR: server did not become healthy; see $LOG_FILE" >&2
+        echo "ERROR: servers did not become healthy; see $LOG_FILE" >&2
         exit 1
     fi
     cat <<EOF
-local server up: $BASE_URL (pid $(server_pid))
-seeded: merchant demo-merchant + terminal DEMOTERM01
+local servers up: dashboard $BASE_URL, connector $CONNECTOR_BASE_URL (pid $(server_pid))
+seeded: merchant demo-merchant + terminal DEMOTERM01 + bound register
 log:    $LOG_FILE
 
 3-emulator setup — on each emulator, Settings -> Połączenie:
   api_base_url      = http://10.0.2.2:$PORT
-  redirect_base_url = http://10.0.2.2:$PORT
+  redirect_base_url = http://10.0.2.2:$CONNECTOR_PORT
   api_token         = $API_TOKEN
   merchant_id       = demo-merchant
 
@@ -101,7 +109,8 @@ EOF
 }
 
 show_status() {
-    curl -fsS "$BASE_URL/health" && echo
+    echo -n "dashboard: "; curl -fsS "$BASE_URL/health" && echo
+    echo -n "connector: "; curl -fsS "$CONNECTOR_BASE_URL/health" && echo
     node -e "const D=require('better-sqlite3');const db=new D(process.argv[1],{readonly:true});for(const t of ['merchants','terminals','scans','registers','setup_codes']){let c=0;try{c=db.prepare('select count(*) c from '+t).get().c}catch(e){}console.log(t.padEnd(14)+String(c))}" "$DB_PATH"
 }
 

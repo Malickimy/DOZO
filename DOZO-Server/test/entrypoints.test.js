@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildConnectorApp, buildDashboardApp } from '../src/app.js';
 import { createDashboard } from '../src/dashboard.js';
 import { openDatabase } from '../src/db.js';
@@ -10,6 +13,33 @@ import { loadConfig } from '../src/config.js';
 import { authHeaders, TEST_TOKEN, TEST_PLACE_ID, TEST_TERMINAL_ID } from './helpers.js';
 
 const CONNECTOR_SECRET = 'connector-test-secret';
+const PROJECT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+async function waitForHealth(url, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return true;
+    } catch {
+      /* not up yet */
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
+
+function killTree(child, signal) {
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      /* already gone */
+    }
+  }
+}
 
 function makeContext({ connectorSecret = CONNECTOR_SECRET } = {}) {
   const db = openDatabase(':memory:');
@@ -161,4 +191,148 @@ test('dashboard app serves the SPA with a history fallback when dist exists', as
     headers: authHeaders(),
   });
   assert.equal(unknownApi.statusCode, 404, 'unknown /api paths stay 404');
+});
+
+test('npm start is the dashboard entrypoint and start:all never runs the combined server', () => {
+  const pkg = JSON.parse(readFileSync(join(PROJECT_DIR, 'package.json'), 'utf8'));
+  const { scripts } = pkg;
+
+  // #50: the operator default is the dashboard split entrypoint.
+  assert.equal(scripts.start, 'node src/dashboard.js');
+  assert.equal(scripts.dev, 'node --watch src/dashboard.js');
+  assert.equal(scripts['start:dashboard'], 'node src/dashboard.js');
+  assert.equal(scripts['start:connector'], 'node src/connector.js');
+  assert.doesNotMatch(scripts.start, /src\/server\.js/, 'npm start must not run the combined server');
+  assert.doesNotMatch(scripts.dev, /src\/server\.js/, 'npm run dev must not run the combined server');
+
+  // Local/demo runs the two entrypoints through the launcher, not src/server.js.
+  assert.equal(scripts['start:all'], 'node scripts/start-all.js');
+  assert.doesNotMatch(scripts['start:all'], /src\/server\.js/, 'start:all must not run the combined server');
+  const launcher = readFileSync(join(PROJECT_DIR, 'scripts/start-all.js'), 'utf8');
+  assert.match(launcher, /src\/dashboard\.js/, 'launcher spawns the dashboard entrypoint');
+  assert.match(launcher, /src\/connector\.js/, 'launcher spawns the connector entrypoint');
+  assert.match(launcher, /CONNECTOR_PORT/, 'launcher gives the connector its own port');
+
+  // Whatever each script points at must be a real file.
+  const entrypointPattern = /(?:src|scripts)\/[\w./-]+\.js/;
+  for (const name of ['start', 'dev', 'start:dashboard', 'start:connector', 'start:all']) {
+    const match = scripts[name].match(entrypointPattern);
+    assert.ok(match, `scripts.${name} references an entrypoint`);
+    assert.ok(
+      existsSync(join(PROJECT_DIR, match[0])),
+      `scripts.${name} -> ${match[0]} exists`,
+    );
+  }
+});
+
+test('start:all boots the connector and dashboard as two live processes', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'dozo-startall-'));
+  const dashboardPort = 39320;
+  const connectorPort = 39321;
+
+  const launcher = spawn(process.execPath, ['scripts/start-all.js'], {
+    cwd: PROJECT_DIR,
+    detached: true, // own process group so the test can tear the whole tree down
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      PORT: String(dashboardPort),
+      CONNECTOR_PORT: String(connectorPort),
+      DB_PATH: join(dir, 'dozo.db'),
+      CONNECTOR_SPOOL_PATH: join(dir, 'scan-spool.jsonl'),
+      DASHBOARD_DIST_PATH: join(dir, 'no-dist'),
+      SEED_DEMO: 'true',
+      API_TOKEN: TEST_TOKEN,
+    },
+  });
+  let output = '';
+  launcher.stdout.on('data', (chunk) => (output += chunk));
+  launcher.stderr.on('data', (chunk) => (output += chunk));
+
+  t.after(async () => {
+    if (launcher.exitCode === null && launcher.signalCode === null) {
+      killTree(launcher, 'SIGTERM');
+      await new Promise((r) => setTimeout(r, 500));
+      killTree(launcher, 'SIGKILL');
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const dashboardUp = await waitForHealth(`http://127.0.0.1:${dashboardPort}/health`);
+  const connectorUp = await waitForHealth(`http://127.0.0.1:${connectorPort}/health`);
+  assert.ok(dashboardUp, `dashboard :${dashboardPort} is healthy\n${output}`);
+  assert.ok(connectorUp, `connector :${connectorPort} is healthy\n${output}`);
+
+  // Both surfaces are live and split: API on the dashboard, redirect on the connector.
+  const merchants = await fetch(`http://127.0.0.1:${dashboardPort}/api/merchants`, {
+    headers: { 'x-api-token': TEST_TOKEN },
+  });
+  assert.equal(merchants.status, 200, 'dashboard serves /api/*');
+
+  const connectorApi = await fetch(`http://127.0.0.1:${connectorPort}/api/merchants`, {
+    headers: { 'x-api-token': TEST_TOKEN },
+  });
+  assert.equal(connectorApi.status, 404, 'connector does not mount the dashboard API');
+
+  const redirect = await fetch(`http://127.0.0.1:${connectorPort}/r/DEMOTERM01`, {
+    redirect: 'manual',
+  });
+  assert.equal(redirect.status, 302, 'connector serves /r/:id');
+
+  // SIGINT on the launcher must stop both children and exit cleanly.
+  launcher.kill('SIGINT');
+  const exit = await new Promise((resolveExit) =>
+    launcher.on('exit', (code, signal) => resolveExit({ code, signal })),
+  );
+  assert.equal(exit.code, 0, `launcher exits cleanly (${JSON.stringify(exit)})\n${output}`);
+
+  // The children are gone too: a second boot on the same ports would have failed.
+  assert.equal(
+    await waitForHealth(`http://127.0.0.1:${connectorPort}/health`, 1000),
+    false,
+    'connector stopped with the launcher',
+  );
+});
+
+test('start:all stops the sibling and exits non-zero when one entrypoint fails', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'dozo-startall-fail-'));
+  const connectorPort = 39331;
+
+  // Occupy the dashboard port so the dashboard entrypoint fails to bind.
+  const blocker = createServer();
+  await new Promise((resolveListen) => blocker.listen(0, '0.0.0.0', resolveListen));
+  const dashboardPort = blocker.address().port;
+
+  const launcher = spawn(process.execPath, ['scripts/start-all.js'], {
+    cwd: PROJECT_DIR,
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      PORT: String(dashboardPort),
+      CONNECTOR_PORT: String(connectorPort),
+      DB_PATH: join(dir, 'dozo.db'),
+      CONNECTOR_SPOOL_PATH: join(dir, 'scan-spool.jsonl'),
+      DASHBOARD_DIST_PATH: join(dir, 'no-dist'),
+      SEED_DEMO: 'true',
+      API_TOKEN: TEST_TOKEN,
+    },
+  });
+  t.after(async () => {
+    if (launcher.exitCode === null && launcher.signalCode === null) {
+      killTree(launcher, 'SIGKILL');
+    }
+    await new Promise((resolveClose) => blocker.close(resolveClose));
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const exit = await new Promise((resolveExit) =>
+    launcher.on('exit', (code, signal) => resolveExit({ code, signal })),
+  );
+  assert.notEqual(exit.code, 0, `launcher exits non-zero (${JSON.stringify(exit)})`);
+  assert.equal(
+    await waitForHealth(`http://127.0.0.1:${connectorPort}/health`, 1000),
+    false,
+    'the sibling connector was stopped',
+  );
 });
