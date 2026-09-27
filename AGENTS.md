@@ -146,8 +146,8 @@ Merge only once each consumer round-trips against the new contract.
 - Hand off explicitly: state the branch/commit range and the feature to cover. The QA
   agent commits tests as `test(<scope>): ...` on its own branch/PR.
 - Per-directory context is exposed as references in `opencode.json`
-  (`@dozo-app`, `@dozo-server`, `@dozo-dashboard`, `@root`); the QA agent reads the one
-  matching the project under test.
+  (`@dozo-app-agent`, `@dozo-server-agent`, `@dozo-dashboard-agent`, `@root`); the
+  QA agent reads the one matching the project under test.
 - Native Android UI cannot be driven by Playwright — the QA agent covers the
   server/dashboard surface and flags `androidTest` as the remaining gap.
 
