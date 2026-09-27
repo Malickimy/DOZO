@@ -5,6 +5,7 @@
  * is public. Endpoints that are still being implemented may answer `404`; the
  * UI treats that as a "not available yet" state rather than a hard failure.
  */
+import { getLang } from './i18n'
 
 export type ActiveFlag = boolean | number
 
@@ -63,7 +64,10 @@ export interface SummaryQuery {
   until?: string
 }
 
-/** One day bucket from the series endpoint; `day` is a Europe/Warsaw `YYYY-MM-DD`. */
+/**
+ * One day bucket from the series endpoint; `day` is a Europe/Warsaw `YYYY-MM-DD`.
+ * Days without scans are omitted by the server.
+ */
 export interface ScanSeriesPoint {
   day: string
   count: number
@@ -73,20 +77,6 @@ export interface ScanSeriesQuery {
   since?: string
   until?: string
   bucket: 'day'
-}
-
-export interface ClaimedStore {
-  terminal_id: string
-  merchant_id: string
-  google_place_id: string | null
-  label: string | null
-  redirect_url: string
-}
-
-export interface ClaimResult {
-  status: 'claimed'
-  api_token: string
-  store: ClaimedStore
 }
 
 export interface OfflineTerminal {
@@ -212,9 +202,17 @@ function errorMessage(status: number, path: string, body: unknown): string {
       : typeof body === 'string' && body
         ? body
         : undefined
-  if (status === 404) return `Not found: ${path}`
-  if (status === 401 || status === 403) return 'Unauthorized — check the API token.'
-  return detail ? `Request failed (${status}): ${detail}` : `Request failed (${status}) for ${path}`
+  const en = getLang() === 'en'
+  if (status === 404) return en ? `Not found: ${path}` : `Nie znaleziono: ${path}`
+  if (status === 401 || status === 403) {
+    return en ? 'Unauthorized — check the API token.' : 'Brak autoryzacji — sprawdź token API.'
+  }
+  if (detail) {
+    return en ? `Request failed (${status}): ${detail}` : `Żądanie nie powiodło się (${status}): ${detail}`
+  }
+  return en
+    ? `Request failed (${status}) for ${path}`
+    : `Żądanie nie powiodło się (${status}): ${path}`
 }
 
 export interface ApiClient {
@@ -240,7 +238,6 @@ export interface ApiClient {
     fields: { display_enabled?: boolean; display_timeout_seconds?: number },
   ) => Promise<TerminalConfig>
   setGooglePlaceId: (merchantId: string, googlePlaceId: string) => Promise<{ merchant_id: string; google_place_id: string | null }>
-  claimTerminal: (code: string, label?: string) => Promise<ClaimResult>
   issueSetupCode: (merchantId: string, label: string) => Promise<SetupCode>
   listOfflineTerminals: () => Promise<OfflineResult>
 }
@@ -266,7 +263,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       response = await fetch(`${baseUrl}${path}`, { ...init, headers })
     } catch (cause) {
       throw new ApiError(
-        'Network request failed. Check the API base URL and that the server is reachable.',
+        getLang() === 'en'
+          ? 'Network request failed. Check the API base URL and that the server is reachable.'
+          : 'Brak połączenia z serwerem. Sprawdź adres API i czy serwer działa.',
         { status: 0, path, body: null, cause },
       )
     }
@@ -331,11 +330,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         merchantPath(merchantId, '/google-place-id'),
         { method: 'PUT', body: JSON.stringify({ google_place_id: googlePlaceId }) },
       ),
-    claimTerminal: (code, label) =>
-      request<ClaimResult>('/api/terminals/claim', {
-        method: 'POST',
-        body: JSON.stringify(label ? { code, label } : { code }),
-      }),
     issueSetupCode: (merchantId, label) =>
       request<SetupCode>(
         merchantPath(merchantId, `/registers/${encodeURIComponent(label)}/setup-code`),

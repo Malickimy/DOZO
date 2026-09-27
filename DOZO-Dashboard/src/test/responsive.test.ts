@@ -19,8 +19,8 @@ describe('responsive layout', () => {
     expect(appCss).toMatch(/\.table-wrap\s*\{[^}]*overflow-x:\s*auto/s)
   })
 
-  it('wraps the tab bar instead of overflowing on narrow screens', () => {
-    expect(appCss).toMatch(/\.tabs\s*\{[^}]*flex-wrap:\s*wrap/s)
+  it('keeps the sidebar scrollable instead of overflowing on narrow screens', () => {
+    expect(appCss).toMatch(/\.side\s*\{[^}]*overflow-x:\s*auto/s)
   })
 })
 

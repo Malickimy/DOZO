@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { errorCode, isApiError, isNotAvailable } from '../lib/api'
 import type { ApiClient, Terminal, TerminalConfig } from '../lib/api'
 import { isActive } from '../lib/format'
+import { useT } from '../lib/i18n'
+import type { Translate } from '../lib/i18n'
 import { useAsync } from '../lib/useAsync'
 import { ErrorState, Loading, NotAvailable } from './StateMessage'
 
@@ -15,17 +17,27 @@ interface TerminalDrawerProps {
   onSaved: () => void
 }
 
-function friendlyConfigError(error: unknown): string {
+function friendlyConfigError(error: unknown, t: Translate): string {
   const code = errorCode(error)
-  if (code === 'label_in_use') return 'Label already in use.'
+  if (code === 'label_in_use') return t('Ta nazwa jest już zajęta.', 'Label already in use.')
   if (code === 'inactive_terminal') {
-    return 'This terminal is inactive — reactivate it before editing its configuration.'
+    return t(
+      'Ten terminal jest nieaktywny — aktywuj go, zanim zmienisz konfigurację.',
+      'This terminal is inactive — reactivate it before editing its configuration.',
+    )
   }
   if (code === 'unknown_terminal') {
-    return 'This terminal is unknown to the server. Refresh the terminal list.'
+    return t(
+      'Serwer nie zna tego terminala. Odśwież listę terminali.',
+      'This terminal is unknown to the server. Refresh the terminal list.',
+    )
   }
-  if (isApiError(error) && error.isUnauthorized) return 'Unauthorized — check the API token.'
-  if (isApiError(error) && error.status === 400) return 'The server rejected those values.'
+  if (isApiError(error) && error.isUnauthorized) {
+    return t('Brak autoryzacji — sprawdź token API.', 'Unauthorized — check the API token.')
+  }
+  if (isApiError(error) && error.status === 400) {
+    return t('Serwer odrzucił te wartości.', 'The server rejected those values.')
+  }
   return error instanceof Error ? error.message : String(error)
 }
 
@@ -44,6 +56,7 @@ function TerminalConfigForm({
   config,
   onSaved,
 }: TerminalConfigFormProps) {
+  const t = useT()
   const [label, setLabel] = useState(config.label ?? '')
   const [active, setActive] = useState(config.active)
   const [displayEnabled, setDisplayEnabled] = useState(config.display_enabled)
@@ -66,7 +79,7 @@ function TerminalConfigForm({
       await client.patchTerminal(terminal.terminal_id, fields)
       onSaved()
     } catch (error) {
-      setLifecycleError(friendlyConfigError(error))
+      setLifecycleError(friendlyConfigError(error, t))
     } finally {
       setSavingLifecycle(false)
     }
@@ -85,7 +98,7 @@ function TerminalConfigForm({
   function handleSaveLabel() {
     const trimmed = label.trim()
     if (!trimmed) {
-      setLifecycleError('Label cannot be empty.')
+      setLifecycleError(t('Nazwa nie może być pusta.', 'Label cannot be empty.'))
       return
     }
     void saveLifecycle({ label: trimmed })
@@ -93,7 +106,7 @@ function TerminalConfigForm({
 
   async function handleSaveDisplay() {
     if (!Number.isFinite(timeoutSeconds)) {
-      setDisplayError('Enter a timeout in seconds.')
+      setDisplayError(t('Podaj czas w sekundach.', 'Enter a timeout in seconds.'))
       return
     }
     setSavingDisplay(true)
@@ -105,7 +118,7 @@ function TerminalConfigForm({
       })
       onSaved()
     } catch (error) {
-      setDisplayError(friendlyConfigError(error))
+      setDisplayError(friendlyConfigError(error, t))
     } finally {
       setSavingDisplay(false)
     }
@@ -121,7 +134,7 @@ function TerminalConfigForm({
     <div className="stack">
       <div className="form">
         <label className="field field--inline">
-          <span className="field__label">Active</span>
+          <span className="field__label">{t('Aktywny', 'Active')}</span>
           <input
             type="checkbox"
             checked={active}
@@ -131,7 +144,7 @@ function TerminalConfigForm({
         </label>
 
         <label className="field">
-          <span className="field__label">Label</span>
+          <span className="field__label">{t('Nazwa', 'Label')}</span>
           <input
             className="input"
             type="text"
@@ -146,7 +159,7 @@ function TerminalConfigForm({
           disabled={savingLifecycle}
           onClick={handleSaveLabel}
         >
-          Save label
+          {t('Zapisz nazwę', 'Save label')}
         </button>
       </div>
 
@@ -158,7 +171,7 @@ function TerminalConfigForm({
 
       <div className="form">
         <label className="field field--inline">
-          <span className="field__label">Show QR</span>
+          <span className="field__label">{t('Pokaż kod QR', 'Show QR')}</span>
           <input
             type="checkbox"
             checked={displayEnabled}
@@ -168,7 +181,9 @@ function TerminalConfigForm({
         </label>
 
         <label className="field">
-          <span className="field__label">Display timeout (seconds)</span>
+          <span className="field__label">
+            {t('Czas wyświetlania (sekundy)', 'Display timeout (seconds)')}
+          </span>
           <input
             className="input"
             type="number"
@@ -185,7 +200,7 @@ function TerminalConfigForm({
           disabled={savingDisplay}
           onClick={handleSaveDisplay}
         >
-          Save display
+          {t('Zapisz ekran', 'Save display')}
         </button>
       </div>
 
@@ -197,21 +212,34 @@ function TerminalConfigForm({
 
       {reviewUrl ? (
         <p className="muted">
-          Review link:{' '}
+          {t('Link do opinii:', 'Review link:')}{' '}
           <a href={reviewUrl} target="_blank" rel="noreferrer">
             {reviewUrl}
           </a>
         </p>
       ) : (
-        <p className="muted">Review link appears once the merchant has a Google Place ID.</p>
+        <p className="muted">
+          {t(
+            'Link do opinii pojawi się, gdy sprzedawca będzie miał Place ID z Google.',
+            'Review link appears once the merchant has a Google Place ID.',
+          )}
+        </p>
       )}
 
       {confirmDeactivate ? (
-        <div className="card" role="alertdialog" aria-label="Confirm deactivation">
-          <h3 className="card__title">Deactivate last active terminal?</h3>
+        <div
+          className="card"
+          role="alertdialog"
+          aria-label={t('Potwierdź dezaktywację', 'Confirm deactivation')}
+        >
+          <h3 className="card__title">
+            {t('Wyłączyć ostatni aktywny terminal?', 'Deactivate last active terminal?')}
+          </h3>
           <p className="muted">
-            This is the last active terminal for this merchant. Deactivating it stops scans
-            from being accepted.
+            {t(
+              'To ostatni aktywny terminal tego sprzedawcy. Po wyłączeniu skany przestaną być przyjmowane.',
+              'This is the last active terminal for this merchant. Deactivating it stops scans from being accepted.',
+            )}
           </p>
           <div className="form__actions">
             <button
@@ -220,7 +248,7 @@ function TerminalConfigForm({
               disabled={savingLifecycle}
               onClick={confirmDeactivateNow}
             >
-              Deactivate
+              {t('Wyłącz', 'Deactivate')}
             </button>
             <button
               type="button"
@@ -228,7 +256,7 @@ function TerminalConfigForm({
               disabled={savingLifecycle}
               onClick={() => setConfirmDeactivate(false)}
             >
-              Cancel
+              {t('Anuluj', 'Cancel')}
             </button>
           </div>
         </div>
@@ -248,6 +276,7 @@ export function TerminalDrawer({
   onClose,
   onSaved,
 }: TerminalDrawerProps) {
+  const t = useT()
   const configState = useAsync(
     () => client.getTerminalConfig(terminal.terminal_id),
     [client, terminal.terminal_id],
@@ -256,28 +285,34 @@ export function TerminalDrawer({
   const config = configState.data
 
   return (
-    <div className="drawer" role="dialog" aria-label={`Manage ${terminal.terminal_id}`}>
+    <div
+      className="drawer"
+      role="dialog"
+      aria-label={`${t('Zarządzaj', 'Manage')} ${terminal.terminal_id}`}
+    >
       <div className="card drawer__panel">
         <div className="card__header">
-          <h2 className="card__title">Manage terminal</h2>
+          <h2 className="card__title">{t('Zarządzaj terminalem', 'Manage terminal')}</h2>
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Close
+            {t('Zamknij', 'Close')}
           </button>
         </div>
         <p className="muted">
           <code>{terminal.terminal_id}</code>
         </p>
 
-        {configState.loading ? <Loading label="Loading terminal config…" /> : null}
+        {configState.loading ? (
+          <Loading label={t('Ładowanie konfiguracji terminala…', 'Loading terminal config…')} />
+        ) : null}
 
         {configState.error ? (
           errorCode(configState.error) === 'unknown_terminal' ||
           errorCode(configState.error) === 'inactive_terminal' ? (
             <p className="state state--error" role="alert">
-              {friendlyConfigError(configState.error)}
+              {friendlyConfigError(configState.error, t)}
             </p>
           ) : isNotAvailable(configState.error) ? (
-            <NotAvailable label="Terminal configuration" />
+            <NotAvailable label={t('Konfiguracja terminala', 'Terminal configuration')} />
           ) : (
             <ErrorState error={configState.error} onRetry={configState.reload} />
           )

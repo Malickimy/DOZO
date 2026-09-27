@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -15,6 +16,14 @@ export default defineConfig({
     proxy: {
       '/api': { target: proxyTarget, changeOrigin: true },
       '/health': { target: proxyTarget, changeOrigin: true },
+    },
+  },
+  build: {
+    rolldownOptions: {
+      input: {
+        home: fileURLToPath(new URL('./index.html', import.meta.url)),
+        panel: fileURLToPath(new URL('./panel/index.html', import.meta.url)),
+      },
     },
   },
   test: {

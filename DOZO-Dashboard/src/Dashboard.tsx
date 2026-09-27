@@ -1,42 +1,36 @@
-import { useState } from 'react'
-import { GooglePlaceIdForm } from './components/GooglePlaceIdForm'
+import { useCallback, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { BillingView } from './components/BillingView'
+import { ContactsView } from './components/ContactsView'
+import { GuideView } from './components/GuideView'
+import { LangSwitch } from './components/LangSwitch'
+import { Logo } from './components/Logo'
 import { MerchantPicker } from './components/MerchantPicker'
-import { OfflinePanel } from './components/OfflinePanel'
-import { PairingForm } from './components/PairingForm'
-import { RangePicker } from './components/RangePicker'
-import { RegistersView } from './components/RegistersView'
-import { ScansView } from './components/ScansView'
-import { ErrorState, Empty, Loading, NotAvailable } from './components/StateMessage'
-import { SummaryCards } from './components/SummaryCards'
+import { OverviewView } from './components/OverviewView'
+import { ScreenView } from './components/ScreenView'
+import { ErrorState, Empty, NotAvailable } from './components/StateMessage'
 import { TerminalDrawer } from './components/TerminalDrawer'
-import { TerminalsTable } from './components/TerminalsTable'
-import { Toast } from './components/Toast'
+import { TerminalsView } from './components/TerminalsView'
 import { isNotAvailable } from './lib/api'
-import type { ApiClient, MerchantSummary, Terminal } from './lib/api'
-import { initialRange } from './lib/range'
+import type { ApiClient, Terminal } from './lib/api'
+import { useT } from './lib/i18n'
 import type { Settings } from './lib/settings'
 import { useAsync } from './lib/useAsync'
-import { usePolling } from './lib/usePolling'
-import { useScanDelta } from './lib/useScanDelta'
 
 interface DashboardProps {
   client: ApiClient
   settings: Settings
   onOpenSettings: () => void
+  onLogout: () => void
 }
 
-type Tab = 'overview' | 'scans' | 'pair' | 'registers'
+type Tab = 'overview' | 'terminals' | 'screen' | 'contacts' | 'guide' | 'billing'
 
-/** New scans are polled for every 10s while the browser tab is visible. */
-const SCAN_POLL_MS = 10_000
-
-export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) {
+export function Dashboard({ client, settings, onOpenSettings, onLogout }: DashboardProps) {
+  const t = useT()
   const [tab, setTab] = useState<Tab>('overview')
   const [merchantId, setMerchantId] = useState('')
   const [managingId, setManagingId] = useState<string | null>(null)
-  const [range, setRange] = useState(initialRange)
-  // Bumped by the poll and the manual Refresh so the active view refetches.
-  const [dataToken, setDataToken] = useState(0)
 
   const merchantsState = useAsync(() => client.listMerchants(), [client])
   const merchants = merchantsState.data ?? []
@@ -49,16 +43,6 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
     () => (activeMerchantId ? client.listTerminals(activeMerchantId) : Promise.resolve([])),
     [client, activeMerchantId],
   )
-  const summaryState = useAsync<MerchantSummary | null>(
-    () =>
-      activeMerchantId
-        ? client.getSummary(activeMerchantId, {
-            since: range.since || undefined,
-            until: range.until || undefined,
-          })
-        : Promise.resolve(null),
-    [client, activeMerchantId, range.since, range.until],
-  )
 
   const terminals = terminalsState.data ?? []
   const selectedMerchant =
@@ -66,44 +50,82 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
   const managingTerminal =
     terminals.find((terminal) => terminal.terminal_id === managingId) ?? null
 
-  // Toast on a rising total only. The key resets the baseline whenever the
-  // merchant or range changes, so a filtered reload never looks like new scans.
-  const summaryKey = `${activeMerchantId}|${range.since}|${range.until}`
-  const scanDelta = useScanDelta(summaryState.data?.total_scans ?? null, summaryKey)
+  const reloadTerminals = terminalsState.reload
+  const refreshAfterWrite = useCallback(() => reloadTerminals(), [reloadTerminals])
 
-  usePolling(
-    () => {
-      if (!activeMerchantId) return
-      void summaryState.refresh()
-      setDataToken((value) => value + 1)
+  const tabs: ReadonlyArray<{ key: Tab; label: ReactNode; title: string; icon: ReactNode }> = [
+    { key: 'overview', label: t('Przegląd', 'Overview'), title: t('Przegląd', 'Overview'), icon: ICONS.overview },
+    { key: 'terminals', label: t('Terminale', 'Terminals'), title: t('Terminale', 'Terminals'), icon: ICONS.terminals },
+    {
+      key: 'screen',
+      label: (
+        <span>
+          {t('Ekran', 'Screen')}
+          <span className="lbl-long">{t(' po płatności', ' after payment')}</span>
+        </span>
+      ),
+      title: t('Ekran po płatności', 'After-payment screen'),
+      icon: ICONS.screen,
     },
-    { intervalMs: SCAN_POLL_MS, enabled: Boolean(activeMerchantId) },
-  )
+    { key: 'contacts', label: t('Baza kontaktów', 'Contacts'), title: t('Baza kontaktów', 'Contacts'), icon: ICONS.contacts },
+    { key: 'guide', label: t('Poradnik', 'Guide'), title: t('Poradnik', 'Guide'), icon: ICONS.guide },
+    { key: 'billing', label: t('Subskrypcja', 'Subscription'), title: t('Subskrypcja', 'Subscription'), icon: ICONS.billing },
+  ]
+  const activeTab = tabs.find((item) => item.key === tab) ?? tabs[0]
 
-  function refreshAfterWrite() {
-    terminalsState.reload()
-    summaryState.reload()
-  }
+  useEffect(() => {
+    document.title = `${activeTab.title} — DooZo`
+  }, [activeTab.title])
 
-  function refreshNow() {
-    terminalsState.reload()
-    summaryState.reload()
-    setDataToken((value) => value + 1)
-  }
+  const needsMerchant = tab === 'overview' || tab === 'terminals' || tab === 'screen'
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="topbar__brand">
-          <span className="logo" aria-hidden="true">
-            D
-          </span>
-          <div>
-            <h1 className="topbar__title">DOZO Dashboard</h1>
-            <p className="topbar__subtitle">Scan volume per terminal</p>
-          </div>
+      <aside className="side">
+        <a className="side__brand" href="/" aria-label={t('DooZo — strona główna', 'DooZo — homepage')}>
+          <Logo />
+        </a>
+        <nav className="side__nav" aria-label={t('Sekcje', 'Sections')}>
+          {tabs.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-current={tab === item.key ? 'page' : undefined}
+              onClick={() => setTab(item.key)}
+            >
+              {item.icon}
+              {typeof item.label === 'string' ? <span>{item.label}</span> : item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="side__bottom">
+          <LangSwitch />
+          <a href="/">
+            {ICONS.home}
+            <span>{t('Strona główna', 'Homepage')}</span>
+          </a>
+          <button type="button" onClick={onOpenSettings}>
+            {ICONS.settings}
+            <span>{t('Ustawienia API', 'Settings')}</span>
+          </button>
+          <button type="button" onClick={onLogout}>
+            {ICONS.logout}
+            <span>{t('Wyloguj się', 'Sign out')}</span>
+          </button>
+          {activeMerchantId ? (
+            <div className="who">
+              <span className="avatar" aria-hidden="true">
+                {activeMerchantId.charAt(0).toUpperCase()}
+              </span>
+              <span className="who__name">{activeMerchantId}</span>
+            </div>
+          ) : null}
         </div>
-        <div className="topbar__actions">
+      </aside>
+
+      <main className="dash">
+        <div className="dash-top">
+          <h1>{activeTab.title}</h1>
           <MerchantPicker
             merchants={merchants}
             value={activeMerchantId}
@@ -111,120 +133,65 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
             unavailable={merchantsUnavailable}
             loading={merchantsState.loading}
           />
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={refreshNow}
-            disabled={!activeMerchantId}
-          >
-            Refresh
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={onOpenSettings}>
-            Settings
-          </button>
         </div>
-      </header>
 
-      {merchantsState.error && !merchantsUnavailable ? (
-        <div className="container">
+        {merchantsState.error && !merchantsUnavailable ? (
           <ErrorState error={merchantsState.error} onRetry={merchantsState.reload} />
-        </div>
-      ) : null}
+        ) : null}
 
-      {merchantsUnavailable ? (
-        <div className="container">
-          <NotAvailable label="The merchant list" />
-        </div>
-      ) : null}
+        {merchantsUnavailable ? (
+          <NotAvailable label={t('Lista sprzedawców', 'The merchant list')} />
+        ) : null}
 
-      <nav className="tabs" aria-label="Sections">
-        {(
-          [
-            ['overview', 'Overview'],
-            ['scans', 'Scans'],
-            ['pair', 'Pair terminal'],
-            ['registers', 'Registers & setup codes'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={tab === key ? 'tab tab--active' : 'tab'}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="container">
-        {!activeMerchantId ? (
-          <Empty>Select or enter a merchant ID to load its terminals and scans.</Empty>
+        {needsMerchant && !activeMerchantId ? (
+          <Empty>
+            {t(
+              'Wybierz albo wpisz ID sprzedawcy, żeby wczytać jego terminale i skany.',
+              'Select or enter a merchant ID to load its terminals and scans.',
+            )}
+          </Empty>
         ) : null}
 
         {activeMerchantId && tab === 'overview' ? (
-          <div className="stack">
-            <RangePicker value={range} onChange={setRange} />
-            {summaryState.loading ? <Loading label="Loading summary…" /> : null}
-            {summaryState.error && isNotAvailable(summaryState.error) ? (
-              <NotAvailable label="The merchant summary" />
-            ) : null}
-            {summaryState.error && !isNotAvailable(summaryState.error) ? (
-              <ErrorState error={summaryState.error} onRetry={summaryState.reload} />
-            ) : null}
-            {summaryState.data ? <SummaryCards summary={summaryState.data} /> : null}
-
-            <div className="card">
-              <h2 className="card__title">Terminals</h2>
-              {terminalsState.loading ? <Loading label="Loading terminals…" /> : null}
-              {terminalsState.error && isNotAvailable(terminalsState.error) ? (
-                <NotAvailable label="The terminals list" />
-              ) : null}
-              {terminalsState.error && !isNotAvailable(terminalsState.error) ? (
-                <ErrorState error={terminalsState.error} onRetry={terminalsState.reload} />
-              ) : null}
-              {!terminalsState.loading && !terminalsState.error ? (
-                <TerminalsTable
-                  terminals={terminals}
-                  onManage={(terminal) => setManagingId(terminal.terminal_id)}
-                />
-              ) : null}
-            </div>
-
-            <GooglePlaceIdForm
-              key={activeMerchantId}
-              client={client}
-              merchantId={activeMerchantId}
-              currentPlaceId={selectedMerchant?.google_place_id ?? null}
-              onSaved={merchantsState.reload}
-            />
-
-            <OfflinePanel client={client} merchantId={activeMerchantId} />
-          </div>
+          <OverviewView client={client} merchantId={activeMerchantId} terminals={terminals} />
         ) : null}
 
-        {activeMerchantId && tab === 'scans' ? (
-          <ScansView
+        {activeMerchantId && tab === 'terminals' ? (
+          <TerminalsView
             client={client}
             merchantId={activeMerchantId}
-            terminals={terminals}
-            range={range}
-            onRangeChange={setRange}
-            summary={summaryState.data}
-            refreshToken={dataToken}
+            terminalsState={terminalsState}
+            onManage={(terminal) => setManagingId(terminal.terminal_id)}
+            onChanged={refreshAfterWrite}
           />
         ) : null}
 
-        {tab === 'pair' ? (
-          <PairingForm client={client} onClaimed={refreshAfterWrite} />
+        {activeMerchantId && tab === 'screen' ? (
+          <ScreenView
+            client={client}
+            merchantId={activeMerchantId}
+            merchant={selectedMerchant}
+            terminals={terminals}
+            onMerchantSaved={merchantsState.reload}
+          />
         ) : null}
 
-        {activeMerchantId && tab === 'registers' ? (
-          <RegistersView client={client} merchantId={activeMerchantId} />
-        ) : null}
+        {tab === 'contacts' ? <ContactsView /> : null}
+        {tab === 'guide' ? <GuideView /> : null}
+        {tab === 'billing' ? <BillingView /> : null}
+
+        <footer className="footer">
+          <span>
+            API: <code>{settings.baseUrl}</code>
+          </span>
+          <span>
+            {t(
+              'Opinii nie da się przypisać do skanu — mierzymy skany.',
+              'Reviews can’t be attributed — scan volume is the metric.',
+            )}
+          </span>
+        </footer>
       </main>
-
-      <Toast message={scanDelta.message} onDismiss={scanDelta.dismiss} />
 
       {managingTerminal ? (
         <TerminalDrawer
@@ -235,13 +202,73 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
           onSaved={refreshAfterWrite}
         />
       ) : null}
-
-      <footer className="footer">
-        <span>
-          API: <code>{settings.baseUrl}</code>
-        </span>
-        <span>Reviews can’t be attributed — scan volume is the metric.</span>
-      </footer>
     </div>
   )
+}
+
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+const ICONS = {
+  overview: (
+    <Icon>
+      <rect x="3" y="3" width="7" height="9" rx="2" />
+      <rect x="14" y="3" width="7" height="5" rx="2" />
+      <rect x="14" y="12" width="7" height="9" rx="2" />
+      <rect x="3" y="16" width="7" height="5" rx="2" />
+    </Icon>
+  ),
+  terminals: (
+    <Icon>
+      <rect x="6" y="2" width="12" height="20" rx="3" />
+      <path d="M10 18h4" />
+    </Icon>
+  ),
+  screen: (
+    <Icon>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <path d="M14 14h3v3M14 21h7M21 17v4" />
+    </Icon>
+  ),
+  contacts: (
+    <Icon>
+      <ellipse cx="12" cy="6" rx="8" ry="3" />
+      <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+    </Icon>
+  ),
+  guide: (
+    <Icon>
+      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+      <path d="M4 21V5M9 7h6" />
+    </Icon>
+  ),
+  billing: (
+    <Icon>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </Icon>
+  ),
+  logout: (
+    <Icon>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+    </Icon>
+  ),
+  home: (
+    <Icon>
+      <path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+    </Icon>
+  ),
+  settings: (
+    <Icon>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+    </Icon>
+  ),
 }

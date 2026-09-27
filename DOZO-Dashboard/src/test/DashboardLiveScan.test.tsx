@@ -74,7 +74,7 @@ describe('Dashboard live scans', () => {
     vi.useFakeTimers()
     let total = 3
     stubDashboard(() => total)
-    render(<Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} />)
+    render(<Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} onLogout={vi.fn()} />)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0)
@@ -92,7 +92,7 @@ describe('Dashboard live scans', () => {
     let total = 3
     const fetchMock = stubDashboard(() => total)
     const user = userEvent.setup()
-    render(<Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} />)
+    render(<Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} onLogout={vi.fn()} />)
 
     await waitFor(() => expect(summaryCalls(fetchMock)).toBe(1))
     expect(screen.queryByText('+2 scans')).not.toBeInTheDocument()
