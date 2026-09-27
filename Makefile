@@ -16,7 +16,7 @@ help:
 	@echo "  make app            build the Android debug APK"
 	@echo "  make app-test       run Android unit tests"
 	@echo "  make server         run server tests"
-	@echo "  make server-dev     start the server (SEED_DEMO=true)"
+	@echo "  make server-dev     start connector :3001 + dashboard :3000 (SEED_DEMO=true)"
 	@echo "  make dashboard      build the dashboard"
 	@echo "  make dashboard-dev  start the dashboard dev server"
 	@echo "  make dashboard-test run dashboard tests"
@@ -32,7 +32,7 @@ server:
 	cd $(SERVER_DIR) && npm test
 
 server-dev:
-	cd $(SERVER_DIR) && SEED_DEMO=true npm start
+	cd $(SERVER_DIR) && SEED_DEMO=true npm run start:all
 
 dashboard:
 	cd $(DASHBOARD_DIR) && npm run build
