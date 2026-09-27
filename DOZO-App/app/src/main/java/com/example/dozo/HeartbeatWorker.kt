@@ -14,13 +14,12 @@ class HeartbeatWorker(
         val apiToken = DozoConfig.apiToken(applicationContext)
         if (terminalId.isBlank() || apiToken.isBlank()) return Result.success()
         return try {
-            when (DozoApi(DozoConfig.apiBaseUrl(applicationContext), apiToken).heartbeat(terminalId)) {
-                HeartbeatResult.Unauthorized -> {
-                    DozoConfig.clearApiToken(applicationContext)
-                    Result.success()
-                }
-                HeartbeatResult.Ok, HeartbeatResult.Failed -> Result.success()
+            val result = DozoApi(DozoConfig.apiBaseUrl(applicationContext), apiToken)
+                .heartbeat(terminalId)
+            if (AuthRecovery.shouldClearToken(result)) {
+                DozoConfig.clearApiToken(applicationContext)
             }
+            Result.success()
         } catch (_: Exception) {
             Result.retry()
         }

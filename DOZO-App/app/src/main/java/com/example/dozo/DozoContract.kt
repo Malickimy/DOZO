@@ -37,7 +37,6 @@ object DozoContract {
     const val KEY_MERCHANT_NAME = "merchant_name"
     const val KEY_PROMPT_TEXT = "prompt_text"
     const val KEY_LANGUAGE = "language"
-    const val KEY_PAIRING_CODE = "pairing_code"
     const val KEY_PIN = "pin"
     const val KEY_AUTO_CLOSE = "auto_close_enabled"
     const val KEY_GOOGLE_PLACE_ID = "google_place_id"

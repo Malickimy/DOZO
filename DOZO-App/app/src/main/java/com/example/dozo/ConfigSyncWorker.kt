@@ -15,16 +15,16 @@ class ConfigSyncWorker(
         if (terminalId.isBlank() || apiToken.isBlank()) return Result.success()
         return try {
             val api = DozoApi(DozoConfig.apiBaseUrl(applicationContext), apiToken)
-            when (val result = api.config(terminalId)) {
+            val result = api.config(terminalId)
+            if (AuthRecovery.shouldClearToken(result)) {
+                DozoConfig.clearApiToken(applicationContext)
+            }
+            when (result) {
                 is ConfigResult.Success -> {
                     DozoConfig.applyRemoteConfig(applicationContext, result.config, terminalId)
                     Result.success()
                 }
-                ConfigResult.NotFound -> Result.success()
-                ConfigResult.Unauthorized -> {
-                    DozoConfig.clearApiToken(applicationContext)
-                    Result.success()
-                }
+                ConfigResult.NotFound, ConfigResult.Unauthorized -> Result.success()
                 ConfigResult.Failed -> Result.retry()
             }
         } catch (_: Exception) {
