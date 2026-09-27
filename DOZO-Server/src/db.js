@@ -145,7 +145,11 @@ function reconcile(db) {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_scans_event_id ON scans (event_id)');
 }
 
-/** Insert a demo merchant + terminal so a fresh instance is curl-able. */
+/**
+ * Insert a demo merchant + terminal + bound register so a fresh instance is
+ * curl-able. Idempotent: safe to re-run against an already-seeded database,
+ * including one where migration v5 already backfilled the register.
+ */
 export function seedDemo(db) {
   const now = new Date().toISOString();
   db.prepare(
@@ -156,6 +160,21 @@ export function seedDemo(db) {
     `INSERT OR IGNORE INTO terminals (terminal_id, merchant_id, label, active, last_seen, created_at)
      VALUES (?, ?, ?, 1, NULL, ?)`,
   ).run('DEMOTERM01', 'demo-merchant', 'Demo terminal', now);
+  // `(merchant_id, label)` is unique, so OR IGNORE keeps a re-run from inserting
+  // a second row. The migration-v5 backfill already binds labeled terminals, but
+  // a fresh DB has no terminals when v5 runs, so the demo terminal would
+  // otherwise end up with no register.
+  db.prepare(
+    `INSERT OR IGNORE INTO registers (merchant_id, label, terminal_id, active, created_at)
+     VALUES (?, ?, ?, 1, ?)`,
+  ).run('demo-merchant', 'Demo terminal', 'DEMOTERM01', now);
+  // Bind a demo register that exists but is still unoccupied (e.g. created via
+  // setup-code before seeding) without touching an already-bound one.
+  db.prepare(
+    `UPDATE registers
+        SET terminal_id = ?
+      WHERE merchant_id = ? AND label = ? AND terminal_id IS NULL`,
+  ).run('DEMOTERM01', 'demo-merchant', 'Demo terminal');
 }
 
 export { MIGRATIONS };
