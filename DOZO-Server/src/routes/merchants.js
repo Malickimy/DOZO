@@ -34,9 +34,15 @@ function parseLimit(value) {
   return Math.min(Math.max(parsed, 1), MAX_SCAN_LIMIT);
 }
 
-function scanWindow(query, merchantId) {
-  const conditions = ['t.merchant_id = ?'];
-  const params = [merchantId];
+/**
+ * Optional `?since`/`?until` predicates over `scans.scanned_at`, shared by the
+ * summary, scans and series routes. Returns only the window clauses; callers
+ * supply the merchant predicate themselves so the same window can be applied
+ * to an `ON` clause (summary) or a `WHERE` clause (scans/series).
+ */
+function scanWindow(query) {
+  const conditions = [];
+  const params = [];
   if (typeof query.since === 'string' && query.since.trim()) {
     conditions.push('s.scanned_at >= ?');
     params.push(query.since.trim());
@@ -111,14 +117,51 @@ export function registerMerchantRoutes(app) {
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
-    const terminals = listSummary.all(merchantId).map((row) => ({
+
+    const query = request.query ?? {};
+    const { conditions: windowConditions, params: windowParams } = scanWindow(query);
+
+    let rows;
+    let total;
+    if (windowConditions.length === 0) {
+      // Fast path: no window requested, so the pre-prepared statements (and
+      // therefore the response) are byte-identical to the pre-window behavior.
+      rows = listSummary.all(merchantId);
+      total = countScans.get(merchantId).total;
+    } else {
+      // The window predicates live in the LEFT JOIN's ON clause so terminals
+      // with no scans inside the window still appear with scan_count 0.
+      const onClause = windowConditions.map((condition) => `AND ${condition}`).join(' ');
+      rows = db
+        .prepare(
+          `SELECT t.terminal_id, t.label, COUNT(s.id) AS scan_count
+             FROM terminals t
+             LEFT JOIN scans s ON s.terminal_id = t.terminal_id ${onClause}
+            WHERE t.merchant_id = ?
+            GROUP BY t.terminal_id
+            ORDER BY t.terminal_id`,
+        )
+        .all(...windowParams, merchantId);
+
+      const whereClause = windowConditions.map((condition) => `AND ${condition}`).join(' ');
+      total = db
+        .prepare(
+          `SELECT COUNT(*) AS total
+             FROM scans s
+             JOIN terminals t ON t.terminal_id = s.terminal_id
+            WHERE t.merchant_id = ? ${whereClause}`,
+        )
+        .get(merchantId, ...windowParams).total;
+    }
+
+    const terminals = rows.map((row) => ({
       terminal_id: row.terminal_id,
       label: row.label,
       scan_count: row.scan_count,
     }));
     return {
       merchant_id: merchantId,
-      total_scans: countScans.get(merchantId).total,
+      total_scans: total,
       terminal_count: terminals.length,
       scans_by_terminal: terminals,
     };
@@ -176,16 +219,17 @@ export function registerMerchantRoutes(app) {
       return reply.code(400).send({ error: 'invalid_bucket' });
     }
 
-    const { conditions, params } = scanWindow(query, merchantId);
+    const { conditions, params } = scanWindow(query);
+    const where = ['t.merchant_id = ?', ...conditions].join(' AND ');
     const rows = db
       .prepare(
         `SELECT s.scanned_at
            FROM scans s
            JOIN terminals t ON t.terminal_id = s.terminal_id
-          WHERE ${conditions.join(' AND ')}
+          WHERE ${where}
           ORDER BY s.scanned_at ASC`,
       )
-      .all(...params);
+      .all(merchantId, ...params);
 
     const counts = new Map();
     for (const row of rows) {
