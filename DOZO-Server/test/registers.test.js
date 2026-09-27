@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { openDatabase, seedDemo } from '../src/db.js';
 import {
   makeTestContext,
   authHeaders,
@@ -9,6 +13,42 @@ import {
 } from './helpers.js';
 
 const STATIC_REVIEW_URL = `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`;
+
+test('seedDemo creates a bound register for DEMOTERM01 and is idempotent', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'dozo-seed-'));
+  const db = openDatabase(join(dir, 'dozo.db'));
+  t.after(() => {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  seedDemo(db);
+  const registers = db
+    .prepare(
+      `SELECT merchant_id, label, terminal_id, active
+         FROM registers
+        WHERE merchant_id = ? AND label = ?`,
+    )
+    .all('demo-merchant', 'Demo terminal');
+
+  assert.equal(registers.length, 1, 'a fresh DB gets exactly one demo register');
+  assert.deepEqual(registers[0], {
+    merchant_id: 'demo-merchant',
+    label: 'Demo terminal',
+    terminal_id: 'DEMOTERM01',
+    active: 1,
+  });
+
+  seedDemo(db);
+  const count = db
+    .prepare(
+      `SELECT COUNT(*) AS total
+         FROM registers
+        WHERE merchant_id = ? AND label = ?`,
+    )
+    .get('demo-merchant', 'Demo terminal').total;
+  assert.equal(count, 1, 're-seeding does not duplicate the register');
+});
 
 function insertTerminal(
   db,
