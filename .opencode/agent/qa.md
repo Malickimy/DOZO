@@ -35,7 +35,7 @@ change, inspect the delta and write tests for it.
    | --- | --- | --- |
    | `DOZO-Dashboard/` | Browser E2E (Chromium) of the merchant UI | `DOZO-Dashboard/e2e/` |
    | `DOZO-Server/` | HTTP API via the `request` fixture; assert status + JSON shape | `DOZO-Server/e2e/` |
-   | cross-cutting | Contract tests: assert the API payload against `CONTRACTS.md` | project under test |
+   | cross-cutting | Contract tests: assert the API payload against the owning `contracts/*.md` | project under test |
    | `DOZO-App/` | Playwright cannot drive native Android. Cover any server/dashboard surface the change touches and say plainly that native UI needs `androidTest` + the adb skills. | — |
 
    Before writing, pull context from the matching reference declared in `opencode.json`:
@@ -77,8 +77,9 @@ QA work lands in the same PR as the implementation. When the suite is green:
 
 ## Rules
 
-- `CONTRACTS.md` is read-only for you. If a test fails because the contract changed,
-  report it as a contract violation; do not edit the contract.
+- The contract files under `contracts/` are read-only for you (the matching project agent
+  owns each one). If a test fails because the contract changed, report it as a contract
+  violation; do not edit any contract file.
 - Prefer the lightest tool that proves the behavior. A trivial dashboard tweak may only
   need a Vitest component test — say so instead of forcing E2E.
 - Never push to `main`. Work on a branch/worktree and open a PR.

@@ -11,7 +11,8 @@ DOZO/
 ├── DOZO-App/            # Android terminal app (:app) + mock caller (:mockpay)
 ├── DOZO-Server/         # Fastify + SQLite server
 ├── DOZO-Dashboard/      # Vite + React merchant portal
-├── CONTRACTS.md         # cross-project interface (source of truth)
+├── CONTRACTS.md         # cross-project contract index (source of truth)
+├── contracts/           # one frozen interface per workstream
 ├── MANUAL.md            # hands-on operator manual
 ├── AGENTS.md            # agent/contributor workflow (commits, PRs, worktrees)
 ├── Makefile             # root task runner
@@ -19,9 +20,9 @@ DOZO/
 └── .github/workflows/   # path-filtered CI (app / server / dashboard)
 ```
 
-The coupling between the three projects is the HTTP API + intent/prefs contract in
-[`CONTRACTS.md`](CONTRACTS.md). Change it there first, then update every consumer in
-the same commit.
+The coupling between the three projects is the HTTP API + intent/prefs contract under
+[`contracts/`](contracts/), indexed by [`CONTRACTS.md`](CONTRACTS.md). Each workstream
+owns its own contract file; change the owning file first, then update every consumer.
 
 ## Build & test
 
@@ -48,8 +49,8 @@ server or dashboard.
 - Agent and contributor workflow lives in [`AGENTS.md`](AGENTS.md).
 - Commits use Conventional Commits with a `DOZO-App` / `DOZO-Server` /
   `DOZO-Dashboard` / `root` scope, enforced by commitlint in CI.
-- One writer; contract changes go through `CONTRACTS.md` and update all consumers in
-  one commit.
+- One writer per contract file; contract changes go through the owning `contracts/*.md`
+  and update all consumers.
 - Do **not** run the server `deploy.sh` full rebuild on the 1 GB VPS (it thrashes); use
   the copy-and-commit method in `MANUAL.md`.
 - The Obsidian vault is kept outside this repo (`Papier_Vault` symlink and any local

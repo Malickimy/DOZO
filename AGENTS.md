@@ -1,8 +1,10 @@
 # DOZO — Agent Guide
 
 Instructions for AI agents (and humans) working in this monorepo. Read this before
-editing. The cross-project interface is [`CONTRACTS.md`](CONTRACTS.md); treat it as
-read-only and change it first when an interface changes.
+editing. The cross-project interfaces live under [`contracts/`](contracts/) (one file per
+workstream, indexed by [`CONTRACTS.md`](CONTRACTS.md)); each project agent owns its own
+contract file, and root owns the index + `contracts/env.md`. Change the owning contract
+first when an interface changes.
 
 ## Layout
 
@@ -11,7 +13,7 @@ read-only and change it first when an interface changes.
 | `DOZO-App/` | Android terminal app (`:app`) + mock caller (`:mockpay`) | Gradle, JDK 17 |
 | `DOZO-Server/` | Fastify + SQLite redirect server | Node 22+ |
 | `DOZO-Dashboard/` | Vite + React merchant portal | Node 22+ |
-| repo root | `CONTRACTS.md`, `MANUAL.md`, `README.md`, `Makefile`, CI, `.opencode/` | — |
+| repo root | `CONTRACTS.md`, `contracts/`, `MANUAL.md`, `README.md`, `Makefile`, CI, `.opencode/` | — |
 
 Each project keeps its own build config (loose monorepo). The root `Makefile` shells
 out to the right one.
@@ -20,7 +22,7 @@ out to the right one.
 
 Cross-project work is planned in the Obsidian vault, not in this repo. The vault root
 note `DOZO/Release Board.md` (vault name `Papier`) is the single source of truth for
-every change that touches `CONTRACTS.md`:
+every change that touches a `contracts/*.md` file:
 
 - **One row per contract change**, naming the exact endpoint/field and which project
   sprint does what. Nothing starts until the row exists.
@@ -57,8 +59,9 @@ Two register taps could create two rows in the scan log.
   request; merge only after review.
 - GitHub operations (PRs, CI runs, issues, releases) are handed off to the GitHub
   agent — see below. Do local edits and commits yourself; let the agent publish them.
-- One writer per project worktree. If a change touches `CONTRACTS.md`, update the
-  contract first, add a Release Board row, and ship it expand/contract (see below).
+- One writer per project worktree. If a change touches a `contracts/*.md` file, update that
+  owning contract first (its project agent or the `contract` agent for the index /
+  `contracts/env.md`), add a Release Board row, and ship it expand/contract (see below).
 
 ## Worktrees: one window per project
 
@@ -88,7 +91,7 @@ project's `opencode.json` (and its MCPs) applies.
 
 ### Integration worktree (optional)
 
-When you need one source tree — a demo freeze, or to catch `CONTRACTS.md` conflicts
+When you need one source tree — a demo freeze, or to catch a `contracts/*.md` conflict
 early — merge the change's branches in a throwaway worktree:
 
 ```bash
