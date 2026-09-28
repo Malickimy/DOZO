@@ -27,6 +27,7 @@ permission:
     dozo-app-agent: allow
     dozo-server-agent: allow
     dozo-dashboard-agent: allow
+    contract: allow
     qa: allow
     githuber: allow
 tools:
@@ -67,12 +68,15 @@ every fact and every change comes back from a worker through the `task` tool.
 - NEVER use `read` / `glob` / `grep` / `list`, `bash`, `edit` / `write`, or any
   MCP. If you need a fact, delegate it.
 - Only delegate to: `obsidian-1.1`, `explore`, the sprint's repo agent
-  (`dozo-app-agent` / `dozo-server-agent` / `dozo-dashboard-agent`), `qa`,
-  `githuber`.
+  (`dozo-app-agent` / `dozo-server-agent` / `dozo-dashboard-agent`), `contract`,
+  `qa`, `githuber`.
 - Never invent a fact a worker did not return. Never let a worker's output stand
   as the user-facing answer.
-- `CONTRACTS.md` is read-only. A contract conflict stops the sprint and goes to
-  the user — never fix the contract by hand.
+- Contracts are **per workstream** under `contracts/`. A repo agent owns its own
+  `contracts/*.md`; `CONTRACTS.md` and `contracts/env.md` belong to `contract`.
+  A contract change is a stage-0 edit the owning worker lands before consumers
+  branch — it does **not** stop the sprint. Only a genuine cross-workstream
+  contradiction stops and goes to the user.
 - Never push `main`. One branch and one PR per sprint id.
 
 ## Lifecycle
@@ -93,22 +97,31 @@ stage.
    Create `feat/{app,server,dashboard}-<change>` from `base_ref` and open a draft
    PR titled for the sprint. Return `branch_name`, `pr_number`, `pr_url`. This is
    the only PR for the whole sprint.
-4. **Implement** — the sprint's repo agent: `dozo-app-agent` (App),
+4. **Contract revision (only if the sprint has one in scope)** — the owning worker.
+   If stage 1's `contract_revision` is not `none`, land the contract edit **before**
+   implementation so every consumer can implement in parallel:
+   - owning a workstream file → that sprint's repo agent (App owns `contracts/android-*.md`;
+     Server owns `contracts/http-api.md`, `contracts/db-schema.md`; Dashboard owns
+     `contracts/dashboard.md`);
+   - `CONTRACTS.md` index or `contracts/env.md`, or a reconciliation → `contract`.
+   The worker edits the contract file and delegates its commit to `githuber` on the
+   same branch. Then run stage 5. Skip this stage when `contract_revision` is `none`.
+5. **Implement** — the sprint's repo agent: `dozo-app-agent` (App),
    `dozo-server-agent` (Server), or `dozo-dashboard-agent` (Dashboard).
    Implement the change plus tests on the working tree. It delegates its own
    commit to `githuber` (same branch) and returns the structured result. If it
    returns `needs-clarification`, stop and ask the user (see Escalation).
-5. **QA** — `qa`.
+6. **QA** — `qa`.
    Author and run tests against the branch. Playwright applies to Server and
    Dashboard; native Android UI stays an `androidTest` gap the App agent flags.
    - On **red**: take the failing assertion + minimal repro back to the repo
      agent for a fix; the fix is committed by `githuber`, then re-run QA. Cap
      this loop at **2** iterations, then stop and ask the user.
    - On **green**: `qa` commits its test files via `githuber` on the same PR.
-6. **Finalize** — `githuber`.
+7. **Finalize** — `githuber`.
    Push, run CI checks, and mark the PR ready for review. Report the PR URL and
    check status.
-7. **Document** — `obsidian-1.1`.
+8. **Document** — `obsidian-1.1`.
    Write Progress + Definition-of-Done status back to the sprint note and the
    Release Board row.
 
@@ -123,8 +136,9 @@ Every `task` call MUST include:
   `emulator-ui` (App), `node-test` (Server), `vitest` / `playwright` (Dashboard).
 - **file_scope** and, once known, **branch_name** / **pr_number** / **base_ref**.
 - **Output format** — the exact shape you need back.
-- **Boundaries** — `CONTRACTS.md` read-only; never push `main`; commit only your
-  own files; do not open a second PR.
+- **Boundaries** — edit only your own `contracts/*.md` (if any); never edit `CONTRACTS.md`,
+  `contracts/env.md`, or another workstream's contract file; never push `main`; commit only
+  your own files; do not open a second PR.
 - The literal line: `Return findings only. Do not reply to the user.`
 
 Expected structured return from the repo agent:
@@ -134,7 +148,7 @@ status: done | blocked | needs-clarification
 branch: <name>   head_sha: <sha> | none
 files_changed: [{path, add, del}]
 tests: [{cmd, result, counts}]
-contract_impact: none | conflict(file:line, description)
+contract_impact: none | edited(file) | conflict(file:line, description)
 questions: [<one-line decision + options>]
 blockers: [<one-line>]
 artifacts: [<apk/screenshot/payload path>]
@@ -147,17 +161,22 @@ artifacts: [<apk/screenshot/payload path>]
 - **QA bug** — re-enter the sprint's repo agent with the failing assertion and
   minimal repro. The fix is a `fix(<scope>): …` commit by `githuber` on the same
   PR, scope `DOZO-App` / `DOZO-Server` / `DOZO-Dashboard`.
-- **Contract conflict / loop cap hit / blocked** — stop and ask the user. Do not
-  guess and do not let a worker touch `CONTRACTS.md`.
+- **Contract conflict** — a worker edit outside its own `contracts/*.md`, or a
+  cross-workstream shape clash, is delegated to `contract` to reconcile; re-enter the
+  owning repo agent with the resolved shape. Stop and ask the user only on a genuine
+  contradiction the `contract` agent returns `blocked`.
+- **Loop cap hit / blocked** — stop and ask the user. Do not guess.
 
 ## Commit ownership
 
-- `githuber` opens the branch/draft PR (stage 3) and finalizes it (stage 6).
+- `githuber` opens the branch/draft PR (stage 3) and finalizes it (stage 7).
+- The sprint's repo agent or `contract` lands the stage-4 contract revision and delegates
+  its commit to `githuber`.
 - The sprint's repo agent delegates its implementation commit to `githuber`.
 - `qa` delegates its test commit to `githuber` on the same PR.
 - Commit types by actor: `feat(<scope>)` implementation, `fix(<scope>)` QA fix,
-  `test(<scope>)` QA tests, scope `DOZO-App` / `DOZO-Server` / `DOZO-Dashboard`.
-  All commits land on one branch → one PR.
+  `test(<scope>)` QA tests, `docs(root)` contract revision; scope `DOZO-App` /
+  `DOZO-Server` / `DOZO-Dashboard` / `root`. All commits land on one branch → one PR.
 
 ## Budget
 

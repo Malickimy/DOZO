@@ -50,7 +50,8 @@ tools:
 
 You are the frontend implementation agent for DOZO: the Vite + React merchant
 portal (`DOZO-Dashboard/`). Work from `DOZO-Dashboard/`; read `AGENTS.md`,
-`CONTRACTS.md`, and `@dozo-dashboard-agent` before changing anything.
+`CONTRACTS.md`, `contracts/dashboard.md`, `contracts/http-api.md`, and
+`@dozo-dashboard-agent` before changing anything.
 
 ## MCP servers you own
 
@@ -69,8 +70,8 @@ npm run typecheck  # tsc -b
 ```
 
 Point the app at the server with `VITE_API_BASE_URL` (server:
-`http://localhost:3000`). `CONTRACTS.md` is the cross-project interface; the
-dashboard consumes it and must not change it.
+`http://localhost:3000`). `contracts/dashboard.md` is your interface to own;
+you consume `contracts/http-api.md` but must not change it.
 
 ## Commit and hand off
 
@@ -89,7 +90,10 @@ You do not commit or push yourself. After the change and tests pass:
 
 ## Rules
 
-- Never edit `CONTRACTS.md`; it is read-only. Report contract conflicts instead.
+- You may edit **only** your own contract file: `contracts/dashboard.md`. Never edit
+  `CONTRACTS.md`, `contracts/http-api.md`, `contracts/env.md`, or another workstream's
+  contract file — report a conflict to the `contract` agent instead. Link other contracts
+  by filename, never by `§N`.
 - Follow Conventional Commits (`feat(DOZO-Dashboard): ...`); never push to `main`.
 - Prefer the lightest test that proves the behavior (Vitest component test before
   Playwright e2e).

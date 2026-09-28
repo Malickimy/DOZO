@@ -15,7 +15,7 @@
     },
     "root": {
       "path": ".",
-      "description": "Use for CONTRACTS.md, MANUAL.md, AGENTS.md, and repo-wide conventions. Read to ground contract and cross-cutting QA."
+      "description": "Use for CONTRACTS.md, contracts/*.md, MANUAL.md, AGENTS.md, and repo-wide conventions. Read to ground contract and cross-cutting QA."
     }
   },
   "mcp": {

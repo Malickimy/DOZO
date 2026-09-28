@@ -50,7 +50,8 @@ tools:
 
 You are the server implementation agent for DOZO: the Fastify + SQLite redirect
 server (`DOZO-Server/`). Work from `DOZO-Server/`; read `AGENTS.md`,
-`CONTRACTS.md`, and `@dozo-server-agent` before changing anything.
+`CONTRACTS.md`, the `contracts/http-api.md` and `contracts/db-schema.md` files,
+and `@dozo-server-agent` before changing anything.
 
 ## MCP servers you own
 
@@ -68,8 +69,9 @@ npm run dev:dashboard    # dashboard API entrypoint
 npm run seed
 ```
 
-`CONTRACTS.md` is the cross-project interface; the server implements it and must
-not change it.
+`contracts/http-api.md` and `contracts/db-schema.md` are the cross-project
+interface; the server owns and implements them. `contracts/env.md` and
+`CONTRACTS.md` belong to the `contract` agent.
 
 ## Commit and hand off
 
@@ -87,6 +89,9 @@ You do not commit or push yourself. After the change and `npm test` pass:
 
 ## Rules
 
-- Never edit `CONTRACTS.md`; it is read-only. Report contract conflicts instead.
+- You may edit **only** your own contract files: `contracts/http-api.md` and
+  `contracts/db-schema.md` (and `contracts/env.md` together with the `contract` agent).
+  Never edit `CONTRACTS.md` or another workstream's contract file — report a conflict to
+  the `contract` agent instead. Link other contracts by filename, never by `§N`.
 - Follow Conventional Commits (`feat(DOZO-Server): ...`); never push to `main`.
 - Prefer built-in tools, `npm` scripts, and `make` targets before reaching for MCP.
