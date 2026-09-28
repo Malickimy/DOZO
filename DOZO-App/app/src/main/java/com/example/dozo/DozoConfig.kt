@@ -44,7 +44,16 @@ object DozoConfig {
 
     /** True only when a token has actually been persisted (R6 re-pair signal). */
     fun hasStoredApiToken(context: Context): Boolean =
-        prefs(context).getString(DozoContract.KEY_API_TOKEN, null)?.isNotBlank() == true
+        ApiTokenGate.hasStored(prefs(context).getString(DozoContract.KEY_API_TOKEN, null))
+
+    /**
+     * #58: background/manual API calls skip silently when `terminal_id` or a
+     * persisted token is absent. `DozoContract.DEFAULT_API_TOKEN` is a non-blank
+     * placeholder, so the old `apiToken().isBlank()` guard can never detect an
+     * unpaired terminal; this gates on the stored token instead.
+     */
+    fun shouldSkipApiCall(context: Context): Boolean =
+        ApiTokenGate.shouldSkip(terminalId(context), hasStoredApiToken(context))
 
     fun terminalId(context: Context): String? =
         prefs(context).getString(DozoContract.KEY_TERMINAL_ID, null)
@@ -202,4 +211,18 @@ object DozoConfig {
         context.getSharedPreferences(DozoContract.PREFS_NAME, Context.MODE_PRIVATE)
 
     private fun edit(context: Context) = prefs(context).edit()
+}
+
+/**
+ * #58: `DozoContract.DEFAULT_API_TOKEN` is a non-blank placeholder, so
+ * `DozoConfig.apiToken(...).isBlank()` can never distinguish a paired terminal
+ * from an unpaired one. The request paths gate on the *persisted* token instead.
+ * Pure so the skip decision is JVM-testable without a `Context`/Robolectric.
+ */
+object ApiTokenGate {
+
+    fun hasStored(storedToken: String?): Boolean = !storedToken.isNullOrBlank()
+
+    fun shouldSkip(terminalId: String?, hasStoredToken: Boolean): Boolean =
+        terminalId.isNullOrBlank() || !hasStoredToken
 }

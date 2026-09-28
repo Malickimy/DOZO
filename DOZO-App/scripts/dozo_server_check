@@ -2,64 +2,71 @@
 #
 # dozo_server_check - Host-side connectivity check for the DOZO redirect server.
 #
-# Runs entirely on the host (no adb/device). Curls {SERVER_URL}/health and,
-# unless --no-register is given, POSTs a test pairing registration and reads
-# back its pair-status. Exits non-zero on any failure.
+# Runs entirely on the host (no adb/device). Curls {SERVER_URL}/health and, when
+# a dashboard setup code is supplied (--code or PAIRING_CODE), redeems it through
+# the model-B route POST /api/terminals/redeem. Exits non-zero on any failure.
 #
-# Registering requires the demo merchant to be seeded on the server
-# (SEED_DEMO=true on boot, or `npm run seed`).
+# Redeeming consumes the setup code, so it is opt-in; without a code the script
+# only checks /health. Generate a code from the dashboard
+# (POST /api/merchants/:id/registers/:label/setup-code).
 #
 # Environment overrides:
 #   SERVER_URL     server base URL  (default: http://130.162.185.144:3000)
 #   API_TOKEN      shared API token (default: dev-placeholder-token)
-#   MERCHANT_ID    seeded merchant  (default: demo-merchant)
+#   PAIRING_CODE   dashboard setup code to redeem (default: none)
 #   DEVICE_SERIAL  sample serial    (default: DOZO-CHECK-<epoch>)
-#   TERMINAL_ID    explicit id      (default: CHECKTERM01)
+#   TERMINAL_ID    optional terminal id (default: none)
 #   CURL           curl binary      (default: curl)
 
 set -euo pipefail
 
 SERVER_URL="${SERVER_URL:-http://130.162.185.144:3000}"
 API_TOKEN="${API_TOKEN:-dev-placeholder-token}"
-MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
+PAIRING_CODE="${PAIRING_CODE:-}"
 DEVICE_SERIAL="${DEVICE_SERIAL:-DOZO-CHECK-$(date +%s)}"
-TERMINAL_ID="${TERMINAL_ID:-CHECKTERM01}"
+TERMINAL_ID="${TERMINAL_ID:-}"
 CURL="${CURL:-curl}"
-REGISTER=1
 
 usage() {
     cat <<EOF
-Usage: dozo_server_check [--no-register] [-h|--help]
+Usage: dozo_server_check [--code CODE] [-h|--help]
 
 Host-side check that the DOZO redirect server is reachable:
   GET  \$SERVER_URL/health
-  POST \$SERVER_URL/api/terminals/register   (unless --no-register)
-  GET  \$SERVER_URL/api/terminals/pair-status/{code}
+  POST \$SERVER_URL/api/terminals/redeem   (only with --code/PAIRING_CODE)
+
+Redeeming consumes the setup code, so it is opt-in. Without a code the script
+only checks /health.
 
 Options:
-  --no-register   only check /health
+  --code CODE     redeem this dashboard setup code (model-B)
   -h, --help      show this help
 
 Environment overrides:
   SERVER_URL     server base URL  (default: http://130.162.185.144:3000)
   API_TOKEN      shared API token (default: dev-placeholder-token)
-  MERCHANT_ID    seeded merchant  (default: demo-merchant)
+  PAIRING_CODE   dashboard setup code to redeem (default: none)
   DEVICE_SERIAL  sample serial    (default: DOZO-CHECK-<epoch>)
-  TERMINAL_ID    explicit id      (default: CHECKTERM01)
+  TERMINAL_ID    optional terminal id (default: none)
   CURL           curl binary      (default: curl)
 EOF
 }
 
 while (( $# )); do
     case "$1" in
-        -h|--help)      usage; exit 0 ;;
-        --no-register)  REGISTER=0; shift ;;
-        --server-url)   [[ $# -ge 2 ]] || { echo "dozo_server_check: --server-url requires a value" >&2; exit 2; }; SERVER_URL="$2"; shift 2 ;;
-        --server-url=*) SERVER_URL="${1#*=}"; shift ;;
-        --token)        [[ $# -ge 2 ]] || { echo "dozo_server_check: --token requires a value" >&2; exit 2; }; API_TOKEN="$2"; shift 2 ;;
-        --token=*)      API_TOKEN="${1#*=}"; shift ;;
-        -*)             echo "dozo_server_check: unknown option: $1" >&2; usage >&2; exit 2 ;;
-        *)              echo "dozo_server_check: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
+        -h|--help)         usage; exit 0 ;;
+        --code)            [[ $# -ge 2 ]] || { echo "dozo_server_check: --code requires a value" >&2; exit 2; }; PAIRING_CODE="$2"; shift 2 ;;
+        --code=*)          PAIRING_CODE="${1#*=}"; shift ;;
+        --server-url)      [[ $# -ge 2 ]] || { echo "dozo_server_check: --server-url requires a value" >&2; exit 2; }; SERVER_URL="$2"; shift 2 ;;
+        --server-url=*)    SERVER_URL="${1#*=}"; shift ;;
+        --token)           [[ $# -ge 2 ]] || { echo "dozo_server_check: --token requires a value" >&2; exit 2; }; API_TOKEN="$2"; shift 2 ;;
+        --token=*)         API_TOKEN="${1#*=}"; shift ;;
+        --device-serial)   [[ $# -ge 2 ]] || { echo "dozo_server_check: --device-serial requires a value" >&2; exit 2; }; DEVICE_SERIAL="$2"; shift 2 ;;
+        --device-serial=*) DEVICE_SERIAL="${1#*=}"; shift ;;
+        --terminal-id)     [[ $# -ge 2 ]] || { echo "dozo_server_check: --terminal-id requires a value" >&2; exit 2; }; TERMINAL_ID="$2"; shift 2 ;;
+        --terminal-id=*)   TERMINAL_ID="${1#*=}"; shift ;;
+        -*)                echo "dozo_server_check: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)                 echo "dozo_server_check: unexpected argument: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
 
@@ -96,36 +103,23 @@ if [[ "$status" != "200" ]]; then
     echo "ERROR: expected 200 from /health" >&2
 fi
 
-if (( REGISTER )); then
-    register_body="$(printf '{"device_serial":"%s","merchant_id":"%s","terminal_id":"%s"}' \
-        "$DEVICE_SERIAL" "$MERCHANT_ID" "$TERMINAL_ID")"
+if [[ -n "$PAIRING_CODE" ]]; then
+    redeem_body="$(printf '{"code":"%s","device_serial":"%s"' "$PAIRING_CODE" "$DEVICE_SERIAL")"
+    if [[ -n "$TERMINAL_ID" ]]; then
+        redeem_body="$redeem_body$(printf ',"terminal_id":"%s"' "$TERMINAL_ID")"
+    fi
+    redeem_body="$redeem_body}"
 
     echo
-    echo "==> POST $SERVER_URL/api/terminals/register"
-    status="$(request POST /api/terminals/register "$register_body")" \
-        || { echo "ERROR: curl failed for /api/terminals/register" >&2; exit 1; }
+    echo "==> POST $SERVER_URL/api/terminals/redeem"
+    status="$(request POST /api/terminals/redeem "$redeem_body")" \
+        || { echo "ERROR: curl failed for /api/terminals/redeem" >&2; exit 1; }
     echo "HTTP $status"
     cat "$BODY_FILE"; echo
-    if [[ "$status" != "201" ]]; then
+    if [[ "$status" != "200" ]] \
+        || ! grep -q '"status"[[:space:]]*:[[:space:]]*"redeemed"' "$BODY_FILE"; then
         fail=1
-        echo "ERROR: expected 201 from register (is merchant '$MERCHANT_ID' seeded?)" >&2
-    fi
-
-    code="$(sed -n 's/.*"code"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$BODY_FILE")"
-    if [[ -z "$code" ]]; then
-        fail=1
-        echo "ERROR: could not extract a pairing code from the register response" >&2
-    else
-        echo
-        echo "==> GET $SERVER_URL/api/terminals/pair-status/$code"
-        status="$(request GET "/api/terminals/pair-status/$code")" \
-            || { echo "ERROR: curl failed for pair-status" >&2; exit 1; }
-        echo "HTTP $status"
-        cat "$BODY_FILE"; echo
-        if [[ "$status" != "202" && "$status" != "200" ]]; then
-            fail=1
-            echo "ERROR: expected 202 (pending) or 200 (claimed) from pair-status" >&2
-        fi
+        echo "ERROR: expected 200 status \"redeemed\" from redeem (is the setup code fresh?)" >&2
     fi
 fi
 
