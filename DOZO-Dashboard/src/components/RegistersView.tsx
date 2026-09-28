@@ -153,7 +153,13 @@ export function RegistersView({ client, merchantId }: RegistersViewProps) {
                         <span className="muted">Unclaimed</span>
                       )}
                     </td>
-                    <td>{isActive(register.active) ? 'Active' : 'Inactive'}</td>
+                    <td>
+                      {register.terminal_id
+                        ? isActive(register.active)
+                          ? 'Active'
+                          : 'Inactive'
+                        : <span className="muted">—</span>}
+                    </td>
                     <td>{formatRelative(register.last_seen)}</td>
                     <td>
                       <button
