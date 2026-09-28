@@ -212,11 +212,11 @@ class MainActivity : ComponentActivity() {
 
     private fun syncConfigNow() {
         val terminalId = DozoConfig.terminalId(this)
-        val apiToken = DozoConfig.apiToken(this)
-        if (terminalId.isNullOrBlank() || apiToken.isBlank()) {
+        if (terminalId.isNullOrBlank() || !DozoConfig.hasStoredApiToken(this)) {
             manualStatus = getString(R.string.status_not_configured)
             return
         }
+        val apiToken = DozoConfig.apiToken(this)
         manualStatus = getString(R.string.status_syncing)
         lifecycleScope.launch {
             manualStatus = try {
@@ -242,11 +242,11 @@ class MainActivity : ComponentActivity() {
 
     private fun sendHeartbeatNow() {
         val terminalId = DozoConfig.terminalId(this)
-        val apiToken = DozoConfig.apiToken(this)
-        if (terminalId.isNullOrBlank() || apiToken.isBlank()) {
+        if (terminalId.isNullOrBlank() || !DozoConfig.hasStoredApiToken(this)) {
             manualStatus = getString(R.string.status_not_configured)
             return
         }
+        val apiToken = DozoConfig.apiToken(this)
         manualStatus = getString(R.string.status_sending_heartbeat)
         lifecycleScope.launch {
             manualStatus = try {
@@ -303,8 +303,8 @@ class MainActivity : ComponentActivity() {
 
     private fun pullRemoteConfigAtLaunch() {
         val terminalId = DozoConfig.terminalId(this)
+        if (terminalId.isNullOrBlank() || !DozoConfig.hasStoredApiToken(this)) return
         val apiToken = DozoConfig.apiToken(this)
-        if (terminalId.isNullOrBlank() || apiToken.isBlank()) return
         lifecycleScope.launch {
             val result = runCatching {
                 DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken).config(terminalId)

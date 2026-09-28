@@ -10,9 +10,9 @@ class ConfigSyncWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        if (DozoConfig.shouldSkipApiCall(applicationContext)) return Result.success()
         val terminalId = DozoConfig.terminalId(applicationContext) ?: return Result.success()
         val apiToken = DozoConfig.apiToken(applicationContext)
-        if (terminalId.isBlank() || apiToken.isBlank()) return Result.success()
         return try {
             val api = DozoApi(DozoConfig.apiBaseUrl(applicationContext), apiToken)
             val result = api.config(terminalId)
