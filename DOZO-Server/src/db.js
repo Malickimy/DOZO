@@ -1,5 +1,31 @@
 import Database from 'better-sqlite3';
 
+const WAL_RETRIES = 200;
+const WAL_RETRY_DELAY_MS = 10;
+
+/** Blocking sleep; better-sqlite3 calls are synchronous, so a retry loop must be too. */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Switch to WAL, tolerating a sibling process converting the same fresh file
+ * first. `PRAGMA journal_mode = WAL` needs an exclusive lock and does *not*
+ * honour `busy_timeout`, so a concurrent conversion surfaces as SQLITE_BUSY
+ * even though the wait pragma is set.
+ */
+function enableWal(db) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      db.pragma('journal_mode = WAL');
+      return;
+    } catch (error) {
+      if (error.code !== 'SQLITE_BUSY' || attempt >= WAL_RETRIES) throw error;
+      sleepSync(WAL_RETRY_DELAY_MS);
+    }
+  }
+}
+
 const MIGRATIONS = [
   {
     version: 1,
@@ -107,7 +133,10 @@ const MIGRATIONS = [
 
 export function openDatabase(dbPath = ':memory:') {
   const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+  // The demo launcher boots two processes against one fresh DB. Wait for a
+  // concurrent writer instead of failing immediately with SQLITE_BUSY.
+  db.pragma('busy_timeout = 5000');
+  enableWal(db);
   db.pragma('foreign_keys = ON');
   migrate(db);
   return db;
@@ -121,20 +150,27 @@ function hasColumn(db, table, column) {
 }
 
 export function migrate(db) {
-  const current = db.pragma('user_version', { simple: true });
-  // Apply in ascending order. A database that ran a higher-numbered migration
-  // before a lower one was added (e.g. v5 before v4) would otherwise skip it, so
-  // `reconcile` repairs the scans.event_id column/index afterwards.
-  const ordered = [...MIGRATIONS].sort((a, b) => a.version - b.version);
-  for (const migration of ordered) {
-    if (migration.version <= current) continue;
-    const apply = db.transaction(() => {
+  // Serialize concurrent migrators. Two processes can open one fresh DB at the
+  // same time (scripts/start-all.js spawns the dashboard and connector against a
+  // shared DB_PATH). If each read `user_version` before the other wrote, both
+  // would run migration 1's non-idempotent `CREATE TABLE merchants` and the
+  // loser would fail. BEGIN IMMEDIATE takes the write lock *before* the version
+  // is read, so the second process waits on busy_timeout and then sees the
+  // version the first one committed, skipping migrations already applied.
+  const apply = db.transaction(() => {
+    const current = db.pragma('user_version', { simple: true });
+    // Apply in ascending order. A database that ran a higher-numbered migration
+    // before a lower one was added (e.g. v5 before v4) would otherwise skip it,
+    // so `reconcile` repairs the scans.event_id column/index afterwards.
+    const ordered = [...MIGRATIONS].sort((a, b) => a.version - b.version);
+    for (const migration of ordered) {
+      if (migration.version <= current) continue;
       db.exec(migration.sql);
       db.pragma(`user_version = ${migration.version}`);
-    });
-    apply();
-  }
-  reconcile(db);
+    }
+    reconcile(db);
+  });
+  apply.immediate();
 }
 
 /** Idempotently add schema that a version gap may have skipped. */
