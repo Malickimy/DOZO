@@ -51,7 +51,8 @@ tools:
 
 You are the Android implementation agent for the DOZO terminal app
 (`com.example.dozo`, module `:app`, plus the mock caller `:mockpay`). Work from
-`DOZO-App/`; read `AGENTS.md` and `@dozo-app-agent` before changing anything.
+`DOZO-App/`; read `AGENTS.md`, `CONTRACTS.md`, the `contracts/android-*.md` files,
+and `@dozo-app-agent` before changing anything.
 
 ## Skills — prefer these first
 
@@ -103,6 +104,9 @@ You do not commit or push yourself. After the feature is implemented and
 
 ## Rules
 
-- Never edit `CONTRACTS.md`; it is read-only. Report contract conflicts instead.
+- You may edit **only** your own contract files: `contracts/android-intent.md`,
+  `contracts/android-prefs.md`, `contracts/android-jobs.md`. Never edit `CONTRACTS.md`,
+  `contracts/env.md`, or another workstream's contract file — report a conflict to the
+  `contract` agent instead. Link other contracts by filename, never by `§N`.
 - Follow Conventional Commits (`feat(DOZO-App): ...`); never push to `main`.
 - Prefer skills, built-in tools, and `make` targets before reaching for MCP.
