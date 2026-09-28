@@ -49,9 +49,20 @@ describe('createApiClient', () => {
     expect((init.headers as Headers).get('X-Api-Token')).toBe('secret')
   })
 
-  it('encodes the merchant id and builds the scans query string', async () => {
-    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse([])))
-    await client.listScans('merchant one', { terminal_id: 'TERM1', limit: 50 })
+  it('encodes the merchant id, builds the scans query string, and returns event_id', async () => {
+    const rows = [
+      {
+        id: 7,
+        event_id: 'evt-0007',
+        terminal_id: 'TERM1',
+        scanned_at: '2026-09-24T10:00:00.000Z',
+        user_agent: null,
+      },
+    ]
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(rows)))
+    const result = await client.listScans('merchant one', { terminal_id: 'TERM1', limit: 50 })
+    expect(result).toEqual(rows)
+    expect(result[0].event_id).toBe('evt-0007')
     const [url] = fetchMock.mock.calls[0] as [string]
     expect(url).toBe(
       'http://example.test:3000/api/merchants/merchant%20one/scans?terminal_id=TERM1&limit=50',
