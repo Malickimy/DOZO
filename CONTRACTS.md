@@ -9,9 +9,9 @@ Single-file read/write was replaced by one file per workstream so parallel sprin
 distinct files and merge cleanly. Root (`CONTRACTS.md`, `contracts/env.md`) is owned by
 the `contract` agent; every other contract file is owned by its project agent.
 
-_Last synced from code on 2026-09-25. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
+_Last synced from code on 2026-09-28. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
 
-_Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. App and Dashboard consumers are still catching up (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md))._
+_Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. The App R3/R4/R6 consumers landed in PR #62 (merged 2026-09-28), and the Dashboard consumer rows were restored in this reconciliation (PR #66); R1–R7 remain server-implemented (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md))._
 
 ---
 
