@@ -52,6 +52,7 @@ export interface MerchantSummary {
 
 export interface Scan {
   id: number
+  event_id: string | null
   terminal_id: string
   scanned_at: string
   user_agent: string | null

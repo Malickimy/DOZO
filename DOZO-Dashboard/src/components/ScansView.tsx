@@ -171,6 +171,7 @@ export function ScansView({
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Event</th>
                   <th>Terminal</th>
                   <th>Scanned at</th>
                   <th>User agent</th>
@@ -180,6 +181,9 @@ export function ScansView({
                 {scans.map((scan) => (
                   <tr key={scan.id}>
                     <td>{scan.id}</td>
+                    <td>
+                      <code>{scan.event_id || '—'}</code>
+                    </td>
                     <td>
                       <code>{scan.terminal_id}</code>
                     </td>

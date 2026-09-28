@@ -85,6 +85,35 @@ describe('ScansView', () => {
     expect(screen.getAllByText('Front').length).toBeGreaterThan(0)
   })
 
+  it('renders scan rows carrying an event_id', async () => {
+    const scans = [
+      {
+        id: 7,
+        event_id: 'evt-0007',
+        terminal_id: 'TERM1',
+        scanned_at: '2026-09-24T10:00:00.000Z',
+        user_agent: 'dozo-test/1',
+      },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/scans/series')) {
+          return Promise.resolve(jsonResponse([{ day: '2026-09-24', count: 1 }]))
+        }
+        if (url.includes('/scans')) {
+          return Promise.resolve(jsonResponse(scans))
+        }
+        return Promise.resolve(jsonResponse({ message: 'unexpected request' }, 500))
+      }),
+    )
+    render(<Harness client={makeClient()} />)
+
+    expect(await screen.findByText('evt-0007')).toBeInTheDocument()
+    expect(screen.getByText('dozo-test/1')).toBeInTheDocument()
+  })
+
   it('refetches with a narrower since when a preset is chosen', async () => {
     const fetchMock = stubApi()
     const user = userEvent.setup()
