@@ -1,4 +1,10 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+} from '@playwright/test'
 import { API_BASE_URL, API_TOKEN, MERCHANT_ID } from './env'
 
 /**
@@ -53,6 +59,17 @@ async function openRegisters(page: Page) {
 
 function setupCodeCard(page: Page) {
   return page.getByRole('status').filter({ hasText: 'Setup code for' })
+}
+
+/**
+ * Status cell of a registers row. Columns are Label, Terminal, Status, Last
+ * seen, Action — index 2. Cell-level (not `toContainText` on the whole row) so
+ * R7 #55 can be asserted precisely: an unoccupied register must not leak
+ * `Inactive` into Status just because `active` is false when no terminal is
+ * bound.
+ */
+function statusCell(row: Locator) {
+  return row.getByRole('cell').nth(2)
 }
 
 function stubRegistersList(page: Page, body: unknown, status = 200) {
@@ -172,6 +189,10 @@ test('unoccupied register: issues immediately (no confirmation) and shows code +
 
   const row = page.getByRole('row', { name: new RegExp(label) })
   await expect(row).toContainText('Unclaimed')
+  // R7 #55: an unoccupied register has no terminal, so Status is the muted
+  // placeholder — never `Inactive`, even though the derived `active` is false.
+  await expect(statusCell(row)).toHaveText('—')
+  await expect(row.getByRole('cell', { name: 'Inactive', exact: true })).toHaveCount(0)
 
   const [response] = await Promise.all([
     page.waitForResponse(
@@ -231,6 +252,46 @@ test('new register round-trip: setup code redeems and the row becomes occupied',
   const row = page.getByRole('row', { name: new RegExp(label) })
   await expect(row).not.toContainText('Unclaimed')
   await expect(row.locator('code')).toHaveText(terminalId)
+})
+
+test('occupied but inactive register: keeps the Inactive status', async ({
+  page,
+  request,
+}) => {
+  const suffix = String(Date.now())
+  const label = `qa-inactive-${suffix}`
+  // `isValidTerminalId` accepts [A-Za-z0-9_-]{8,64}; redeem uppercases it.
+  const terminalId = `QAINACT${suffix.slice(-7)}`
+  const deviceSerial = `qa-inactive-device-${suffix}`
+
+  // Occupy the register through the real pairing flow…
+  const issued = await issueSetupCode(request, label)
+  expect(issued.status()).toBe(201)
+  const { code } = await issued.json()
+  expect(code).toMatch(/^[A-Z0-9]{8}$/)
+
+  const redeemed = await request.post(`${API_BASE_URL}/api/terminals/redeem`, {
+    headers: { 'X-Api-Token': API_TOKEN },
+    data: { code, device_serial: deviceSerial, terminal_id: terminalId },
+  })
+  expect(redeemed.status()).toBe(200)
+
+  // …then flip the bound terminal inactive via the R3 lifecycle route. The
+  // register stays occupied, so its derived status must remain `Inactive`.
+  const patched = await request.patch(`${API_BASE_URL}/api/terminals/${terminalId}`, {
+    headers: { 'X-Api-Token': API_TOKEN },
+    data: { active: false },
+  })
+  expect(patched.status()).toBe(200)
+  expect((await patched.json()).active).toBe(false)
+
+  await page.reload()
+  await openRegisters(page)
+
+  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(row.getByRole('cell', { name: terminalId })).toBeVisible()
+  await expect(statusCell(row)).toHaveText('Inactive')
+  await expect(row.getByRole('cell', { name: 'Unclaimed', exact: true })).toHaveCount(0)
 })
 
 test('401 from the registers list shows the unauthorized error', async ({ page }) => {
