@@ -62,6 +62,9 @@ export function registerTerminalConfigRoutes(app) {
      VALUES (?, ?, ?, 1, ?)`,
   );
 
+  // `unknown_terminal` is the only terminal-state 404 on these three handlers:
+  // an inactive terminal deliberately falls through and still returns its config
+  // with `active: false` (no `inactive_terminal` here), per contracts/http-api.md.
   app.get('/api/terminals/:terminal_id/config', async (request, reply) => {
     const terminalId = request.params.terminal_id;
     if (!assertTerminalAccess(request, reply, { terminalId })) return;

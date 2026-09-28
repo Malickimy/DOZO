@@ -255,6 +255,55 @@ test('PATCH /api/terminals/:id 404s for an unknown terminal', async (t) => {
   assert.equal(res.json().error, 'unknown_terminal');
 });
 
+test('inactive terminal still returns 200 config from GET/PUT/PATCH (no inactive_terminal)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare('UPDATE terminals SET active = 0 WHERE terminal_id = ?').run(TEST_TERMINAL_ID);
+
+  const get = await app.inject({
+    method: 'GET',
+    url: `/api/terminals/${TEST_TERMINAL_ID}/config`,
+    headers: authHeaders(),
+  });
+  assert.equal(get.statusCode, 200);
+  assert.equal(get.json().active, false);
+  assert.equal(get.json().error, undefined);
+
+  const put = await app.inject({
+    method: 'PUT',
+    url: `/api/terminals/${TEST_TERMINAL_ID}/config`,
+    headers: authHeaders(),
+    payload: { display_timeout_seconds: 20 },
+  });
+  assert.equal(put.statusCode, 200);
+  assert.equal(put.json().active, false);
+  assert.equal(put.json().display_timeout_seconds, 20);
+  assert.equal(put.json().error, undefined);
+
+  const patch = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: {},
+  });
+  assert.equal(patch.statusCode, 200);
+  assert.equal(patch.json().active, false);
+  assert.equal(patch.json().error, undefined);
+
+  const reactivate = await app.inject({
+    method: 'PATCH',
+    url: `/api/terminals/${TEST_TERMINAL_ID}`,
+    headers: authHeaders(),
+    payload: { active: true },
+  });
+  assert.equal(reactivate.statusCode, 200);
+  assert.equal(reactivate.json().active, true, 'lifecycle PATCH can still reactivate');
+});
+
 test('PATCH label renames the bound register (R7 label source of truth)', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {

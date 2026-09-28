@@ -7,11 +7,14 @@ import {
   TEST_PLACE_ID,
 } from './helpers.js';
 
-function insertScan(db, { id, terminalId = TEST_TERMINAL_ID, scannedAt, userAgent = 'UA' }) {
+function insertScan(
+  db,
+  { id, terminalId = TEST_TERMINAL_ID, scannedAt, userAgent = 'UA', eventId = null },
+) {
   db.prepare(
-    `INSERT INTO scans (id, terminal_id, scanned_at, user_agent)
-     VALUES (?, ?, ?, ?)`,
-  ).run(id, terminalId, scannedAt, userAgent);
+    `INSERT INTO scans (id, terminal_id, scanned_at, user_agent, event_id)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(id, terminalId, scannedAt, userAgent, eventId);
 }
 
 test('GET /api/merchants lists merchants', async (t) => {
@@ -249,6 +252,34 @@ test('GET /api/merchants/:id/scans filters by terminal, window and limit', async
     headers: authHeaders(),
   });
   assert.equal(missingTerminal.json().length, 0);
+});
+
+test('GET /api/merchants/:id/scans includes the persisted event_id', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T01:00:00.000Z', eventId: 'evt-111' });
+  insertScan(db, { id: 2, scannedAt: '2026-01-01T02:00:00.000Z' });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans',
+    headers: authHeaders(),
+  });
+
+  assert.equal(res.statusCode, 200);
+  const scans = res.json();
+  assert.equal(scans.length, 2);
+  assert.deepEqual(
+    Object.keys(scans[0]).sort(),
+    ['event_id', 'id', 'scanned_at', 'terminal_id', 'user_agent'],
+    'row shape matches the contract',
+  );
+  assert.equal(scans[0].event_id, null, 'a scan without an event_id reports null');
+  assert.equal(scans[1].event_id, 'evt-111', 'the persisted event_id is returned');
 });
 
 test('GET /api/merchants/:id/scans defaults limit to 100 and caps at 1000', async (t) => {

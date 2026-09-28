@@ -193,7 +193,7 @@ export function registerMerchantRoutes(app) {
 
     const scans = db
       .prepare(
-        `SELECT s.id, s.terminal_id, s.scanned_at, s.user_agent
+        `SELECT s.id, s.event_id, s.terminal_id, s.scanned_at, s.user_agent
            FROM scans s
            JOIN terminals t ON t.terminal_id = s.terminal_id
           WHERE ${conditions.join(' AND ')}
