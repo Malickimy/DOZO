@@ -18,6 +18,6 @@
 | `pin` | string | `0000` | settings PIN |
 | `pairing_code` | string | — | last code, for config re-sync |
 
-> **R4 (server shipped 2026-09-25; app defaults pending).** The keys and types do not change. `api_base_url` points at the dashboard backend and `redirect_base_url` at the connector; this is a deployment/default change, recorded in App Sprint 4.
+> **R4 (server shipped 2026-09-25; app defaults landed in PR #62).** The keys and types do not change. `api_base_url` points at the dashboard backend and `redirect_base_url` at the connector; this is a deployment/default change, recorded in App Sprint 4.
 >
-> **R6 (server shipped 2026-09-25; app pending).** `api_token` holds the per-terminal token returned by `redeem` instead of the shared env token. A `401` clears it and prompts re-pair.
+> **R6 (server shipped 2026-09-25; app landed in PR #62).** `api_token` holds the per-terminal token returned by `redeem` instead of the shared env token. A `401` clears it and prompts re-pair.
