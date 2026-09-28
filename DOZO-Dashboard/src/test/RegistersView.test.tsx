@@ -94,6 +94,28 @@ describe('RegistersView', () => {
     expect(await screen.findByText(/unauthorized/i)).toBeInTheDocument()
   })
 
+  it('suppresses the Inactive status for an unclaimed register', async () => {
+    stubApi({
+      registers: [{ label: 'Front', terminal_id: null, active: false, last_seen: null }],
+    })
+
+    render(<RegistersView client={makeClient()} merchantId="m1" />)
+
+    expect(await screen.findByText('Unclaimed')).toBeInTheDocument()
+    expect(screen.queryByText('Inactive')).not.toBeInTheDocument()
+  })
+
+  it('keeps the Inactive status for an occupied, inactive register', async () => {
+    stubApi({
+      registers: [{ label: 'Front', terminal_id: 'T-1', active: false, last_seen: null }],
+    })
+
+    render(<RegistersView client={makeClient()} merchantId="m1" />)
+
+    expect(await screen.findByText('Inactive')).toBeInTheDocument()
+    expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument()
+  })
+
   it('requires confirmation before issuing for an occupied register', async () => {
     const fetchMock = stubApi({
       registers: [{ ...claimed, terminal_id: 'T-1' }],
