@@ -52,6 +52,16 @@
     <string name="settings_updating">Aktualizowanie ustawień…</string>
     <string name="settings_updated_from_dashboard">Ustawienia zaktualizowane z panelu</string>
 
+    <!-- Connection status (Sprint 3 task 5) -->
+    <string name="settings_connection_last_heartbeat">Ostatni sygnał</string>
+    <string name="settings_connection_last_config_sync">Ostatnia synchronizacja konfiguracji</string>
+    <string name="settings_connection_never">nigdy</string>
+    <string name="settings_connection_status">%1$s · %2$s</string>
+    <string name="settings_connection_result_success">Sukces</string>
+    <string name="settings_connection_result_failure">Błąd</string>
+    <string name="settings_connection_result_unauthorized">Brak autoryzacji</string>
+    <string name="settings_connection_result_skipped">Pominięto</string>
+
     <!-- Setup code (model-B redeem) -->
     <string name="setup_code_title">Kod konfiguracyjny</string>
     <string name="setup_code_help">Wprowadź kod z panelu sprzedawcy, aby połączyć terminal</string>

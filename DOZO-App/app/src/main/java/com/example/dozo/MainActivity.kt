@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity() {
         DozoContract.DEFAULT_DISPLAY_TIMEOUT_SECONDS
     )
     private var manualStatus by mutableStateOf<String?>(null)
+    private var lastHeartbeat by mutableStateOf(ConnectionStatus.Never)
+    private var lastConfigSync by mutableStateOf(ConnectionStatus.Never)
     private var remoteApplying by mutableStateOf(false)
     private var pendingRemoteConfig by mutableStateOf<TerminalConfig?>(null)
     private var approvedPending by mutableStateOf(false)
@@ -56,6 +58,7 @@ class MainActivity : ComponentActivity() {
         val mapped = handleLaunch() ?: return
         enableEdgeToEdge()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
+        refreshConnectionStatus()
         if (mapped is MappedState.Approved) {
             approvedPending = true
             lifecycleScope.launch { showApprovedQr(mapped) }
@@ -132,6 +135,8 @@ class MainActivity : ComponentActivity() {
                         onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
                         onLanguageChange = { DozoConfig.setLanguage(this, it) },
                         manualStatus = manualStatus,
+                        lastHeartbeat = lastHeartbeat,
+                        lastConfigSync = lastConfigSync,
                         onSyncNow = { syncConfigNow() },
                         onSendHeartbeatNow = { sendHeartbeatNow() },
                         onEnterSetupCode = { appScreen = AppScreen.SetupCode },
@@ -213,6 +218,7 @@ class MainActivity : ComponentActivity() {
     private fun syncConfigNow() {
         val terminalId = DozoConfig.terminalId(this)
         if (terminalId.isNullOrBlank() || !DozoConfig.hasStoredApiToken(this)) {
+            recordConfigOutcome(ConnectionStatus.Outcome.SKIPPED)
             manualStatus = getString(R.string.status_not_configured)
             return
         }
@@ -225,16 +231,25 @@ class MainActivity : ComponentActivity() {
                     is ConfigResult.Success -> {
                         val config = result.config
                         DozoConfig.applyRemoteConfig(this@MainActivity, config, terminalId)
+                        recordConfigOutcome(ConnectionStatus.outcomeFor(result))
                         getString(R.string.status_sync_done)
                     }
-                    ConfigResult.NotFound -> getString(R.string.status_terminal_not_found)
+                    ConfigResult.NotFound -> {
+                        recordConfigOutcome(ConnectionStatus.outcomeFor(result))
+                        getString(R.string.status_terminal_not_found)
+                    }
                     ConfigResult.Unauthorized -> {
                         onUnauthorized()
+                        recordConfigOutcome(ConnectionStatus.outcomeFor(result))
                         getString(R.string.status_session_expired)
                     }
-                    ConfigResult.Failed -> getString(R.string.status_sync_failed)
+                    ConfigResult.Failed -> {
+                        recordConfigOutcome(ConnectionStatus.outcomeFor(result))
+                        getString(R.string.status_sync_failed)
+                    }
                 }
             } catch (_: Exception) {
+                recordConfigOutcome(ConnectionStatus.Outcome.FAILURE)
                 getString(R.string.status_sync_failed)
             }
         }
@@ -243,6 +258,7 @@ class MainActivity : ComponentActivity() {
     private fun sendHeartbeatNow() {
         val terminalId = DozoConfig.terminalId(this)
         if (terminalId.isNullOrBlank() || !DozoConfig.hasStoredApiToken(this)) {
+            recordHeartbeatOutcome(ConnectionStatus.Outcome.SKIPPED)
             manualStatus = getString(R.string.status_not_configured)
             return
         }
@@ -251,20 +267,43 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             manualStatus = try {
                 when (
-                    DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
+                    val result = DozoApi(DozoConfig.apiBaseUrl(this@MainActivity), apiToken)
                         .heartbeat(terminalId)
                 ) {
-                    HeartbeatResult.Ok -> getString(R.string.status_heartbeat_sent)
+                    HeartbeatResult.Ok -> {
+                        recordHeartbeatOutcome(ConnectionStatus.outcomeFor(result))
+                        getString(R.string.status_heartbeat_sent)
+                    }
                     HeartbeatResult.Unauthorized -> {
                         onUnauthorized()
+                        recordHeartbeatOutcome(ConnectionStatus.outcomeFor(result))
                         getString(R.string.status_session_expired)
                     }
-                    HeartbeatResult.Failed -> getString(R.string.status_heartbeat_failed)
+                    HeartbeatResult.Failed -> {
+                        recordHeartbeatOutcome(ConnectionStatus.outcomeFor(result))
+                        getString(R.string.status_heartbeat_failed)
+                    }
                 }
             } catch (_: Exception) {
+                recordHeartbeatOutcome(ConnectionStatus.Outcome.FAILURE)
                 getString(R.string.status_heartbeat_failed)
             }
         }
+    }
+
+    private fun refreshConnectionStatus() {
+        lastHeartbeat = DozoConfig.lastHeartbeat(this)
+        lastConfigSync = DozoConfig.lastConfigSync(this)
+    }
+
+    private fun recordHeartbeatOutcome(outcome: ConnectionStatus.Outcome) {
+        DozoConfig.recordHeartbeat(this, outcome)
+        lastHeartbeat = DozoConfig.lastHeartbeat(this)
+    }
+
+    private fun recordConfigOutcome(outcome: ConnectionStatus.Outcome) {
+        DozoConfig.recordConfigSync(this, outcome)
+        lastConfigSync = DozoConfig.lastConfigSync(this)
     }
 
     private suspend fun showApprovedQr(state: MappedState.Approved) {

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
@@ -90,6 +91,10 @@ class HandoffResultTest {
             handoffIntent(status = "APPROVED", txnId = "TXN-QR")
         )
         assertEquals(Lifecycle.State.RESUMED, scenario.state)
+        // The QR render runs behind the async 800 ms health probe, so wait for it.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Payment approved").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Payment approved").assertIsDisplayed()
         composeRule.onNodeWithText("Transaction TXN-QR").assertIsDisplayed()
         scenario.close()
