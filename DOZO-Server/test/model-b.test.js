@@ -286,6 +286,55 @@ test('redeem without terminal_id or device_serial is 400 invalid_device_serial',
   assert.equal(res.json().error, 'invalid_device_serial');
 });
 
+test('re-redeeming a terminal at another merchant unbinds its old register (G02)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare(
+    'INSERT INTO merchants (merchant_id, google_place_id, created_at) VALUES (?, ?, ?)',
+  ).run('M2', 'ChIJ_M2', START);
+
+  // First bind a physical terminal to M1 / Front counter.
+  const m1Code = (await issueSetupCode(app, { merchantId: 'M1', label: 'Front counter' })).json()
+    .code;
+  const first = await redeem(app, { code: m1Code, terminal_id: 'TERMSHARED' });
+  assert.equal(first.statusCode, 200);
+
+  // Re-redeem the same terminal into a different merchant.
+  const m2Code = (await issueSetupCode(app, { merchantId: 'M2', label: 'Lane 2' })).json().code;
+  const second = await redeem(app, { code: m2Code, terminal_id: 'TERMSHARED' });
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.json().store.merchant_id, 'M2');
+
+  const oldRegister = db
+    .prepare('SELECT terminal_id FROM registers WHERE merchant_id = ? AND label = ?')
+    .get('M1', 'Front counter');
+  assert.equal(
+    oldRegister.terminal_id,
+    null,
+    'the previous merchant register no longer references the re-pointed terminal',
+  );
+
+  const newRegister = db
+    .prepare('SELECT terminal_id FROM registers WHERE merchant_id = ? AND label = ?')
+    .get('M2', 'Lane 2');
+  assert.equal(newRegister.terminal_id, 'TERMSHARED');
+
+  // The old merchant's register must stop serving the stale terminal URL.
+  const m1Registers = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/registers',
+    headers: authHeaders(),
+  });
+  assert.equal(m1Registers.statusCode, 200);
+  const frontCounter = m1Registers.json().find((row) => row.label === 'Front counter');
+  assert.equal(frontCounter.terminal_id, null);
+  assert.equal(frontCounter.static_review_url, null);
+});
+
 test('model-B routes require the API token', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {

@@ -446,6 +446,70 @@ test('PUT /api/merchants/:id/google-place-id updates and rejects blank', async (
   assert.equal(missing.statusCode, 400);
 });
 
+test('GET /api/merchants/:id/scans/series buckets by Europe/Warsaw through DST (G05)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  // Winter (CET, UTC+1): 23:30Z is already the next local day, but 22:30Z is not.
+  insertScan(db, { id: 1, scannedAt: '2026-01-01T22:30:00.000Z' }); // day 2026-01-01
+  insertScan(db, { id: 2, scannedAt: '2026-01-01T23:30:00.000Z' }); // day 2026-01-02
+  // Summer (CEST, UTC+2): 22:30Z is already the next local day. A UTC or a
+  // fixed +1 bucket would wrongly file this under 2026-07-01.
+  insertScan(db, { id: 3, scannedAt: '2026-07-01T22:30:00.000Z' }); // day 2026-07-02
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/scans/series',
+    headers: authHeaders(),
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), [
+    { day: '2026-01-01', count: 1 },
+    { day: '2026-01-02', count: 1 },
+    { day: '2026-07-02', count: 1 },
+  ]);
+});
+
+test('static_review_url is recomputed after PUT google-place-id (G07)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const before = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/terminals',
+    headers: authHeaders(),
+  });
+  assert.equal(
+    before.json()[0].static_review_url,
+    `https://search.google.com/local/writereview?placeid=${TEST_PLACE_ID}`,
+  );
+
+  const updated = await app.inject({
+    method: 'PUT',
+    url: '/api/merchants/M1/google-place-id',
+    headers: authHeaders(),
+    payload: { google_place_id: 'ChIJ_ROTATED' },
+  });
+  assert.equal(updated.statusCode, 200);
+
+  const after = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M1/terminals',
+    headers: authHeaders(),
+  });
+  assert.equal(
+    after.json()[0].static_review_url,
+    'https://search.google.com/local/writereview?placeid=ChIJ_ROTATED',
+    'the URL tracks the current google_place_id, it is not frozen',
+  );
+});
+
 test('merchant routes require the API token', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
