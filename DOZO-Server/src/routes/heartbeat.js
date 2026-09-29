@@ -37,7 +37,13 @@ export function registerHeartbeatRoutes(app) {
     return reply.code(200).send({ ok: true, terminal_id: terminalId, last_seen: lastSeen });
   });
 
-  app.get('/api/terminals/offline', async () => {
+  app.get('/api/terminals/offline', async (request, reply) => {
+    // R6: the offline fleet list spans every merchant, so it is operator-only.
+    // A per-terminal token must not enumerate other merchants' terminals.
+    if (request.terminalAuth) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const cutoff = new Date(now().getTime() - OFFLINE_THRESHOLD_MS).toISOString();
     const terminals = stale.all(cutoff);
     return { threshold_seconds: OFFLINE_THRESHOLD_MS / 1000, cutoff, terminals };
