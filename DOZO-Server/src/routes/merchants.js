@@ -7,6 +7,7 @@
  *   GET /api/merchants/:merchant_id/scans
  *   PUT /api/merchants/:merchant_id/google-place-id
  */
+import { assertTerminalAccess } from '../middleware/terminal-auth.js';
 import { staticReviewUrl } from './terminal-config.js';
 
 const DEFAULT_SCAN_LIMIT = 100;
@@ -93,10 +94,19 @@ export function registerMerchantRoutes(app) {
     'UPDATE merchants SET google_place_id = ? WHERE merchant_id = ?',
   );
 
-  app.get('/api/merchants', async () => listMerchants.all());
+  // R6: a per-terminal token is scoped to its own merchant's data; the merchant
+  // directory is operator-only. The dashboard's shared `X-Api-Token` still sees
+  // every merchant.
+  app.get('/api/merchants', async (request, reply) => {
+    if (request.terminalAuth) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+    return listMerchants.all();
+  });
 
   app.get('/api/merchants/:merchant_id/terminals', async (request, reply) => {
     const merchantId = request.params.merchant_id;
+    if (!assertTerminalAccess(request, reply, { merchantId })) return;
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
@@ -114,6 +124,7 @@ export function registerMerchantRoutes(app) {
 
   app.get('/api/merchants/:merchant_id/summary', async (request, reply) => {
     const merchantId = request.params.merchant_id;
+    if (!assertTerminalAccess(request, reply, { merchantId })) return;
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
@@ -169,6 +180,7 @@ export function registerMerchantRoutes(app) {
 
   app.get('/api/merchants/:merchant_id/scans', async (request, reply) => {
     const merchantId = request.params.merchant_id;
+    if (!assertTerminalAccess(request, reply, { merchantId })) return;
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
@@ -206,6 +218,7 @@ export function registerMerchantRoutes(app) {
 
   app.get('/api/merchants/:merchant_id/scans/series', async (request, reply) => {
     const merchantId = request.params.merchant_id;
+    if (!assertTerminalAccess(request, reply, { merchantId })) return;
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
@@ -244,6 +257,7 @@ export function registerMerchantRoutes(app) {
 
   app.put('/api/merchants/:merchant_id/google-place-id', async (request, reply) => {
     const merchantId = request.params.merchant_id;
+    if (!assertTerminalAccess(request, reply, { merchantId })) return;
     if (!getMerchant.get(merchantId)) {
       return reply.code(404).send({ error: 'unknown_merchant', merchant_id: merchantId });
     }
