@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -119,6 +120,10 @@ class LocaleQaTest {
     fun mainActivityRendersPolishWhenPreferenceIsPolish() {
         seedLanguage(Language.PL)
         val scenario = ActivityScenario.launchActivityForResult<MainActivity>(approvedIntent("TXN-QA-PL"))
+        // The QR render runs behind the async 800 ms health probe, so wait for it.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Płatność zatwierdzona").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Płatność zatwierdzona").assertIsDisplayed()
         composeRule.onNodeWithText("Transakcja TXN-QA-PL").assertIsDisplayed()
         scenario.close()
@@ -128,6 +133,10 @@ class LocaleQaTest {
     fun mainActivityRendersEnglishWhenPreferenceIsEnglish() {
         seedLanguage(Language.EN)
         val scenario = ActivityScenario.launchActivityForResult<MainActivity>(approvedIntent("TXN-QA-EN"))
+        // The QR render runs behind the async 800 ms health probe, so wait for it.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Payment approved").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Payment approved").assertIsDisplayed()
         composeRule.onNodeWithText("Transaction TXN-QA-EN").assertIsDisplayed()
         scenario.close()
