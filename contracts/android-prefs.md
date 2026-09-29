@@ -17,7 +17,13 @@
 | `activated` | bool | `true` | accept handoffs |
 | `pin` | string | `0000` | settings PIN |
 | `pairing_code` | string | — | last code, for config re-sync |
+| `last_heartbeat_at` | long | — | epoch millis of last heartbeat attempt |
+| `last_heartbeat_result` | string | — | `SUCCESS` / `FAILURE` / `UNAUTHORIZED` / `SKIPPED` |
+| `last_config_sync_at` | long | — | epoch millis of last config-sync attempt |
+| `last_config_sync_result` | string | — | `SUCCESS` / `FAILURE` / `UNAUTHORIZED` / `SKIPPED` |
 
 > **R4 (server shipped 2026-09-25; app defaults landed in PR #62).** The keys and types do not change. `api_base_url` points at the dashboard backend and `redirect_base_url` at the connector; this is a deployment/default change, recorded in App Sprint 4.
 >
 > **R6 (server shipped 2026-09-25; app landed in PR #62).** `api_token` holds the per-terminal token returned by `redeem` instead of the shared env token. A `401` clears it and prompts re-pair.
+>
+> **Sprint 3 task 5.** The `last_*` keys drive the settings Połączenie tab. A run skipped because no token/terminal is stored is recorded as `SKIPPED`, not `FAILURE`.

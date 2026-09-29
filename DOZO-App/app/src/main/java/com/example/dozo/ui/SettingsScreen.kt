@@ -34,9 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.dozo.ConnectionStatus
 import com.example.dozo.DozoContract
 import com.example.dozo.Language
 import com.example.dozo.R
+import java.time.ZoneId
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val TAB_SCREEN = 0
@@ -70,6 +73,8 @@ fun SettingsScreen(
     onTimeoutSecondsChange: (Int) -> Unit,
     onLanguageChange: (String) -> Unit,
     manualStatus: String?,
+    lastHeartbeat: ConnectionStatus.Snapshot,
+    lastConfigSync: ConnectionStatus.Snapshot,
     onSyncNow: () -> Unit,
     onSendHeartbeatNow: () -> Unit,
     onEnterSetupCode: () -> Unit,
@@ -258,6 +263,16 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Spacer(Modifier.height(20.dp))
+                    ConnectionStatusRow(
+                        title = stringResource(R.string.settings_connection_last_heartbeat),
+                        snapshot = lastHeartbeat
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    ConnectionStatusRow(
+                        title = stringResource(R.string.settings_connection_last_config_sync),
+                        snapshot = lastConfigSync
+                    )
                     Spacer(Modifier.height(24.dp))
                     Button(
                         onClick = onEnterSetupCode,
@@ -418,6 +433,47 @@ private fun ToggleRow(
         )
     }
 }
+
+@Composable
+private fun ConnectionStatusRow(
+    title: String,
+    snapshot: ConnectionStatus.Snapshot,
+    modifier: Modifier = Modifier
+) {
+    val never = stringResource(R.string.settings_connection_never)
+    val outcome = snapshot.outcome
+    val value = if (snapshot.atMillis != null && outcome != null) {
+        stringResource(
+            R.string.settings_connection_status,
+            ConnectionStatus.format(snapshot, never, Locale.getDefault(), ZoneId.systemDefault()),
+            outcomeLabel(outcome)
+        )
+    } else {
+        never
+    }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun outcomeLabel(outcome: ConnectionStatus.Outcome): String = stringResource(
+    when (outcome) {
+        ConnectionStatus.Outcome.SUCCESS -> R.string.settings_connection_result_success
+        ConnectionStatus.Outcome.FAILURE -> R.string.settings_connection_result_failure
+        ConnectionStatus.Outcome.UNAUTHORIZED -> R.string.settings_connection_result_unauthorized
+        ConnectionStatus.Outcome.SKIPPED -> R.string.settings_connection_result_skipped
+    }
+)
 
 @Composable
 private fun LanguageOption(
