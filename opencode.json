@@ -18,6 +18,15 @@
       "description": "Use for CONTRACTS.md, contracts/*.md, MANUAL.md, AGENTS.md, and repo-wide conventions. Read to ground contract and cross-cutting QA."
     }
   },
+  "agent": {
+    "obsidian-1.1": {
+      "permission": {
+        "external_directory": {
+          "~/Documents/Papier/Papier/**": "allow"
+        }
+      }
+    }
+  },
   "mcp": {
     "firecrawl": {
       "type": "local",

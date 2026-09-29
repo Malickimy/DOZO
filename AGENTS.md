@@ -18,6 +18,14 @@ first when an interface changes.
 Each project keeps its own build config (loose monorepo). The root `Makefile` shells
 out to the right one.
 
+## Obsidian vault (Papier)
+
+The `Papier` vault (`~/Documents/Papier/Papier`) is owned by the `obsidian-1.1`
+agent. Do not read, edit, or create vault files directly — no `read` / `edit` /
+`write` tools and no `obsidian` CLI calls on vault paths. Hand vault work to the
+obsidian agent instead. Access is granted to that agent in `opencode.json`;
+other agents stay blocked.
+
 ## Planning: the Release Board
 
 Cross-project work is planned in the Obsidian vault, not in this repo. The vault root
