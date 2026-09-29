@@ -80,6 +80,12 @@ export function registerModelBRoutes(app) {
   }
 
   app.post('/api/merchants/:merchant_id/registers/:label/setup-code', async (request, reply) => {
+    // R6: pairing is operator-only. A per-terminal token must not mint a setup
+    // code for any merchant (own or foreign) and so must not start a takeover.
+    if (request.terminalAuth) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const merchantId = request.params.merchant_id;
     const label = typeof request.params.label === 'string' ? request.params.label.trim() : '';
 
@@ -116,6 +122,12 @@ export function registerModelBRoutes(app) {
   });
 
   app.post('/api/terminals/redeem', async (request, reply) => {
+    // R6: redeem is operator-only. A per-terminal token must not consume a setup
+    // code to bind a (possibly foreign) terminal.
+    if (request.terminalAuth) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+
     const body = request.body ?? {};
     const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : '';
     if (!code) {
