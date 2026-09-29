@@ -202,16 +202,50 @@ Europe/Warsaw calendar day.
 
 ## Docker
 
+The image runs the two Node entrypoints — it **never runs Vite**. Build the SPA
+first, stage it into the server build context, then build the image with the
+monorepo root as the context:
+
 ```bash
-# Build context is the monorepo root (the image compiles DOZO-Dashboard/).
+# 1. Build the SPA and stage it at DOZO-Server/public (context = repo root).
+cd DOZO-Dashboard && npm ci && npm run build && cd ..
+rm -rf DOZO-Server/public && cp -R DOZO-Dashboard/dist DOZO-Server/public
+
+# 2. Build the image and start the two containers.
 docker build -f DOZO-Server/Dockerfile -t dozo-server .
 docker compose -f DOZO-Server/docker-compose.yml up --build
 ```
 
-`docker-compose.yml` runs **two services from one image**: `dashboard` on
-`:3000` (API + SPA) and `connector` on `:3001` (redirect surface). Both read
-`.env`; the SQLite file lives at `/data/dozo.db` on the shared `dozo-data`
-volume.
+CI does exactly this (see [`.github/workflows/container.yml`](../.github/workflows/container.yml)).
+`DOZO-Dashboard/dist` is gitignored (it is a build artifact); `DOZO-Server/public`
+is the staged copy the Dockerfile copies to `/app/public`, served via
+`DASHBOARD_DIST_PATH`.
+
+`docker-compose.yml` runs **two services from one image**:
+
+- `dashboard` on `:3000` (API + SPA), SQLite at `/data/dashboard.db` on the
+  `dozo-dashboard-data` volume.
+- `connector` on `:3001` (redirect surface), its own SQLite at `/data/connector.db`
+  on the `dozo-connector-data` volume, its own spool at
+  `/data/spool/scan-spool.jsonl`, forwarding to `http://dashboard:3000`.
+
+Both read `DOZO-Server/.env` (copy `.env.production.example`); `docker-compose.yml`
+overrides `DB_PATH` per service so the two containers never share one SQLite file.
+
+### Per-client isolation
+
+Each client gets its own stack with its own pair of named volumes. Namespace them
+with a distinct Compose project name:
+
+```bash
+COMPOSE_PROJECT_NAME=dozo-<client> \
+  docker compose -f DOZO-Server/docker-compose.yml up -d --build
+```
+
+`COMPOSE_PROJECT_NAME` prefixes the volume names (e.g.
+`dozo-acme_dozo-dashboard-data`), so a second client with a different project name
+and host ports is fully isolated. Do **not** run two clients in one Compose
+project.
 
 ## Deployment
 
@@ -236,8 +270,10 @@ $EDITOR DOZO-Server/.env   # set REDIRECT_DOMAIN, API_TOKEN and DASHBOARD_CONNEC
 ./DOZO-Server/scripts/smoke.sh    # BASE_URL defaults to the public host
 ```
 
-`deploy.sh` syncs the repo root (excluding `DOZO-App`, `node_modules`, `dist`
-and `data`), so the dashboard image can build the SPA. It never uses
+`deploy.sh` builds the dashboard SPA, stages it into `DOZO-Server/public`, and
+rsyncs the repo root (excluding `DOZO-App`, `node_modules`, `dist` and `data`) to
+the host, then runs `docker compose up -d --build` there. The image itself does
+not run Vite — it only copies the staged `DOZO-Server/public`. It never uses
 `rsync --delete`, preserving remote data and `.env`. Do **not** run a full
 rebuild on the 1 GB VPS; use the copy-and-commit method in
 [`../MANUAL.md`](../MANUAL.md).
