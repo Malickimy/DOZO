@@ -44,3 +44,8 @@ jobs:
 
       - name: Build image
         run: docker build -f DOZO-Server/Dockerfile -t dozo-server:ci .
+
+      # Boots the dashboard + connector from compose and asserts the public
+      # round-trip: /r/:id twice -> exactly one deduped scan, plus the SPA.
+      - name: Smoke test compose round-trip
+        run: DOZO-Server/scripts/container-smoke.sh
