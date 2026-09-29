@@ -39,3 +39,6 @@ local.properties
 # --- Vault (kept external) ---
 Papier_Vault
 vault-copy-backup/
+
+# --- Staged dashboard SPA (built by CI/deploy, copied into the Docker image) ---
+DOZO-Server/public/

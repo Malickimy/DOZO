@@ -1,3 +1,9 @@
+# NOTE: This file is NOT used by the container build.
+#
+# The image build context is the monorepo root (see DOZO-Server/docker-compose.yml
+# and .github/workflows/container.yml), so Docker reads the root `.dockerignore`
+# at /Users/.../workspace-dashboard/.dockerignore — not this file. It is kept only
+# for reference in case the build context ever moves back inside DOZO-Server/.
 node_modules
 data
 *.db
