@@ -28,7 +28,11 @@ class SettingsPersistenceTest {
             DozoContract.KEY_PIN to "pin",
             DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled",
             DozoContract.KEY_GOOGLE_PLACE_ID to "google_place_id",
-            DozoContract.KEY_STATIC_REVIEW_URL to "static_review_url"
+            DozoContract.KEY_STATIC_REVIEW_URL to "static_review_url",
+            DozoContract.KEY_LAST_HEARTBEAT_AT to "last_heartbeat_at",
+            DozoContract.KEY_LAST_HEARTBEAT_RESULT to "last_heartbeat_result",
+            DozoContract.KEY_LAST_CONFIG_SYNC_AT to "last_config_sync_at",
+            DozoContract.KEY_LAST_CONFIG_SYNC_RESULT to "last_config_sync_result"
         )
         assertEquals("dozo_prefs", DozoContract.PREFS_NAME)
         expected.forEach { (constant, literal) ->
