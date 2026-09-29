@@ -44,6 +44,14 @@ export function registerModelBRoutes(app) {
         AND label = ?
         AND terminal_id <> ?`,
   );
+  // G02: a terminal can be re-redeemed into a different merchant/register. It may
+  // still be bound to a register from its previous owner, which would keep
+  // serving the wrong merchant's `static_review_url`. Clear every other binding
+  // for this terminal in the same transaction (the target register is re-bound at
+  // the end).
+  const unbindOtherRegisters = db.prepare(
+    'UPDATE registers SET terminal_id = NULL WHERE terminal_id = ? AND register_id <> ?',
+  );
   const upsertTerminal = db.prepare(
     `INSERT INTO terminals (terminal_id, merchant_id, label, active, last_seen, created_at)
      VALUES (?, ?, ?, 1, NULL, ?)
@@ -149,6 +157,7 @@ export function registerModelBRoutes(app) {
         deactivateTerminal.run(register.terminal_id);
       }
       deactivateRegister.run(record.merchant_id, record.label, terminalId);
+      unbindOtherRegisters.run(terminalId, register.register_id);
       upsertTerminal.run(terminalId, record.merchant_id, record.label, redeemedAt);
       setTerminalToken.run(hashToken(apiToken), terminalId);
       bindRegister.run(terminalId, register.register_id);
