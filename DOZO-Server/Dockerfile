@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# Build context is the monorepo root (see docker-compose.yml) so this stage can
-# compile the dashboard SPA and the runtime stage can serve its dist.
+# Build context is the monorepo root (see docker-compose.yml). The dashboard SPA
+# is built by CI (or locally) and staged at DOZO-Server/public before this build;
+# this image never runs Vite. See .github/workflows/container.yml.
 
 # ---- server dependencies (native better-sqlite3) ----
 FROM node:22-bookworm-slim AS deps
@@ -12,14 +13,6 @@ RUN apt-get update \
 COPY DOZO-Server/package.json DOZO-Server/package-lock.json* ./
 RUN npm ci --omit=dev
 
-# ---- dashboard SPA ----
-FROM node:22-bookworm-slim AS dashboard
-WORKDIR /dashboard
-COPY DOZO-Dashboard/package.json DOZO-Dashboard/package-lock.json* ./
-RUN npm ci
-COPY DOZO-Dashboard/ ./
-RUN npm run build
-
 # ---- runtime ----
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
@@ -28,7 +21,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY DOZO-Server/package.json ./
 COPY DOZO-Server/src ./src
 COPY DOZO-Server/scripts ./scripts
-COPY --from=dashboard /dashboard/dist ./public
+# Pre-built SPA: DOZO-Dashboard/dist is copied to DOZO-Server/public by CI.
+COPY DOZO-Server/public ./public
 RUN mkdir -p /data && chown -R node:node /data
 USER node
 ENV PORT=3000 \
