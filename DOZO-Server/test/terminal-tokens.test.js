@@ -235,6 +235,68 @@ test('a terminal token cannot PUT another terminal config (G22)', async (t) => {
   assert.equal(own.json().display_enabled, false);
 });
 
+test('a terminal token cannot mint a setup code or redeem one (P0)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare(
+    'INSERT INTO merchants (merchant_id, google_place_id, created_at) VALUES (?, ?, ?)',
+  ).run('M2', 'ChIJ_M2', '2026-01-01T00:00:00.000Z');
+
+  const token = await redeemTerminal(app, { label: 'Till 1', terminalId: 'TOKENA01' });
+
+  // Pairing is operator-only, for the token's own merchant and every other one.
+  for (const merchantId of ['M1', 'M2']) {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/merchants/${merchantId}/registers/EVIL/setup-code`,
+      headers: authHeaders(token),
+    });
+    assert.equal(res.statusCode, 401, `${merchantId} setup-code must be operator-only`);
+    assert.deepEqual(res.json(), { error: 'unauthorized' });
+  }
+
+  const redeemRes = await app.inject({
+    method: 'POST',
+    url: '/api/terminals/redeem',
+    headers: authHeaders(token),
+    payload: { code: 'ZZZZZZZZ', terminal_id: 'EVIL0001' },
+  });
+  assert.equal(redeemRes.statusCode, 401, 'redeem must be operator-only');
+  assert.deepEqual(redeemRes.json(), { error: 'unauthorized' });
+
+  // The rejected requests created no terminal and no setup code.
+  assert.equal(
+    db.prepare('SELECT 1 FROM terminals WHERE terminal_id = ?').get('EVIL0001'),
+    undefined,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT COUNT(*) AS c FROM setup_codes WHERE merchant_id = ? AND label = 'EVIL'")
+      .get('M2').c,
+    0,
+  );
+
+  // The operator token is unaffected: it can still pair a terminal end to end.
+  const issued = await app.inject({
+    method: 'POST',
+    url: '/api/merchants/M2/registers/EVIL/setup-code',
+    headers: authHeaders(),
+  });
+  assert.equal(issued.statusCode, 201);
+  const redeemed = await app.inject({
+    method: 'POST',
+    url: '/api/terminals/redeem',
+    headers: authHeaders(),
+    payload: { code: issued.json().code, terminal_id: 'OPEVIL01' },
+  });
+  assert.equal(redeemed.statusCode, 200);
+  assert.equal(redeemed.json().store.merchant_id, 'M2');
+});
+
 test('a rotated token replaces the previous one', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
