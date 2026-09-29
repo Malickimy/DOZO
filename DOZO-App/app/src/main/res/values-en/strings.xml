@@ -52,6 +52,16 @@
     <string name="settings_updating">Updating settings…</string>
     <string name="settings_updated_from_dashboard">Settings updated from the dashboard</string>
 
+    <!-- Connection status (Sprint 3 task 5) -->
+    <string name="settings_connection_last_heartbeat">Last heartbeat</string>
+    <string name="settings_connection_last_config_sync">Last config sync</string>
+    <string name="settings_connection_never">never</string>
+    <string name="settings_connection_status">%1$s · %2$s</string>
+    <string name="settings_connection_result_success">Success</string>
+    <string name="settings_connection_result_failure">Failure</string>
+    <string name="settings_connection_result_unauthorized">Unauthorized</string>
+    <string name="settings_connection_result_skipped">Skipped</string>
+
     <!-- Setup code (model-B redeem) -->
     <string name="setup_code_title">Setup code</string>
     <string name="setup_code_help">Enter the code from the merchant portal to pair this terminal</string>

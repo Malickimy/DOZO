@@ -88,6 +88,40 @@ object DozoConfig {
         prefs(context).getString(DozoContract.KEY_STATIC_REVIEW_URL, null)
             ?.takeIf { it.isNotBlank() }
 
+    fun lastHeartbeat(context: Context): ConnectionStatus.Snapshot =
+        readSnapshot(
+            context,
+            DozoContract.KEY_LAST_HEARTBEAT_AT,
+            DozoContract.KEY_LAST_HEARTBEAT_RESULT
+        )
+
+    fun lastConfigSync(context: Context): ConnectionStatus.Snapshot =
+        readSnapshot(
+            context,
+            DozoContract.KEY_LAST_CONFIG_SYNC_AT,
+            DozoContract.KEY_LAST_CONFIG_SYNC_RESULT
+        )
+
+    /** Records the outcome of a real heartbeat attempt (skip included). */
+    fun recordHeartbeat(context: Context, outcome: ConnectionStatus.Outcome) {
+        writeSnapshot(
+            context,
+            DozoContract.KEY_LAST_HEARTBEAT_AT,
+            DozoContract.KEY_LAST_HEARTBEAT_RESULT,
+            outcome
+        )
+    }
+
+    /** Records the outcome of a real config-sync attempt (skip included). */
+    fun recordConfigSync(context: Context, outcome: ConnectionStatus.Outcome) {
+        writeSnapshot(
+            context,
+            DozoContract.KEY_LAST_CONFIG_SYNC_AT,
+            DozoContract.KEY_LAST_CONFIG_SYNC_RESULT,
+            outcome
+        )
+    }
+
     fun setActivated(context: Context, value: Boolean) {
         edit(context).putBoolean(DozoContract.KEY_ACTIVATED, value).apply()
     }
@@ -206,6 +240,34 @@ object DozoConfig {
 
     fun clampTimeoutSeconds(value: Int): Int =
         SettingsPersistence.clampTimeoutSeconds(value)
+
+    private fun readSnapshot(
+        context: Context,
+        atKey: String,
+        outcomeKey: String
+    ): ConnectionStatus.Snapshot {
+        val prefs = prefs(context)
+        val at = prefs.getLong(atKey, 0L)
+        val outcome = ConnectionStatus.outcomeFromName(prefs.getString(outcomeKey, null))
+        return if (at > 0L && outcome != null) {
+            ConnectionStatus.Snapshot(atMillis = at, outcome = outcome)
+        } else {
+            ConnectionStatus.Never
+        }
+    }
+
+    private fun writeSnapshot(
+        context: Context,
+        atKey: String,
+        outcomeKey: String,
+        outcome: ConnectionStatus.Outcome,
+        atMillis: Long = System.currentTimeMillis()
+    ) {
+        edit(context)
+            .putLong(atKey, atMillis)
+            .putString(outcomeKey, outcome.name)
+            .apply()
+    }
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(DozoContract.PREFS_NAME, Context.MODE_PRIVATE)
