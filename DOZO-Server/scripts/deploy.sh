@@ -2,9 +2,11 @@
 #
 # deploy.sh - Deploy the DOZO redirect server to a remote host over SSH.
 #
-# rsyncs the project (excluding node_modules, data, .git and .env) to
-# $REMOTE_DIR on $SERVER_HOST, then runs `docker compose up -d --build` and
-# `docker compose ps` there.
+# Builds the dashboard SPA and stages it at DOZO-Server/public, then rsyncs the
+# project (excluding node_modules, data, .git and .env) to $REMOTE_DIR on
+# $SERVER_HOST and runs `docker compose up -d --build` and `docker compose ps`
+# there. The image does not build the SPA itself; it only COPYs the staged
+# DOZO-Server/public into /app/public.
 #
 # Safety: rsync never uses --delete and never touches data/ or a remote .env,
 # so remote SQLite data and secrets are preserved. A missing remote .env is
@@ -29,8 +31,11 @@ DRY_RUN="${DRY_RUN:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-# The dashboard image builds the SPA, so the build context is the repo root.
+# The build context is the repo root: the compose file lives under DOZO-Server/
+# and the image COPYs the staged DOZO-Server/public (built below).
 REPO_DIR="$(cd "$PROJECT_DIR/.." && pwd)"
+DASHBOARD_DIR="$REPO_DIR/DOZO-Dashboard"
+STAGE_DIR="$PROJECT_DIR/public"
 COMPOSE_FILE="DOZO-Server/docker-compose.yml"
 
 usage() {
@@ -67,9 +72,19 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
     exit 1
 fi
 
-# Sync the monorepo root (minus the Android app and build artifacts) because the
-# dashboard image compiles DOZO-Dashboard/. rsync never uses --delete, so remote
-# data/ and .env stay intact.
+# Build the dashboard SPA locally and stage it where the Dockerfile COPYs it from.
+# The image never runs Vite, so DOZO-Server/public must exist before the build.
+stage_public() {
+    echo "==> build dashboard SPA -> $STAGE_DIR"
+    ( cd "$DASHBOARD_DIR" && npm ci && npm run build )
+    rm -rf "$STAGE_DIR"
+    cp -R "$DASHBOARD_DIR/dist" "$STAGE_DIR"
+}
+
+# Sync the monorepo root (minus the Android app and build artifacts). The staged
+# SPA at DOZO-Server/public is included; DOZO-Dashboard/dist is skipped because it
+# has already been copied into public. rsync never uses --delete, so remote data/
+# and .env stay intact.
 RSYNC_CMD=(
     "$RSYNC" -az
     --exclude node_modules
@@ -100,6 +115,10 @@ REMOTE
 )
 
 if (( DRY_RUN )); then
+    echo "[dry-run] stage command:"
+    printf '  (cd %q && npm ci && npm run build)\n' "$DASHBOARD_DIR"
+    printf '  rm -rf %q && cp -R %q %q\n' "$STAGE_DIR" "$DASHBOARD_DIR/dist" "$STAGE_DIR"
+    echo
     echo "[dry-run] rsync command:"
     printf '  %s\n' "$(printf '%q ' "${RSYNC_CMD[@]}")"
     echo
@@ -113,12 +132,19 @@ if (( DRY_RUN )); then
     exit 0
 fi
 
-for bin in "$RSYNC" "$SSH"; do
+for bin in npm "$RSYNC" "$SSH"; do
     if ! command -v "$bin" >/dev/null 2>&1; then
         echo "ERROR: required command not found: $bin" >&2
         exit 1
     fi
 done
+
+if [[ ! -d "$DASHBOARD_DIR" ]]; then
+    echo "ERROR: dashboard directory not found: $DASHBOARD_DIR" >&2
+    exit 1
+fi
+
+stage_public
 
 echo "==> rsync $REPO_DIR/ -> $SERVER_HOST:$REMOTE_DIR/"
 "${RSYNC_CMD[@]}"

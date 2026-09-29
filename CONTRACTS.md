@@ -9,7 +9,7 @@ Single-file read/write was replaced by one file per workstream so parallel sprin
 distinct files and merge cleanly. Root (`CONTRACTS.md`, `contracts/env.md`) is owned by
 the `contract` agent; every other contract file is owned by its project agent.
 
-_Last synced from code on 2026-09-28. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout)._
+_Last synced from code on 2026-09-29. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout). Container/runtime env vars (`CONNECTOR_PORT`, `CONNECTOR_SPOOL_PATH`, `DASHBOARD_DIST_PATH`) and per-container `DB_PATH` are documented in [`contracts/env.md`](contracts/env.md)._
 
 _Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. The App R3/R4/R6 consumers landed in PR #62 (merged 2026-09-28), and the Dashboard consumer rows were restored in this reconciliation (PR #66); R1–R7 remain server-implemented (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md))._
 
@@ -50,7 +50,7 @@ Editing rules:
 
 > Repo root: the monorepo checkout (main `/Users/malicky/l/DOZO`; worktrees such as `/Users/malicky/l/workspace-server` mirror the same layout). Paths in this file are repo-relative so they hold in any worktree. If a path moves again, update this table, the app `scripts/*` `PROJECT_DIR` defaults, `~/.config/opencode/opencode.json` (`ANDROID_PROJECT_DIR`), and the `android-build` skill.
 
-> **R4 (server shipped 2026-09-25).** The Node backend lives in `DOZO-Server/` as one package with two entrypoints: `src/connector.js` (public) and `src/dashboard.js` (dashboard API + SPA). `DOZO-Dashboard/` stays a frontend and gains no Fastify or better-sqlite3 dependency.
+> **R4 (server shipped 2026-09-25).** The Node backend lives in `DOZO-Server/` as one package with two entrypoints: `src/connector.js` (public) and `src/dashboard.js` (dashboard API + SPA). Each entrypoint runs as its own container per client (one image, two containers; see the container section in [`contracts/env.md`](contracts/env.md)). `DOZO-Dashboard/` stays a frontend and gains no Fastify or better-sqlite3 dependency.
 
 ---
 

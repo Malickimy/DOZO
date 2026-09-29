@@ -1,5 +1,9 @@
 # Docker build context is the monorepo root (see DOZO-Server/docker-compose.yml).
+# This is the effective ignore file for the image build; DOZO-Server/.dockerignore
+# is NOT used, because Docker reads the .dockerignore at the root of the context.
 **/node_modules
+# Raw Vite output is ignored: CI builds the SPA and stages it at DOZO-Server/public,
+# which must stay in the context so the Dockerfile can COPY it into the image.
 **/dist
 **/.gradle
 **/build
@@ -8,4 +12,7 @@
 .gradle
 .git
 DOZO-App
+# The frontend is only needed to build the SPA (done before docker build), not in
+# the image build context.
+DOZO-Dashboard
 DOZO-Server/data
