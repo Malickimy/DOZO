@@ -107,3 +107,28 @@ test('the forwarder POSTs spooled scans and keeps failures for retry', async (t)
     'only the failed entry stays spooled',
   );
 });
+
+test('the forwarder keeps spooled scans on a non-2xx response (G08)', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'dozo-spool-'));
+  const spool = createSpool({ filePath: join(dir, 'spool.jsonl') });
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  spool.append({ event_id: 'server-error-1', terminal_id: TEST_TERMINAL_ID, merchant_id: 'M1' });
+
+  const fetchImpl = async () => ({ ok: false, status: 500 });
+  const forwarder = createForwarder({
+    spool,
+    ingestUrl: 'http://dashboard.test',
+    secret: 'sekret',
+    logger: { warn() {} },
+    fetchImpl,
+  });
+
+  await forwarder.drain();
+
+  assert.deepEqual(
+    spool.readAll().map((entry) => entry.event_id),
+    ['server-error-1'],
+    'a 500 keeps the entry for the next drain',
+  );
+});

@@ -105,6 +105,45 @@ test('POST /scans drops an unknown terminal with 202 and no row', async (t) => {
   assert.equal(db.prepare('SELECT COUNT(*) AS c FROM scans').get().c, 0);
 });
 
+test('POST /scans maps an unparseable JSON body to 400 malformed (G03)', async (t) => {
+  const { app, db } = makeContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/scans',
+    headers: { 'content-type': 'application/json', 'x-connector-secret': CONNECTOR_SECRET },
+    payload: '{ this is not valid json',
+  });
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: 'malformed' });
+});
+
+test('POST /scans drops an inactive terminal with 202 and no row (G04)', async (t) => {
+  const { app, db } = makeContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare(
+    `INSERT INTO terminals (terminal_id, merchant_id, label, active, last_seen, created_at)
+     VALUES (?, ?, ?, 0, NULL, ?)`,
+  ).run('TERMOFF01', 'M1', 'Retired till', '2026-01-01T00:00:00.000Z');
+
+  const res = await post(app, { ...SCAN, event_id: 'evt-inactive', terminal_id: 'TERMOFF01' });
+  assert.equal(res.statusCode, 202);
+  assert.deepEqual(res.json(), { status: 'accepted' });
+
+  const rows = db
+    .prepare('SELECT COUNT(*) AS c FROM scans WHERE terminal_id = ?')
+    .get('TERMOFF01');
+  assert.equal(rows.c, 0, 'no scan row is written for an inactive terminal');
+});
+
 test('migrate repairs scans.event_id when a v5 database skipped v4', (t) => {
   const db = new Database(':memory:');
   t.after(() => db.close());

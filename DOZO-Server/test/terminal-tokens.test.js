@@ -150,6 +150,91 @@ test('the operator token still reaches dashboard routes and any terminal', async
   assert.equal(merchants.statusCode, 200);
 });
 
+test('a terminal token cannot touch another merchant via any merchant route (G01)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  db.prepare(
+    'INSERT INTO merchants (merchant_id, google_place_id, created_at) VALUES (?, ?, ?)',
+  ).run('M2', 'ChIJ_M2', '2026-01-01T00:00:00.000Z');
+  db.prepare(
+    `INSERT INTO terminals (terminal_id, merchant_id, label, active, last_seen, created_at)
+     VALUES (?, ?, ?, 1, NULL, ?)`,
+  ).run('M2TERM01', 'M2', 'M2 front', '2026-01-01T00:00:00.000Z');
+
+  const token = await redeemTerminal(app, { label: 'Till 1', terminalId: 'TOKENA01' });
+  const headers = authHeaders(token);
+
+  const crossReads = [
+    ['GET', '/api/merchants'],
+    ['GET', '/api/merchants/M2/terminals'],
+    ['GET', '/api/merchants/M2/summary'],
+    ['GET', '/api/merchants/M2/scans'],
+    ['GET', '/api/merchants/M2/scans/series'],
+  ];
+  for (const [method, url] of crossReads) {
+    const res = await app.inject({ method, url, headers });
+    assert.equal(res.statusCode, 401, `${method} ${url} is scoped to the token's merchant`);
+  }
+
+  const crossWrite = await app.inject({
+    method: 'PUT',
+    url: '/api/merchants/M2/google-place-id',
+    headers,
+    payload: { google_place_id: 'ChIJ_HIJACKED' },
+  });
+  assert.equal(crossWrite.statusCode, 401, 'the cross-merchant WRITE is rejected');
+  assert.equal(
+    db
+      .prepare('SELECT google_place_id FROM merchants WHERE merchant_id = ?')
+      .get('M2').google_place_id,
+    'ChIJ_M2',
+    'the rejected write left M2 untouched',
+  );
+
+  // The terminal token still reaches its own merchant.
+  const own = await app.inject({ method: 'GET', url: '/api/merchants/M1/summary', headers });
+  assert.equal(own.statusCode, 200);
+
+  // ...and the operator token keeps full access to the other merchant.
+  const operator = await app.inject({
+    method: 'GET',
+    url: '/api/merchants/M2/terminals',
+    headers: authHeaders(),
+  });
+  assert.equal(operator.statusCode, 200, 'the operator token is unaffected');
+});
+
+test('a terminal token cannot PUT another terminal config (G22)', async (t) => {
+  const { app, db } = makeTestContext();
+  t.after(() => {
+    app.close();
+    db.close();
+  });
+
+  const token = await redeemTerminal(app, { label: 'Till 1', terminalId: 'TOKENA01' });
+
+  const cross = await app.inject({
+    method: 'PUT',
+    url: `/api/terminals/${TEST_TERMINAL_ID}/config`,
+    headers: authHeaders(token),
+    payload: { display_enabled: false },
+  });
+  assert.equal(cross.statusCode, 401);
+
+  const own = await app.inject({
+    method: 'PUT',
+    url: '/api/terminals/TOKENA01/config',
+    headers: authHeaders(token),
+    payload: { display_enabled: false },
+  });
+  assert.equal(own.statusCode, 200);
+  assert.equal(own.json().display_enabled, false);
+});
+
 test('a rotated token replaces the previous one', async (t) => {
   const { app, db } = makeTestContext();
   t.after(() => {
