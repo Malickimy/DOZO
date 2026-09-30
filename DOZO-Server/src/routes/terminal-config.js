@@ -48,6 +48,10 @@ export function registerTerminalConfigRoutes(app) {
         SET active = ?, label = ?
       WHERE terminal_id = ?`,
   );
+  // Hardening I: deactivating a terminal revokes its per-terminal token by
+  // clearing the hash in the same transaction. A subsequent heartbeat/config/
+  // registers call with the old token then falls through to 401.
+  const clearToken = db.prepare('UPDATE terminals SET api_token_hash = NULL WHERE terminal_id = ?');
   // R7: `registers.label` is the source of truth, so a PATCH label renames the
   // bound register (and creates one when the terminal has none).
   const findRegisterForTerminal = db.prepare(
@@ -149,9 +153,13 @@ export function registerTerminalConfigRoutes(app) {
           insertRegister.run(terminal.merchant_id, label, terminalId, now().toISOString());
         }
         updateLifecycle.run(active, label, terminalId);
+        if (body.active === false) clearToken.run(terminalId);
       })();
     } else {
-      updateLifecycle.run(active, label, terminalId);
+      db.transaction(() => {
+        updateLifecycle.run(active, label, terminalId);
+        if (body.active === false) clearToken.run(terminalId);
+      })();
     }
 
     return configPayload(getTerminal.get(terminalId), config);

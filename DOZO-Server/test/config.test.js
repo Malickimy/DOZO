@@ -67,3 +67,24 @@ test('an unset API_TOKEN falls back to the shared placeholder (G09)', () => {
   // the operator token instead of silently re-opening it.
   assert.equal(loadConfig({ API_TOKEN: '' }).apiToken, '');
 });
+
+test('loadConfig defaults and parses the rate-limit knobs (Hardening I)', () => {
+  const defaults = loadConfig({});
+  assert.equal(defaults.rateLimitRedirectPerMin, 30);
+  assert.equal(defaults.rateLimitApiPerMin, 60);
+  assert.equal(defaults.rateLimitWindowMs, 60_000);
+
+  const overridden = loadConfig({
+    RATE_LIMIT_REDIRECT_PER_MIN: '5',
+    RATE_LIMIT_API_PER_MIN: '7',
+    RATE_LIMIT_WINDOW_SECONDS: '30',
+  });
+  assert.equal(overridden.rateLimitRedirectPerMin, 5);
+  assert.equal(overridden.rateLimitApiPerMin, 7);
+  assert.equal(overridden.rateLimitWindowMs, 30_000);
+
+  // Invalid or non-positive values fall back to the contract defaults.
+  const invalid = loadConfig({ RATE_LIMIT_API_PER_MIN: 'nope', RATE_LIMIT_WINDOW_SECONDS: '0' });
+  assert.equal(invalid.rateLimitApiPerMin, 60);
+  assert.equal(invalid.rateLimitWindowMs, 60_000);
+});

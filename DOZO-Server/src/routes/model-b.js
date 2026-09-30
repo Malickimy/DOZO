@@ -36,10 +36,15 @@ export function registerModelBRoutes(app) {
   const bindRegister = db.prepare(
     'UPDATE registers SET terminal_id = ?, active = 1 WHERE register_id = ?',
   );
-  const deactivateTerminal = db.prepare('UPDATE terminals SET active = 0 WHERE terminal_id = ?');
+  // Hardening I: deactivation revokes the terminal's token in the same
+  // transaction, so a device swap cannot leave the old device authenticated.
+  const deactivateTerminal = db.prepare(
+    'UPDATE terminals SET active = 0, api_token_hash = NULL WHERE terminal_id = ?',
+  );
   const deactivateRegister = db.prepare(
     `UPDATE terminals
-        SET active = 0
+        SET active = 0,
+            api_token_hash = NULL
       WHERE merchant_id = ?
         AND label = ?
         AND terminal_id <> ?`,
