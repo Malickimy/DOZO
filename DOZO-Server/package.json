@@ -16,7 +16,8 @@
     "start:dashboard": "node src/dashboard.js",
     "start:all": "node scripts/start-all.js",
     "test": "node --test",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "seed:demo": "node scripts/seed-demo.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
