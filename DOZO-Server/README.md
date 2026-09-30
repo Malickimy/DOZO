@@ -61,6 +61,8 @@ curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/mercha
 | `npm run dev:connector` / `dev:dashboard` | Entrypoints with `node --watch` |
 | `npm test` | Run the `node:test` suite |
 | `npm run seed` | Insert demo merchant/terminal into `DB_PATH` |
+| `scripts/backup.sh` | Snapshot `DB_PATH`, apply 7-day rotation, optionally rsync offsite |
+| `scripts/uptime-check.sh` | External liveness probe for `GET /health` |
 
 ## Environment variables
 
@@ -81,6 +83,9 @@ curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/mercha
 | `DASHBOARD_INGEST_URL` | `http://localhost:3000` | Dashboard base the connector forwards spooled scans to |
 | `CONNECTOR_SPOOL_PATH` | `./data/scan-spool.jsonl` | Connector's file-backed scan spool |
 | `DASHBOARD_DIST_PATH` | `../DOZO-Dashboard/dist` | Built SPA directory served by the dashboard entrypoint |
+| `RATE_LIMIT_REDIRECT_PER_MIN` | `30` | Requests/min per client IP on `GET /r/:terminal_id` |
+| `RATE_LIMIT_API_PER_MIN` | `60` | Requests/min per client IP on every `/api/*` route |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate-limit window length |
 
 ## Endpoints
 
@@ -90,6 +95,14 @@ curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/mercha
 | --- | --- | --- |
 | `GET` | `/health` | `200 {status:"ok"}` |
 | `GET` | `/r/:terminal_id` | `302` to Google review form; logs one scan per debounce window |
+
+Rate limits (Hardening I): `GET /r/:terminal_id` allows 30 requests/min per
+client IP and every `/api/*` route allows 60 requests/min per client IP
+(`RATE_LIMIT_*`). The limit keys on `request.ip`, so `TRUST_PROXY` decides
+whether `X-Forwarded-For` is honoured. Exceeding a limit returns
+`429 {"error":"rate_limited"}` (never `401`, never a scan row); the client backs
+off and retries. `/health` is exempt so an external uptime monitor can poll it
+(`scripts/uptime-check.sh`).
 
 `GET /r/:terminal_id` outcomes:
 
@@ -160,6 +173,12 @@ a token.
   `X-Api-Token`; heartbeat/config must match the token's own terminal and
   register reads its merchant, or the call is `401`. A `401` clears the app's
   token and prompts re-pairing.
+- **Revocation (Hardening I):** deactivating a terminal — operator
+  `PATCH /api/terminals/:terminal_id` with `{"active":false}`, or the device-swap
+  deactivation during `redeem` — clears `terminals.api_token_hash` in the same
+  transaction. The old token then `401`s on heartbeat/config/registers, and
+  issuance/rotation happens only at redeem. A `429` is *not* a `401` and must
+  never trigger a re-pair.
 - **Connector:** the connector (a separate process/container) authenticates as
   itself with `X-Connector-Secret` on `GET /api/connector/config` and
   `POST /scans`.
@@ -308,6 +327,16 @@ curl -s -X POST http://localhost:3000/api/terminals/redeem \
 - **Change `API_TOKEN`** from the placeholder to a long random secret.
 - **Set `DASHBOARD_CONNECTOR_SECRET`** to a long random secret shared by the
   connector and dashboard.
+- **Schedule backups.** `scripts/backup.sh` writes an integrity-checked SQLite
+  snapshot into `BACKUP_DIR`, prunes snapshots older than
+  `BACKUP_RETENTION_DAYS` (default 7), and rsyncs offsite when
+  `BACKUP_RSYNC_TARGET` is set. The restore drill is documented in
+  [`../MANUAL.md`](../MANUAL.md).
+- **Monitor liveness externally.** `scripts/uptime-check.sh` polls `/health`
+  (which is never rate-limited) and exits non-zero on failure.
+- **Keep the logs.** Accepted scans emit a structured JSON line
+  (`event: "scan.recorded"` on the redirect, `event: "scan.ingested"` on the
+  connector ingest), so a log shipper can build scan metrics.
 
 ## Tests
 
@@ -323,7 +352,10 @@ terminal display config (defaults, clamping, validation), lifecycle `PATCH`,
 register listing (unoccupied registers), connector entrypoint isolation,
 `/api/connector/config` and `POST /scans` (secret, idempotency, malformed,
 unknown terminal), spool dual-write and forwarding, the two-process `start:all`
-launcher, and CORS.
+launcher, and CORS. Hardening I adds: rate limits (redirect/api/`/health`
+exemption/`TRUST_PROXY`), revocation on both deactivation paths, structured scan
+logs, `scripts/backup.sh` (snapshot/rotation/restore drill/rsync), and the
+uptime probe.
 
 ## Decisions & open questions
 

@@ -47,6 +47,20 @@ export function registerRedirectRoute(app) {
       const eventId = randomUUID();
       insertScan.run(terminalId, scannedAt, userAgent, eventId);
 
+      // Hardening I: a structured line for every accepted scan (the connector
+      // forwards this shape to the dashboard's /scans ingest).
+      request.log.info(
+        {
+          event: 'scan.recorded',
+          event_id: eventId,
+          terminal_id: terminalId,
+          merchant_id: terminal.merchant_id,
+          scanned_at: scannedAt,
+          client_ip: request.ip,
+        },
+        'scan recorded',
+      );
+
       if (app.spool) {
         app.spool.append({
           event_id: eventId,

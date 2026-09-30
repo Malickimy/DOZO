@@ -9,7 +9,11 @@ import { assertTerminalAccess } from '../middleware/terminal-auth.js';
 export function registerHeartbeatRoutes(app) {
   const { db, config, now } = app;
 
-  const getTerminal = db.prepare('SELECT terminal_id FROM terminals WHERE terminal_id = ?');
+  // Hardening I: only an active terminal can heartbeat. An inactive terminal's
+  // token has already been revoked at deactivate, so this is the second gate.
+  const getTerminal = db.prepare(
+    'SELECT terminal_id FROM terminals WHERE terminal_id = ? AND active = 1',
+  );
   const touch = db.prepare('UPDATE terminals SET last_seen = ? WHERE terminal_id = ?');
   const stale = db.prepare(
     `SELECT terminal_id, merchant_id, label, active, last_seen

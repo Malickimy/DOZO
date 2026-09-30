@@ -13,10 +13,19 @@ const DEFAULTS = {
   DASHBOARD_DIST_PATH: '../DOZO-Dashboard/dist',
   DASHBOARD_INGEST_URL: 'http://localhost:3000',
   CONNECTOR_SPOOL_PATH: './data/scan-spool.jsonl',
+  RATE_LIMIT_REDIRECT_PER_MIN: '30',
+  RATE_LIMIT_API_PER_MIN: '60',
+  RATE_LIMIT_WINDOW_SECONDS: '60',
 };
 
 function asBool(value) {
   return value === true || value === 'true' || value === '1';
+}
+
+/** Parse a positive integer; fall back to the default on blank/invalid input. */
+function asPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 /**
@@ -46,6 +55,9 @@ export function loadConfig(env = process.env) {
       '',
     ),
     connectorSpoolPath: String(raw.CONNECTOR_SPOOL_PATH || './data/scan-spool.jsonl'),
+    rateLimitRedirectPerMin: asPositiveInt(raw.RATE_LIMIT_REDIRECT_PER_MIN, 30),
+    rateLimitApiPerMin: asPositiveInt(raw.RATE_LIMIT_API_PER_MIN, 60),
+    rateLimitWindowMs: asPositiveInt(raw.RATE_LIMIT_WINDOW_SECONDS, 60) * 1000,
   };
 }
 
