@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isNotAvailable } from '../lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from '../lib/api'
 import { formatDateTime, terminalName } from '../lib/format'
@@ -14,6 +14,8 @@ interface ScansViewProps {
   range: RangeSelection
   onRangeChange: (next: RangeSelection) => void
   summary: MerchantSummary | null
+  /** Bumped by the 10s poll and the manual Refresh to silently refetch. */
+  refreshToken?: number
 }
 
 export function ScansView({
@@ -23,6 +25,7 @@ export function ScansView({
   range,
   onRangeChange,
   summary,
+  refreshToken = 0,
 }: ScansViewProps) {
   const [terminalFilter, setTerminalFilter] = useState('')
 
@@ -46,6 +49,18 @@ export function ScansView({
       }),
     [client, merchantId, range.since, range.until],
   )
+
+  // Silent refetch on a poll/refresh tick: the scans log and trend stay current
+  // without dropping back to their loading placeholder.
+  const scansRefresh = scansState.refresh
+  const seriesRefresh = seriesState.refresh
+  const lastToken = useRef(refreshToken)
+  useEffect(() => {
+    if (refreshToken === lastToken.current) return
+    lastToken.current = refreshToken
+    void scansRefresh()
+    void seriesRefresh()
+  }, [refreshToken, scansRefresh, seriesRefresh])
 
   const bars = summary?.scans_by_terminal ?? []
   const maxScans = Math.max(1, ...bars.map((bar) => bar.scan_count))
