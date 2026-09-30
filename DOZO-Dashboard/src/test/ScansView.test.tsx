@@ -6,7 +6,7 @@ import { ScansView } from '../components/ScansView'
 import { createApiClient } from '../lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from '../lib/api'
 import { initialRange } from '../lib/range'
-import { jsonResponse } from './helpers'
+import { deferred, jsonResponse } from './helpers'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -131,5 +131,65 @@ describe('ScansView', () => {
     expect(next.get('bucket')).toBe('day')
     expect(next.get('since')! > first.get('since')!).toBe(true)
     expect(next.get('until')).toBeTruthy()
+  })
+
+  it('shows loading placeholders for the trend and scan log', () => {
+    const pending = deferred<Response>()
+    vi.stubGlobal('fetch', vi.fn(() => pending.promise))
+
+    render(<Harness client={makeClient()} />)
+
+    expect(screen.getByText(/loading trend/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading scans/i)).toBeInTheDocument()
+  })
+
+  it('shows empty states for the trend and scan log', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/scans')) return Promise.resolve(jsonResponse([]))
+        return Promise.resolve(jsonResponse({ message: 'unexpected request' }, 500))
+      }),
+    )
+    render(<Harness client={makeClient()} />)
+
+    expect(await screen.findByText(/no scans in this range yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no scans recorded yet/i)).toBeInTheDocument()
+  })
+
+  it('maps a missing scans route to NotAvailable for both panels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/scans')) {
+          return Promise.resolve(jsonResponse({ message: 'Route not found' }, 404))
+        }
+        return Promise.resolve(jsonResponse({ message: 'unexpected request' }, 500))
+      }),
+    )
+    render(<Harness client={makeClient()} />)
+
+    expect(
+      await screen.findByText(/the daily trend is not available yet/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/the scan log is not available yet/i)).toBeInTheDocument()
+  })
+
+  it('surfaces server errors from the trend and scan log', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/scans')) {
+          return Promise.resolve(jsonResponse({ message: 'nope' }, 500))
+        }
+        return Promise.resolve(jsonResponse({ message: 'unexpected request' }, 500))
+      }),
+    )
+    render(<Harness client={makeClient()} />)
+
+    expect((await screen.findAllByRole('alert')).length).toBeGreaterThanOrEqual(2)
   })
 })

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { clearSettings, loadSettings, saveSettings } from '../lib/settings'
+import {
+  DEFAULT_API_BASE_URL,
+  clearSettings,
+  loadSettings,
+  saveSettings,
+} from '../lib/settings'
 
 const LEGACY_BASE_URL_KEY = 'papier.dashboard.apiBaseUrl'
 const LEGACY_TOKEN_KEY = 'papier.dashboard.apiToken'
@@ -47,6 +52,10 @@ describe('settings migration', () => {
 
   it('defaults to the SPA origin when nothing is saved and no env override is set', () => {
     expect(loadSettings().baseUrl).toBe(window.location.origin)
+  })
+
+  it('exposes the SPA origin as the default API base URL constant', () => {
+    expect(DEFAULT_API_BASE_URL).toBe(window.location.origin)
   })
 
   it('prefers a saved base URL over the SPA origin default', () => {

@@ -72,6 +72,7 @@
 /* ---------- Tabs ---------- */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 0 20px;
   max-width: 1100px;
@@ -435,6 +436,10 @@
   color: var(--muted);
 }
 
+.state__detail {
+  opacity: 0.9;
+}
+
 .state--error {
   background: color-mix(in srgb, var(--danger) 10%, var(--surface-2));
   border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
@@ -560,4 +565,102 @@
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
+}
+
+.footer code {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Responsive ---------- */
+/* Demo/laptop widths: let the single-column layout fill the viewport. */
+@media (max-width: 1024px) {
+  .container,
+  .tabs {
+    max-width: 100%;
+  }
+}
+
+/* Tablet and narrow demo windows: stack the chrome, shrink the gutter. */
+@media (max-width: 720px) {
+  .container {
+    padding: 16px 14px 32px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar__actions {
+    align-items: stretch;
+    justify-content: space-between;
+  }
+
+  .tabs {
+    padding: 0 14px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .bar {
+    grid-template-columns: 1fr 48px;
+    grid-template-areas:
+      'label value'
+      'track track';
+    row-gap: 6px;
+  }
+
+  .bar__label {
+    grid-area: label;
+  }
+
+  .bar__track {
+    grid-area: track;
+  }
+
+  .bar__value {
+    grid-area: value;
+  }
+
+  .table .ua {
+    max-width: 180px;
+  }
+
+  .auth__card {
+    max-width: 100%;
+  }
+
+  .claim__list {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+
+  .claim__list dt {
+    margin-top: 6px;
+  }
+
+  .footer {
+    flex-direction: column;
+  }
+}
+
+/* Phone widths: trim padding so nothing scrolls sideways. */
+@media (max-width: 420px) {
+  .btn {
+    padding: 9px 12px;
+  }
+
+  .input--code {
+    letter-spacing: 0.15em;
+  }
+
+  .table .ua {
+    max-width: 120px;
+  }
 }

@@ -47,9 +47,18 @@ Vite exposes variables prefixed with `VITE_`. Both settings can also be changed
 at runtime on the login/settings screen; the runtime value is stored in
 `localStorage` and takes precedence over the build-time default.
 
+The dashboard is **same-origin by default**: with nothing configured, the API
+base URL is the SPA's own origin (`window.location.origin`). In a deployment
+where the redirect server also serves the built SPA, no configuration is
+needed. During `npm run dev` the Vite server proxies `/api` and `/health` to
+`http://localhost:3000` (`VITE_API_PROXY_TARGET`), so the same default works on
+the dev port too. Precedence: saved `localStorage`, then `VITE_API_BASE_URL`,
+then the SPA origin.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://130.162.185.144:3000` | Base URL for the DOZO API |
+| `VITE_API_BASE_URL` | the SPA's own origin | Build/dev override for the DOZO API base URL |
+| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | Dev-only proxy target used by `npm run dev` |
 
 The API token is **not** a build-time variable — it is entered in the UI and
 persisted in `localStorage` under `dozo.dashboard.apiToken`. The base URL is

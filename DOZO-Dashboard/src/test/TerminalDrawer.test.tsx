@@ -6,7 +6,7 @@ import { TerminalDrawer } from '../components/TerminalDrawer'
 import { createApiClient } from '../lib/api'
 import type { Merchant, MerchantSummary, Terminal, TerminalConfig } from '../lib/api'
 import type { Settings } from '../lib/settings'
-import { jsonResponse } from './helpers'
+import { deferred, jsonResponse } from './helpers'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -95,6 +95,15 @@ function renderDrawer(terminals: Terminal[] = [makeTerminal()]) {
 }
 
 describe('TerminalDrawer', () => {
+  it('shows a loading state until the config resolves', () => {
+    const pending = deferred<Response>()
+    vi.stubGlobal('fetch', vi.fn(() => pending.promise))
+
+    renderDrawer()
+
+    expect(screen.getByText(/loading terminal config/i)).toBeInTheDocument()
+  })
+
   it('loads the config and shows the static review link', async () => {
     const fetchMock = stubApi()
     renderDrawer()
