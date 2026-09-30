@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 export function Loading({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="state state--loading" role="status">
+    <div className="state state--loading" role="status" aria-live="polite">
       <span className="spinner" aria-hidden="true" />
       {label}
     </div>
@@ -21,7 +21,7 @@ export function ErrorState({
   return (
     <div className="state state--error" role="alert">
       <strong>Something went wrong.</strong>
-      <span>{error.message}</span>
+      <span className="state__detail">{error.message}</span>
       {children}
       {onRetry ? (
         <button type="button" className="btn btn--ghost" onClick={onRetry}>
@@ -36,11 +36,17 @@ export function NotAvailable({ label }: { label: string }) {
   return (
     <div className="state state--muted" role="status">
       <strong>{label} is not available yet.</strong>
-      <span>The endpoint returned 404 — it is still being implemented on the server.</span>
+      <span className="state__detail">
+        The server answered 404 for this endpoint — it may still be rolling out.
+      </span>
     </div>
   )
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="state state--muted">{children}</div>
+  return (
+    <div className="state state--muted" role="status">
+      {children}
+    </div>
+  )
 }

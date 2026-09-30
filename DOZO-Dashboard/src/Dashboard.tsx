@@ -68,7 +68,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
       <header className="topbar">
         <div className="topbar__brand">
           <span className="logo" aria-hidden="true">
-            P
+            D
           </span>
           <div>
             <h1 className="topbar__title">DOZO Dashboard</h1>
@@ -163,7 +163,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
               onSaved={merchantsState.reload}
             />
 
-            <OfflinePanel client={client} />
+            <OfflinePanel client={client} merchantId={activeMerchantId} />
           </div>
         ) : null}
 

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RegistersView } from '../components/RegistersView'
 import { createApiClient } from '../lib/api'
 import type { Register, SetupCode } from '../lib/api'
-import { jsonResponse } from './helpers'
+import { deferred, jsonResponse } from './helpers'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -145,5 +145,46 @@ describe('RegistersView', () => {
         ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
       ),
     ).toHaveLength(1)
+  })
+
+  it('shows a loading state while the registers load', () => {
+    const pending = deferred<Response>()
+    vi.stubGlobal('fetch', vi.fn(() => pending.promise))
+
+    render(<RegistersView client={makeClient()} merchantId="m1" />)
+
+    expect(screen.getByText(/loading registers/i)).toBeInTheDocument()
+  })
+
+  it('shows an empty state when the merchant has no registers', async () => {
+    stubApi({ registers: [] })
+
+    render(<RegistersView client={makeClient()} merchantId="m1" />)
+
+    expect(await screen.findByText(/no registers defined yet/i)).toBeInTheDocument()
+  })
+
+  it('treats an unknown_merchant 404 as an error, not not-available', async () => {
+    stubApi({ registersStatus: 404, registersBody: { error: 'unknown_merchant' } })
+
+    render(<RegistersView client={makeClient()} merchantId="ghost" />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/registers list is not available yet/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('surfaces a setup-code outage with a friendly message', async () => {
+    stubApi({ registers: [claimed], setupStatus: 503 })
+    const user = userEvent.setup()
+
+    render(<RegistersView client={makeClient()} merchantId="m1" />)
+
+    await user.click(await screen.findByRole('button', { name: /issue/i }))
+
+    expect(
+      await screen.findByText(/setup-code service is temporarily unavailable/i),
+    ).toBeInTheDocument()
   })
 })
