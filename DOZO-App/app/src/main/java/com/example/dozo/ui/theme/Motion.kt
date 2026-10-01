@@ -5,10 +5,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -109,13 +111,15 @@ fun DozoScreenEnter(
 private const val GROW_IN_FROM_SCALE = 0.8f
 
 /**
- * Scale/grow-in (80% → 100%) plus fade for a newly revealed element such as the
- * QR code. [key] resets the reveal so a content change (e.g. a new transaction)
- * replays the animation; unlike [DozoScreenEnter] it does not slide, so it works
- * for in-place reveals that share the same screen.
+ * Scale/grow-in (80% → 100%) for a newly revealed element such as the QR code.
+ * The child is composed at full opacity from the very first frame — only its
+ * scale animates — so content like a scannable QR is never blank or faded.
+ * [key] resets the reveal so a content change (e.g. a new transaction) replays
+ * the animation; unlike [DozoScreenEnter] it does not slide, so it works for
+ * in-place reveals that share the same screen.
  *
- * Honours the reduced-motion gate: under [DozoMotionSpec.Reduced] both durations
- * collapse to zero, so the content appears instantly at full size and opacity.
+ * Honours the reduced-motion gate: under [DozoMotionSpec.Reduced] the duration
+ * collapses to zero and the content renders at full size instantly.
  */
 @Composable
 fun DozoGrowIn(
@@ -124,18 +128,18 @@ fun DozoGrowIn(
     content: @Composable () -> Unit
 ) {
     val motion = dozoMotion()
-    var shown by remember(key) { mutableStateOf(false) }
-    LaunchedEffect(key) { shown = true }
-    AnimatedVisibility(
-        visible = shown,
-        modifier = modifier,
-        enter = fadeIn(
-            animationSpec = tween(motion.fadeMillis, easing = DozoMotionSpec.Easing)
-        ) + scaleIn(
-            initialScale = GROW_IN_FROM_SCALE,
-            animationSpec = tween(motion.growMillis, easing = DozoMotionSpec.Easing)
-        ),
-        exit = ExitTransition.None,
+    var appeared by remember(key) { mutableStateOf(motion.isReducedMotion) }
+    LaunchedEffect(key) { appeared = true }
+    val scale by animateFloatAsState(
+        targetValue = if (appeared) 1f else GROW_IN_FROM_SCALE,
+        animationSpec = tween(motion.growMillis, easing = DozoMotionSpec.Easing),
+        label = "dozo-grow-in",
+    )
+    Box(
+        modifier = modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
     ) {
         content()
     }

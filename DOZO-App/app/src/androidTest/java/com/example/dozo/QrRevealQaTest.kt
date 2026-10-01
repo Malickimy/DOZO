@@ -20,10 +20,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Native coverage for the QR reveal (PR #80): the QR grows/fades in via
- * [com.example.dozo.ui.theme.DozoGrowIn], keyed on the transaction so a new
- * payment replays the reveal, and the reduced-motion gate collapses the
- * animation to an instant appear.
+ * Native coverage for the QR reveal (PR #80): the QR scales in via
+ * [com.example.dozo.ui.theme.DozoGrowIn] while composed at full opacity from
+ * the first frame, keyed on the transaction so a new payment replays the
+ * reveal, and the reduced-motion gate collapses the animation to an instant
+ * full-size appear.
  */
 @RunWith(AndroidJUnit4::class)
 class QrRevealQaTest {
@@ -85,10 +86,35 @@ class QrRevealQaTest {
                 }
             }
         }
-        // Reduced motion collapses the grow/fade durations to zero, so the QR is
-        // present immediately (no animation frames to wait out).
+        // Reduced motion collapses the grow duration to zero, so the QR renders
+        // at full size immediately.
         composeRule.onNodeWithContentDescription(context.getString(R.string.qr_code_content_desc))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun qrIsComposedAtFullOpacityFromFirstFrame() {
+        // Freeze the clock so the assertion runs on frame 0, before any scale
+        // animation has advanced. The scale-only reveal composes the QR at full
+        // opacity immediately; a fade/AnimatedVisibility(visible=false) reveal
+        // would leave the node un-composed and this would fail.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            DozoTheme(darkTheme = false) {
+                QrDisplayScreen(
+                    bitmap = qrBitmap("TXN-1"),
+                    txnId = "TXN-1",
+                    timeoutSeconds = 15,
+                    autoClose = false,
+                    merchantName = null,
+                    promptText = null,
+                    onDismiss = {},
+                )
+            }
+        }
+        composeRule.onNodeWithContentDescription(context.getString(R.string.qr_code_content_desc))
+            .assertIsDisplayed()
+        composeRule.mainClock.autoAdvance = true
     }
 
     private fun qrBitmap(urlSuffix: String) = QrRenderer.render("https://example.com/r/$urlSuffix")
