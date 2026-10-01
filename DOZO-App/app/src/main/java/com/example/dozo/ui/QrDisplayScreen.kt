@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.dozo.R
+import com.example.dozo.ui.theme.DozoGrowIn
 import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
 
@@ -117,15 +118,20 @@ fun QrDisplayScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.qr_code_content_desc),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .padding(20.dp),
-                    contentScale = ContentScale.Fit
-                )
+                DozoGrowIn(
+                    key = txnId,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = stringResource(R.string.qr_code_content_desc),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .padding(20.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
