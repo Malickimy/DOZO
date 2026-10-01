@@ -13,7 +13,8 @@
 #   4. GET /api/merchants/:id/scans reports EXACTLY ONE scan for that terminal.
 #   5. re-POSTing the same event to the dashboard ingest returns "duplicate" and
 #      does not add a row (event_id idempotency).
-#   6. the dashboard serves the built SPA index.html, including on a deep link.
+#   6. the dashboard serves the marketing homepage at / and the panel SPA shell
+#      at /panel/ (id="root"), including on a /panel/ deep link.
 #
 # Requires Docker + docker compose, curl, and node. CI runs it from
 # .github/workflows/container.yml after the SPA is staged at DOZO-Server/public.
@@ -297,23 +298,35 @@ if [[ "$after_dup" != "1" ]]; then
 fi
 echo "    ok: same event_id is a duplicate and adds no row"
 
-echo "==> dashboard serves the SPA"
-SPA_BODY="$TMP_DIR/index.html"
-SPA_STATUS="$("$CURL" -sS -o "$SPA_BODY" -w '%{http_code}' -H 'Accept: text/html' "$DASHBOARD_URL/")"
-if [[ "$SPA_STATUS" != "200" ]]; then
-  fail "expected 200 for the dashboard root, got $SPA_STATUS"
+echo "==> dashboard serves the homepage and the panel SPA"
+HOME_BODY="$TMP_DIR/home.html"
+HOME_STATUS="$("$CURL" -sS -o "$HOME_BODY" -w '%{http_code}' -H 'Accept: text/html' "$DASHBOARD_URL/")"
+if [[ "$HOME_STATUS" != "200" ]]; then
+  fail "expected 200 for the dashboard root, got $HOME_STATUS"
 fi
-if ! grep -q 'id="root"' "$SPA_BODY"; then
-  fail "dashboard root did not return the SPA shell"
+if ! grep -q 'data-view="home"' "$HOME_BODY"; then
+  fail "dashboard root did not return the marketing homepage"
+fi
+
+PANEL_BODY="$TMP_DIR/panel.html"
+PANEL_STATUS="$("$CURL" -sS -o "$PANEL_BODY" -w '%{http_code}' -H 'Accept: text/html' "$DASHBOARD_URL/panel/")"
+if [[ "$PANEL_STATUS" != "200" ]] || ! grep -q 'id="root"' "$PANEL_BODY"; then
+  fail "panel SPA shell not served at /panel/ (HTTP $PANEL_STATUS)"
 fi
 
 DEEP_BODY="$TMP_DIR/deep.html"
 DEEP_STATUS="$("$CURL" -sS -o "$DEEP_BODY" -w '%{http_code}' -H 'Accept: text/html' \
-  "$DASHBOARD_URL/merchants/$MERCHANT_ID")"
+  "$DASHBOARD_URL/panel/merchants/$MERCHANT_ID")"
 if [[ "$DEEP_STATUS" != "200" ]] || ! grep -q 'id="root"' "$DEEP_BODY"; then
-  fail "SPA deep-link fallback failed (HTTP $DEEP_STATUS)"
+  fail "panel SPA deep-link fallback failed (HTTP $DEEP_STATUS)"
 fi
-echo "    ok: index.html served at / and on a deep link"
+
+LEGACY_STATUS="$("$CURL" -sS -o /dev/null -w '%{http_code}' -H 'Accept: text/html' \
+  "$DASHBOARD_URL/merchants/$MERCHANT_ID")"
+if [[ "$LEGACY_STATUS" != "302" ]]; then
+  fail "legacy /merchants/:id should redirect to /panel/ (HTTP $LEGACY_STATUS)"
+fi
+echo "    ok: homepage at /, panel shell at /panel/ and /panel/merchants/:id, legacy /merchants/:id redirects"
 
 echo
 echo "CONTAINER SMOKE: OK"

@@ -193,6 +193,42 @@ test('dashboard app serves the SPA with a history fallback when dist exists', as
   assert.equal(unknownApi.statusCode, 404, 'unknown /api paths stay 404');
 });
 
+test('dashboard app serves the homepage at / and the panel SPA under /panel/', async (t) => {
+  const { db, config } = makeContext();
+  const dist = mkdtempSync(join(tmpdir(), 'dozo-dist-panel-'));
+  writeFileSync(join(dist, 'index.html'), '<!doctype html><div data-view="home">home</div>');
+  mkdirSync(join(dist, 'panel'));
+  writeFileSync(join(dist, 'panel', 'index.html'), '<!doctype html><div id="root"></div>');
+
+  const app = await createDashboard({
+    db,
+    config: { ...config, dashboardDistPath: dist },
+    logger: false,
+  });
+  t.after(() => {
+    app.close();
+    db.close();
+    rmSync(dist, { recursive: true, force: true });
+  });
+
+  const home = await app.inject({ method: 'GET', url: '/' });
+  assert.equal(home.statusCode, 200);
+  assert.match(home.body, /data-view="home"/);
+  assert.doesNotMatch(home.body, /id="root"/, 'homepage is not the panel shell');
+
+  const panelRoot = await app.inject({ method: 'GET', url: '/panel/' });
+  assert.equal(panelRoot.statusCode, 200);
+  assert.match(panelRoot.body, /id="root"/, 'panel shell served at /panel/');
+
+  const panelDeep = await app.inject({ method: 'GET', url: '/panel/merchants/M1' });
+  assert.equal(panelDeep.statusCode, 200);
+  assert.match(panelDeep.body, /id="root"/, 'panel deep link falls back to the shell');
+
+  const legacy = await app.inject({ method: 'GET', url: '/merchants/M1' });
+  assert.equal(legacy.statusCode, 302);
+  assert.equal(legacy.headers.location, '/panel/', 'legacy deep link redirects to the panel');
+});
+
 test('npm start is the dashboard entrypoint and start:all never runs the combined server', () => {
   const pkg = JSON.parse(readFileSync(join(PROJECT_DIR, 'package.json'), 'utf8'));
   const { scripts } = pkg;
