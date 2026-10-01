@@ -7,6 +7,7 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -98,6 +99,42 @@ fun DozoScreenEnter(
         modifier = modifier,
         enter = fadeIn(animationSpec = tween(motion.fadeMillis)) +
             slideInHorizontally(animationSpec = tween(motion.slideMillis)) { offsetPx },
+        exit = ExitTransition.None,
+    ) {
+        content()
+    }
+}
+
+/** Scale start for [DozoGrowIn]: grows from 80% to 100% of final size. */
+private const val GROW_IN_FROM_SCALE = 0.8f
+
+/**
+ * Scale/grow-in (80% → 100%) plus fade for a newly revealed element such as the
+ * QR code. [key] resets the reveal so a content change (e.g. a new transaction)
+ * replays the animation; unlike [DozoScreenEnter] it does not slide, so it works
+ * for in-place reveals that share the same screen.
+ *
+ * Honours the reduced-motion gate: under [DozoMotionSpec.Reduced] both durations
+ * collapse to zero, so the content appears instantly at full size and opacity.
+ */
+@Composable
+fun DozoGrowIn(
+    key: Any?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val motion = dozoMotion()
+    var shown by remember(key) { mutableStateOf(false) }
+    LaunchedEffect(key) { shown = true }
+    AnimatedVisibility(
+        visible = shown,
+        modifier = modifier,
+        enter = fadeIn(
+            animationSpec = tween(motion.fadeMillis, easing = DozoMotionSpec.Easing)
+        ) + scaleIn(
+            initialScale = GROW_IN_FROM_SCALE,
+            animationSpec = tween(motion.growMillis, easing = DozoMotionSpec.Easing)
+        ),
         exit = ExitTransition.None,
     ) {
         content()
