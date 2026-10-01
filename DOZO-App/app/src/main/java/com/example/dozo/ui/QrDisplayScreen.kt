@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.dozo.R
+import com.example.dozo.ui.theme.DozoGrowIn
+import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
 
 @Composable
@@ -109,21 +110,28 @@ fun QrDisplayScreen(
             Spacer(Modifier.height(24.dp))
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .limeShadowLarge(MaterialTheme.shapes.large),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.qr_code_content_desc),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .padding(20.dp),
-                    contentScale = ContentScale.Fit
-                )
+                DozoGrowIn(
+                    key = txnId,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = stringResource(R.string.qr_code_content_desc),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .padding(20.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -136,8 +144,8 @@ fun QrDisplayScreen(
             )
             Spacer(Modifier.height(12.dp))
             if (autoClose) {
-                LinearProgressIndicator(
-                    progress = { secondsLeft / timeoutSeconds.toFloat() },
+                DozoProgressBar(
+                    progress = secondsLeft / timeoutSeconds.toFloat(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))

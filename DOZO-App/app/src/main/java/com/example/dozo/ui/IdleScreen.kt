@@ -45,6 +45,8 @@ fun IdleScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                BrandMark()
+                Spacer(Modifier.height(24.dp))
                 Text(
                     text = "DOZO",
                     style = MaterialTheme.typography.headlineLarge,
@@ -57,6 +59,8 @@ fun IdleScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(24.dp))
+                BlinkingStatusIndicator()
             }
             Box(
                 modifier = Modifier
