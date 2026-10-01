@@ -54,6 +54,13 @@ fun Modifier.limeShadowSmall(
 ): Modifier = hardShadow(Lime, ShadowOffsetSmall, ShadowOffsetSmall, shape)
 
 /**
+ * Dashboard `:focus-visible` metrics (`src/index.css`): a 3dp solid outline
+ * drawn 3dp outside the element.
+ */
+val FocusOutlineWidth = 3.dp
+val FocusOutlineOffset = 3.dp
+
+/**
  * Focus-visible outline: a 3dp solid border drawn 3dp outside the element.
  * Mirrors the dashboard's `:focus-visible` treatment when [focused] is true.
  */
@@ -61,8 +68,8 @@ fun Modifier.focusOutline(
     focused: Boolean,
     color: Color,
     shape: Shape = RoundedCornerShape(DozoCornerRadius),
-    width: Dp = 3.dp,
-    offset: Dp = 3.dp,
+    width: Dp = FocusOutlineWidth,
+    offset: Dp = FocusOutlineOffset,
 ): Modifier = if (!focused) {
     this
 } else {

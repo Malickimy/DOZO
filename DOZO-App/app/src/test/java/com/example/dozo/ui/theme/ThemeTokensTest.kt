@@ -4,6 +4,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,5 +76,22 @@ class ThemeTokensTest {
         assertEquals(0, reduced.blinkMillis)
         assertEquals(0, reduced.fadeMillis)
         assertEquals(0, reduced.slideMillis)
+    }
+
+    @Test
+    fun titleTrackingMatchesDashboardHeadings() {
+        // Dashboard headings/card titles use -0.02em (`h1..h3`, `.mini__title`,
+        // `.auth__kicker`); there is no -0.01em title role in PR #59.
+        val expected = (-0.02).em
+        assertEquals(expected, Typography.titleLarge.letterSpacing)
+        assertEquals(expected, Typography.titleMedium.letterSpacing)
+        assertEquals(expected, Typography.titleSmall.letterSpacing)
+    }
+
+    @Test
+    fun focusOutlineMatchesDashboardFocusVisible() {
+        // Dashboard `:focus-visible`: `outline: 3px solid var(--fg); outline-offset: 3px`.
+        assertEquals(3.dp, FocusOutlineWidth)
+        assertEquals(3.dp, FocusOutlineOffset)
     }
 }

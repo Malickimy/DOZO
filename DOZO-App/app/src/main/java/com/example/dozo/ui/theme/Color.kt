@@ -6,9 +6,12 @@ import androidx.compose.ui.graphics.Color
  * DOZO brand palette — mirrors the DOZO-Dashboard redesign
  * (`feat/dashboard-redesign`, PR #59).
  *
- * The dashboard defines alpha-composited semantic tokens; those are kept here as
- * [InkMuted], [CreamMuted], [LightSurface], [DarkLine] and [DarkSurface] so the
- * Compose color scheme can carry the same translucency instead of flattening it.
+ * The Compose scheme carries [LightSurface], [DarkLine] and [DarkSurface]
+ * directly (surface / outline / surfaceVariant roles). [InkMuted] and
+ * [CreamMuted] are the dashboard `--muted` text tokens; the spec pins
+ * `onSurfaceVariant` to [G1] instead, so these two are exposed for consumers
+ * that need the exact rgba values (and are contract-guarded by
+ * `ThemeContractTest`) rather than mapped onto a Material role.
  */
 val Cream = Color(0xFFFFFCEA)
 val Ink = Color(0xFF141414)

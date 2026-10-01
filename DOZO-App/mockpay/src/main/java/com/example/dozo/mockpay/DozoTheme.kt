@@ -51,7 +51,7 @@ private val DozoTypography = Typography(
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.15.sp,
+        letterSpacing = (-0.02).em,
     ),
     bodyLarge = TextStyle(
         fontFamily = TextFontFamily,

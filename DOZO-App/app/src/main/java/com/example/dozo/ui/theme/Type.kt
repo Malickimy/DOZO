@@ -91,14 +91,14 @@ val Typography = Typography(
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.15.sp,
+        letterSpacing = HeadingLetterSpacing,
     ),
     titleSmall = TextStyle(
         fontFamily = DisplayFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.1.sp,
+        letterSpacing = HeadingLetterSpacing,
     ),
     bodyLarge = TextStyle(
         fontFamily = TextFontFamily,
