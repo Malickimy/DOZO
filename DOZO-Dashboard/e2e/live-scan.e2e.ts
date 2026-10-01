@@ -3,8 +3,10 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from '@
 import { API_BASE_URL, API_TOKEN, CONNECTOR_SECRET, MERCHANT_ID } from './env'
 
 /**
- * E2E coverage for Dashboard Sprint 5's live-scan behaviour:
+ * E2E coverage for Dashboard Sprint 5's live-scan behaviour, retargeted for the
+ * Sprint 7 redesign:
  *
+ *   - the panel now lives at `/panel/` (marketing homepage at `/`);
  *   - the Overview summary is polled every 10s while the tab is visible, so a
  *     scan ingested after load appears on its own and shows a `+N scans` toast;
  *   - the first summary load is only a baseline, so an initial load never toasts;
@@ -16,7 +18,7 @@ import { API_BASE_URL, API_TOKEN, CONNECTOR_SECRET, MERCHANT_ID } from './env'
  * scans are ingested through the connector route with a fresh UUID `event_id`.
  * Every scan is backdated slightly: the dashboard freezes its range `until` at
  * mount, so a row stamped "now" would fall outside the polled window and never
- * move `total_scans`.
+ * move the summary.
  */
 const SCANS_URL = `${API_BASE_URL}/scans`
 const KNOWN_TERMINAL_ID = 'DEMOTERM01'
@@ -25,6 +27,7 @@ const BACKDATE_MS = 60_000
 
 const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 const TOKEN_KEY = 'dozo.dashboard.apiToken'
+const LANG_KEY = 'doozo-lang'
 
 /** Seed the persisted dashboard settings so the SPA talks to the e2e server. */
 async function configure(page: Page) {
@@ -32,37 +35,45 @@ async function configure(page: Page) {
     ({
       baseUrlKey,
       tokenKey,
+      langKey,
       baseUrl,
       token,
     }: {
       baseUrlKey: string
       tokenKey: string
+      langKey: string
       baseUrl: string
       token: string
     }) => {
       window.localStorage.setItem(baseUrlKey, baseUrl)
       window.localStorage.setItem(tokenKey, token)
+      window.localStorage.setItem(langKey, 'en')
     },
-    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
+    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, langKey: LANG_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
   )
 }
 
 async function gotoDashboard(page: Page) {
   await configure(page)
-  await page.goto('/')
+  await page.goto('/panel/')
   await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-  // The summary card only renders once `listMerchants` + `/summary` resolved.
-  await expect(totalScans(page)).toBeVisible()
+  // The Overview tab renders once `listMerchants` + `/summary` resolved.
+  await expect(page.getByRole('heading', { name: 'Daily code scans' })).toBeVisible()
 }
 
-/** The `Total scans` stat value on the Overview tab. */
-function totalScans(page: Page): Locator {
-  return page.locator('.card--stat').filter({ hasText: 'Total scans' }).locator('.stat__value')
+/** The "Code scans" KPI value on the Overview tab (series-driven, refreshes on demand). */
+function codeScansKpi(page: Page): Locator {
+  return page.locator('.kpi').filter({ hasText: 'Code scans' }).locator('.kpi__v')
 }
 
-async function totalScansValue(page: Page): Promise<number> {
-  const text = await totalScans(page).textContent()
+async function codeScansValue(page: Page): Promise<number> {
+  const text = await codeScansKpi(page).textContent()
   return Number(text)
+}
+
+/** The scan log card on the Overview tab, scoped so rows cannot match elsewhere. */
+function scanLog(page: Page): Locator {
+  return page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Scan log' }) })
 }
 
 async function seedBackdatedScan(
@@ -96,14 +107,16 @@ test('a new scan appears on the next poll and toasts, with no toast on first loa
   // baseline: no message may be shown.
   await expect(page.locator('.toast-region .toast')).toHaveCount(0)
 
-  const before = await totalScansValue(page)
-  await seedBackdatedScan(request, KNOWN_TERMINAL_ID)
+  const eventId = await seedBackdatedScan(request, KNOWN_TERMINAL_ID)
 
   // The 10s poll picks the row up; allow a full interval plus slack.
   await expect(page.locator('.toast-region .toast__text')).toHaveText('+1 scan', {
     timeout: 15_000,
   })
-  await expect(totalScans(page)).toHaveText(String(before + 1), { timeout: 15_000 })
+  // The just-ingested scan also shows up in the scan log on the same poll.
+  await expect(scanLog(page).getByRole('row').filter({ hasText: eventId })).toBeVisible({
+    timeout: 15_000,
+  })
 })
 
 test('the manual Refresh button refetches the summary and updates the data', async ({
@@ -112,7 +125,9 @@ test('the manual Refresh button refetches the summary and updates the data', asy
 }) => {
   await gotoDashboard(page)
 
-  const before = await totalScansValue(page)
+  // Wait until the series has loaded so the KPI is a number, not the '—' placeholder.
+  await expect(codeScansKpi(page)).not.toHaveText('—')
+  const before = await codeScansValue(page)
   await seedBackdatedScan(request, KNOWN_TERMINAL_ID)
 
   const [summaryRequest] = await Promise.all([
@@ -122,7 +137,7 @@ test('the manual Refresh button refetches the summary and updates the data', asy
   expect(summaryRequest.url()).toContain('/summary')
 
   // User-initiated reload: the card updates without waiting for the 10s tick.
-  await expect(totalScans(page)).toHaveText(String(before + 1), { timeout: 5_000 })
+  await expect(codeScansKpi(page)).toHaveText(String(before + 1), { timeout: 5_000 })
 })
 
 test('polling pauses while the tab is hidden and resumes when it is visible', async ({
