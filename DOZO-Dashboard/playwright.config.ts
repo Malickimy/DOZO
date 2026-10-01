@@ -58,6 +58,7 @@ export default defineConfig({
         API_TOKEN,
         DASHBOARD_CONNECTOR_SECRET: CONNECTOR_SECRET,
         DASHBOARD_ORIGIN: '*',
+        RATE_LIMIT_API_PER_MIN: '5000',
       },
     },
     {

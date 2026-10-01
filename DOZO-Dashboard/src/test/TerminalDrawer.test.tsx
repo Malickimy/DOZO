@@ -265,8 +265,10 @@ describe('Dashboard terminal management', () => {
     const fetchMock = stubDashboard()
     const user = userEvent.setup()
     render(
-      <Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} />,
+      <Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} onLogout={vi.fn()} />,
     )
+
+    await user.click(await screen.findByRole('button', { name: /^terminals$/i }))
 
     expect(await screen.findByRole('button', { name: /manage/i })).toBeInTheDocument()
     expect(

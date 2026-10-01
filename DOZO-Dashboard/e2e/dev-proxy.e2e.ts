@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { API_BASE_URL, API_TOKEN } from './env'
-import { TOKEN_KEY } from './qa-helpers'
+import { LANG_KEY, TOKEN_KEY } from './qa-helpers'
 
 /**
  * Verifies the Sprint 6 Vite dev proxy and the same-origin SPA default.
@@ -63,17 +63,18 @@ test('dev server proxies /api and /health under the same-origin default', async 
     // `settings.ts` derives the base URL from `window.location.origin` (= the
     // Vite dev port) and `/api/merchants` must round-trip through the proxy.
     await page.addInitScript(
-      ({ key, token }: { key: string; token: string }) => {
+      ({ key, token, langKey }: { key: string; token: string; langKey: string }) => {
         window.localStorage.setItem(key, token)
+        window.localStorage.setItem(langKey, 'en')
       },
-      { key: TOKEN_KEY, token: API_TOKEN },
+      { key: TOKEN_KEY, token: API_TOKEN, langKey: LANG_KEY },
     )
 
     const [response] = await Promise.all([
       page.waitForResponse(
         (r) => r.request().method() === 'GET' && r.url().startsWith(`${PROXY_URL}/api/merchants`),
       ),
-      page.goto(PROXY_URL),
+      page.goto(`${PROXY_URL}/panel/`),
     ])
     expect(response.status()).toBe(200)
     await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()

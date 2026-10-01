@@ -1,4 +1,5 @@
 import type { Merchant } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 interface MerchantPickerProps {
   merchants: Merchant[]
@@ -15,14 +16,16 @@ export function MerchantPicker({
   unavailable = false,
   loading = false,
 }: MerchantPickerProps) {
+  const t = useT()
+
   if (loading) {
-    return <span className="muted">Loading merchants…</span>
+    return <span className="muted">{t('Ładowanie sprzedawców…', 'Loading merchants…')}</span>
   }
 
   if (merchants.length > 0) {
     return (
       <label className="field field--inline">
-        <span className="field__label">Merchant</span>
+        <span className="field__label">{t('Sprzedawca', 'Merchant')}</span>
         <select
           className="input"
           value={value}
@@ -31,7 +34,7 @@ export function MerchantPicker({
           {merchants.map((merchant) => (
             <option key={merchant.merchant_id} value={merchant.merchant_id}>
               {merchant.merchant_id}
-              {merchant.google_place_id ? '' : ' (no Place ID)'}
+              {merchant.google_place_id ? '' : t(' (bez Place ID)', ' (no Place ID)')}
             </option>
           ))}
         </select>
@@ -42,8 +45,8 @@ export function MerchantPicker({
   return (
     <label className="field field--inline">
       <span className="field__label">
-        Merchant ID
-        {unavailable ? ' (merchant list unavailable)' : ''}
+        {t('ID sprzedawcy', 'Merchant ID')}
+        {unavailable ? t(' (lista niedostępna)', ' (merchant list unavailable)') : ''}
       </span>
       <input
         className="input"
