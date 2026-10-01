@@ -9,10 +9,18 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.dozo.ui.IdleScreen
@@ -23,7 +31,9 @@ import com.example.dozo.ui.SettingsScreen
 import com.example.dozo.ui.SetupCodeScreen
 import com.example.dozo.ui.UiState
 import com.example.dozo.ui.UpdatingOverlay
+import com.example.dozo.ui.theme.DozoScreenEnter
 import com.example.dozo.ui.theme.DozoTheme
+import com.example.dozo.ui.theme.dozoMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -73,103 +83,116 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             DozoTheme {
-                if (remoteApplying) {
-                    UpdatingOverlay()
-                } else {
-                when (appScreen) {
-                    AppScreen.Payment -> when (val state = uiState) {
-                        is UiState.Idle -> IdleScreen(
-                            onOpenSettings = { appScreen = AppScreen.Pin }
-                        )
-                        is UiState.DisplayQr -> QrDisplayScreen(
-                            bitmap = state.bitmap,
-                            txnId = state.txnId,
-                            timeoutSeconds = displayTimeoutSeconds,
-                            autoClose = DozoConfig.isAutoCloseEnabled(this),
-                            merchantName = DozoConfig.merchantName(this),
-                            promptText = DozoConfig.promptText(this),
-                            onDismiss = {
-                                applyPendingRemoteConfigIfAny()
-                                closeAndFinish(RESULT_APPROVED)
-                            }
-                        )
+                val motion = dozoMotion()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    DozoScreenEnter(key = appScreen) {
+                        ScreenContent()
                     }
-                    AppScreen.Pin -> PinScreen(
-                        title = stringResource(R.string.pin_enter),
-                        expectedPin = DozoConfig.pin(this),
-                        onComplete = { appScreen = AppScreen.Settings },
-                        onCancel = { appScreen = AppScreen.Payment }
-                    )
-                    AppScreen.SetPin -> PinScreen(
-                        title = stringResource(R.string.pin_new),
-                        expectedPin = null,
-                        onComplete = {
-                            DozoConfig.setPin(this, it)
-                            appScreen = AppScreen.Settings
-                        },
-                        onCancel = { appScreen = AppScreen.Settings }
-                    )
-                    AppScreen.Settings -> SettingsScreen(
-                        initialApiBaseUrl = DozoConfig.apiBaseUrl(this),
-                        initialRedirectBaseUrl = DozoConfig.redirectBaseUrl(this),
-                        initialMerchantId = DozoConfig.merchantId(this),
-                        initialTerminalId = DozoConfig.terminalId(this).orEmpty(),
-                        initialApiToken = DozoConfig.apiToken(this),
-                        initialMerchantName = DozoConfig.merchantName(this).orEmpty(),
-                        initialPromptText = DozoConfig.promptText(this).orEmpty(),
-                        initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
-                        initialActivated = DozoConfig.isActivationEnabled(this),
-                        initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
-                        initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
-                        initialLanguage = DozoConfig.language(this),
-                        onApiBaseUrlChange = { DozoConfig.setApiBaseUrl(this, it) },
-                        onRedirectBaseUrlChange = { DozoConfig.setRedirectBaseUrl(this, it) },
-                        onMerchantIdChange = { DozoConfig.setMerchantId(this, it) },
-                        onTerminalIdChange = { DozoConfig.setTerminalId(this, it) },
-                        onApiTokenChange = { DozoConfig.setApiToken(this, it) },
-                        onMerchantNameChange = { DozoConfig.setMerchantName(this, it) },
-                        onPromptTextChange = { DozoConfig.setPromptText(this, it) },
-                        onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
-                        onActivatedChange = { DozoConfig.setActivated(this, it) },
-                        onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
-                        onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
-                        onLanguageChange = { DozoConfig.setLanguage(this, it) },
-                        manualStatus = manualStatus,
-                        lastHeartbeat = lastHeartbeat,
-                        lastConfigSync = lastConfigSync,
-                        onSyncNow = { syncConfigNow() },
-                        onSendHeartbeatNow = { sendHeartbeatNow() },
-                        onEnterSetupCode = { appScreen = AppScreen.SetupCode },
-                        onChangePin = { appScreen = AppScreen.SetPin },
-                        onUnpair = {
-                            DozoConfig.wipe(this)
-                            appScreen = AppScreen.Payment
-                        },
-                        onBack = { appScreen = AppScreen.Payment }
-                    )
-                    AppScreen.SetupCode -> SetupCodeScreen(
-                        apiBaseUrl = DozoConfig.apiBaseUrl(this),
-                        apiToken = DozoConfig.apiToken(this),
-                        deviceSerial = deviceSerial(),
-                        onRedeemed = { apiToken, store ->
-                            val prefs = SettingsPersistence.redeemPrefs(apiToken, store)
-                            DozoConfig.applyClaimed(
-                                this,
-                                prefs.terminalId,
-                                prefs.apiToken,
-                                prefs.redirectBaseUrl,
-                                prefs.googlePlaceId,
-                                prefs.staticReviewUrl
-                            )
-                            appScreen = AppScreen.Settings
-                        },
-                        onCancel = { appScreen = AppScreen.Settings }
-                    )
-                }
+                    AnimatedVisibility(
+                        visible = remoteApplying,
+                        enter = fadeIn(animationSpec = tween(motion.fadeMillis)),
+                        exit = fadeOut(animationSpec = tween(motion.fadeMillis)),
+                    ) {
+                        UpdatingOverlay()
+                    }
                 }
             }
         }
         pullRemoteConfigAtLaunch()
+    }
+
+    @Composable
+    private fun ScreenContent() {
+        when (appScreen) {
+            AppScreen.Payment -> when (val state = uiState) {
+                is UiState.Idle -> IdleScreen(
+                    onOpenSettings = { appScreen = AppScreen.Pin }
+                )
+                is UiState.DisplayQr -> QrDisplayScreen(
+                    bitmap = state.bitmap,
+                    txnId = state.txnId,
+                    timeoutSeconds = displayTimeoutSeconds,
+                    autoClose = DozoConfig.isAutoCloseEnabled(this),
+                    merchantName = DozoConfig.merchantName(this),
+                    promptText = DozoConfig.promptText(this),
+                    onDismiss = {
+                        applyPendingRemoteConfigIfAny()
+                        closeAndFinish(RESULT_APPROVED)
+                    }
+                )
+            }
+            AppScreen.Pin -> PinScreen(
+                title = stringResource(R.string.pin_enter),
+                expectedPin = DozoConfig.pin(this),
+                onComplete = { appScreen = AppScreen.Settings },
+                onCancel = { appScreen = AppScreen.Payment }
+            )
+            AppScreen.SetPin -> PinScreen(
+                title = stringResource(R.string.pin_new),
+                expectedPin = null,
+                onComplete = {
+                    DozoConfig.setPin(this, it)
+                    appScreen = AppScreen.Settings
+                },
+                onCancel = { appScreen = AppScreen.Settings }
+            )
+            AppScreen.Settings -> SettingsScreen(
+                initialApiBaseUrl = DozoConfig.apiBaseUrl(this),
+                initialRedirectBaseUrl = DozoConfig.redirectBaseUrl(this),
+                initialMerchantId = DozoConfig.merchantId(this),
+                initialTerminalId = DozoConfig.terminalId(this).orEmpty(),
+                initialApiToken = DozoConfig.apiToken(this),
+                initialMerchantName = DozoConfig.merchantName(this).orEmpty(),
+                initialPromptText = DozoConfig.promptText(this).orEmpty(),
+                initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
+                initialActivated = DozoConfig.isActivationEnabled(this),
+                initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
+                initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
+                initialLanguage = DozoConfig.language(this),
+                onApiBaseUrlChange = { DozoConfig.setApiBaseUrl(this, it) },
+                onRedirectBaseUrlChange = { DozoConfig.setRedirectBaseUrl(this, it) },
+                onMerchantIdChange = { DozoConfig.setMerchantId(this, it) },
+                onTerminalIdChange = { DozoConfig.setTerminalId(this, it) },
+                onApiTokenChange = { DozoConfig.setApiToken(this, it) },
+                onMerchantNameChange = { DozoConfig.setMerchantName(this, it) },
+                onPromptTextChange = { DozoConfig.setPromptText(this, it) },
+                onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
+                onActivatedChange = { DozoConfig.setActivated(this, it) },
+                onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
+                onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
+                onLanguageChange = { DozoConfig.setLanguage(this, it) },
+                manualStatus = manualStatus,
+                lastHeartbeat = lastHeartbeat,
+                lastConfigSync = lastConfigSync,
+                onSyncNow = { syncConfigNow() },
+                onSendHeartbeatNow = { sendHeartbeatNow() },
+                onEnterSetupCode = { appScreen = AppScreen.SetupCode },
+                onChangePin = { appScreen = AppScreen.SetPin },
+                onUnpair = {
+                    DozoConfig.wipe(this)
+                    appScreen = AppScreen.Payment
+                },
+                onBack = { appScreen = AppScreen.Payment }
+            )
+            AppScreen.SetupCode -> SetupCodeScreen(
+                apiBaseUrl = DozoConfig.apiBaseUrl(this),
+                apiToken = DozoConfig.apiToken(this),
+                deviceSerial = deviceSerial(),
+                onRedeemed = { apiToken, store ->
+                    val prefs = SettingsPersistence.redeemPrefs(apiToken, store)
+                    DozoConfig.applyClaimed(
+                        this,
+                        prefs.terminalId,
+                        prefs.apiToken,
+                        prefs.redirectBaseUrl,
+                        prefs.googlePlaceId,
+                        prefs.staticReviewUrl
+                    )
+                    appScreen = AppScreen.Settings
+                },
+                onCancel = { appScreen = AppScreen.Settings }
+            )
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
