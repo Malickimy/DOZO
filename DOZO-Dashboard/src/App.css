@@ -501,6 +501,59 @@
   overflow-wrap: anywhere;
 }
 
+/* ---------- Toast ---------- */
+.toast-region {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ok) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast__text {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.toast__close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.toast__close:hover {
+  color: var(--text);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---------- Footer ---------- */
 .footer {
   margin-top: auto;

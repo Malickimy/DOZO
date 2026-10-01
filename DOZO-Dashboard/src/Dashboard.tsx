@@ -10,11 +10,14 @@ import { ErrorState, Empty, Loading, NotAvailable } from './components/StateMess
 import { SummaryCards } from './components/SummaryCards'
 import { TerminalDrawer } from './components/TerminalDrawer'
 import { TerminalsTable } from './components/TerminalsTable'
+import { Toast } from './components/Toast'
 import { isNotAvailable } from './lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from './lib/api'
 import { initialRange } from './lib/range'
 import type { Settings } from './lib/settings'
 import { useAsync } from './lib/useAsync'
+import { usePolling } from './lib/usePolling'
+import { useScanDelta } from './lib/useScanDelta'
 
 interface DashboardProps {
   client: ApiClient
@@ -24,11 +27,16 @@ interface DashboardProps {
 
 type Tab = 'overview' | 'scans' | 'pair' | 'registers'
 
+/** New scans are polled for every 10s while the browser tab is visible. */
+const SCAN_POLL_MS = 10_000
+
 export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) {
   const [tab, setTab] = useState<Tab>('overview')
   const [merchantId, setMerchantId] = useState('')
   const [managingId, setManagingId] = useState<string | null>(null)
   const [range, setRange] = useState(initialRange)
+  // Bumped by the poll and the manual Refresh so the active view refetches.
+  const [dataToken, setDataToken] = useState(0)
 
   const merchantsState = useAsync(() => client.listMerchants(), [client])
   const merchants = merchantsState.data ?? []
@@ -58,9 +66,29 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
   const managingTerminal =
     terminals.find((terminal) => terminal.terminal_id === managingId) ?? null
 
+  // Toast on a rising total only. The key resets the baseline whenever the
+  // merchant or range changes, so a filtered reload never looks like new scans.
+  const summaryKey = `${activeMerchantId}|${range.since}|${range.until}`
+  const scanDelta = useScanDelta(summaryState.data?.total_scans ?? null, summaryKey)
+
+  usePolling(
+    () => {
+      if (!activeMerchantId) return
+      void summaryState.refresh()
+      setDataToken((value) => value + 1)
+    },
+    { intervalMs: SCAN_POLL_MS, enabled: Boolean(activeMerchantId) },
+  )
+
   function refreshAfterWrite() {
     terminalsState.reload()
     summaryState.reload()
+  }
+
+  function refreshNow() {
+    terminalsState.reload()
+    summaryState.reload()
+    setDataToken((value) => value + 1)
   }
 
   return (
@@ -83,6 +111,14 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
             unavailable={merchantsUnavailable}
             loading={merchantsState.loading}
           />
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={refreshNow}
+            disabled={!activeMerchantId}
+          >
+            Refresh
+          </button>
           <button type="button" className="btn btn--ghost" onClick={onOpenSettings}>
             Settings
           </button>
@@ -175,6 +211,7 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
             range={range}
             onRangeChange={setRange}
             summary={summaryState.data}
+            refreshToken={dataToken}
           />
         ) : null}
 
@@ -186,6 +223,8 @@ export function Dashboard({ client, settings, onOpenSettings }: DashboardProps) 
           <RegistersView client={client} merchantId={activeMerchantId} />
         ) : null}
       </main>
+
+      <Toast message={scanDelta.message} onDismiss={scanDelta.dismiss} />
 
       {managingTerminal ? (
         <TerminalDrawer

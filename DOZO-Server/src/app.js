@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { createDebounce } from './lib/debounce.js';
+import { createRateLimitHook } from './lib/rate-limit.js';
 import { makeAuthHook } from './middleware/auth.js';
 import { registerRedirectRoute } from './routes/redirect.js';
 import { registerModelBRoutes } from './routes/model-b.js';
@@ -45,6 +46,10 @@ export function createAppShell({
     allowedHeaders: ['X-Api-Token', 'X-Connector-Secret', 'Content-Type'],
   });
 
+  // Hardening I: rate-limit before auth so an unauthenticated flood is bounded
+  // too. `/health` is exempt (see createRateLimitHook); `/r/:terminal_id` and
+  // every `/api/*` route get the contract's per-IP windows.
+  app.addHook('onRequest', createRateLimitHook(config, now));
   app.addHook('onRequest', makeAuthHook(config, db));
 
   app.get('/health', async () => ({ status: 'ok' }));

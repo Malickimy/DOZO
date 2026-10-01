@@ -10,7 +10,7 @@ owning branch, then update every consumer, then bump the index "Last synced" lin
 ---
 
 Base URL `{api_base_url}` (app default `http://130.162.185.144:3000`).
-All `/api/*` require header `X-Api-Token: <token>` (or `Authorization: Bearer <token>`).
+All `/api/*` require header `X-Api-Token: <token>` (or `Authorization: Bearer <token>`). A missing, unknown, revoked, or wrong-terminal credential returns `401 {"error":"unauthorized"}`. On `401` the app discards its stored token and re-pairs via `POST /api/terminals/redeem`; a `429` is a rate limit, not an auth failure, so it must never trigger a re-pair.
 `OPTIONS` preflight is unauthenticated. CORS origins from `DASHBOARD_ORIGIN` (default `*`);
 allowed headers `X-Api-Token`, `X-Connector-Secret`, `Content-Type`; methods `GET, POST, PUT, PATCH, OPTIONS`.
 
@@ -24,6 +24,8 @@ allowed headers `X-Api-Token`, `X-Connector-Secret`, `Content-Type`; methods `GE
 | GET | `/r/:terminal_id` | — | `302` `Location: {GOOGLE_REVIEW_BASE}?placeid={google_place_id}` |
 
 `/r/:terminal_id` logs a scan unless debounced (`SHA-256(terminal_id + client IP + User-Agent)`, 120 s window). Unknown terminal → `404 {"error":"unknown_terminal","terminal_id"}`; inactive terminal → `404 {"error":"inactive_terminal","terminal_id"}`; **no** scan row in either case.
+
+**Rate limits (contract; server implementation pending).** `GET /r/:terminal_id` allows 30 requests per minute per client IP and every `/api/*` route allows 60 requests per minute per client IP. The limit keys on `request.ip`: `TRUST_PROXY` decides whether `X-Forwarded-For` is honoured (`true` behind a trusted proxy, `false` uses the socket address). Exceeding a limit returns `429 {"error":"rate_limited"}` and writes no scan row. A `429` is a transient backoff only: the client retries after the window and must not re-pair or discard its token, and `429` is never a `401`.
 
 ### Authenticated
 
@@ -55,8 +57,9 @@ Notes:
 - **R3 (server shipped 2026-09-25).** `PATCH /api/terminals/:terminal_id` owns `active` and `label`; `PUT /api/terminals/:terminal_id/config` keeps `display_enabled` and `display_timeout_seconds`. `config`, `store`, and the two dashboard list rows (`dashboard.md`) carry `static_review_url`, computed on read. The app `static_review_url` consumer landed in PR #62; the dashboard consumer remains pending.
 - **R4 (server shipped 2026-09-25).** One backend package, two entrypoints, two containers per client. The connector keeps `/health`, `/r/:terminal_id`, the file-backed spool, and a last-known config cache; the dashboard entrypoint owns the DB and all `/api/*`. App defaults landed in PR #62; the dashboard SPA remains pending.
 - **R5 (server shipped 2026-09-25).** The series endpoint groups `scanned_at` by the Europe/Warsaw day and returns `[{day, count}]`; `scanned_at` stays an ISO UTC timestamp. The dashboard renders `day` verbatim and renders other timestamps in browser-local time.
-- **R6 (server shipped 2026-09-25).** `api_token` is per-terminal: issued at `redeem`, hashed at rest (`terminals.api_token_hash`, migration v6), and validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs. The operator token is unchanged. The app-side re-pair landed in PR #62.
+- **R6 (server shipped 2026-09-25).** `api_token` is per-terminal: issued only at `POST /api/terminals/redeem`, hashed at rest (`terminals.api_token_hash`, migration v6), and validated on heartbeat / config / registers; a mismatch returns `401` and the app re-pairs. The operator token is unchanged. The app-side re-pair landed in PR #62.
 - **R7 (server shipped 2026-09-25).** A `registers` table lets a register exist unoccupied (`terminal_id` null). `GET /registers` returns every register, `setup-code` finds or creates it, and `redeem` binds the terminal and deactivates the prior one. `registers.label` is the label source of truth; `registers.active` is derived from the bound terminal.
+- **Hardening (server sprint 7; contract revised 2026-09-30, server implementation pending).** Revocation on deactivate: setting a terminal inactive — operator `PATCH /api/terminals/:terminal_id` with `{"active":false}`, or the device-swap deactivation during `redeem` — clears `terminals.api_token_hash` in the same transaction, so a later heartbeat/config/registers call with the revoked token returns `401 unauthorized` and the app re-pairs. Issuance and rotation happen only at `POST /api/terminals/redeem`; the retired `claim` and `pair-status` routes (`eeac451`) never issue a token.
 - **Labels (R3/R7, decided 2026-09-25).** `registers.label` is the source of truth. `PATCH /api/terminals/:terminal_id` with a `label` syncs the bound register row and the terminal cache in one transaction; a collision with another register for the same merchant returns `400 label_in_use`, and a terminal with no register row gains one.
 
 Shape aliases:

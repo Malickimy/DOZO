@@ -29,8 +29,11 @@ function extractToken(request) {
  * `/api/connector/*` stays with the connector-secret guard instead.
  */
 export function makeAuthHook(config, db) {
+  // Hardening I: an inactive terminal is revoked. Deactivation clears the token
+  // hash, but the `active = 1` filter is defence in depth so a stale row can
+  // never authenticate.
   const findByHash = db?.prepare(
-    'SELECT terminal_id, merchant_id FROM terminals WHERE api_token_hash = ?',
+    'SELECT terminal_id, merchant_id FROM terminals WHERE api_token_hash = ? AND active = 1',
   );
 
   return async function authHook(request, reply) {

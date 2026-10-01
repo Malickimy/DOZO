@@ -132,6 +132,79 @@ BASE_URL=http://127.0.0.1:3000 ./scripts/smoke.sh     # local
 scripts/dozo_server_check
 ```
 
+### Backups & restore
+
+`scripts/backup.sh` takes a consistent online SQLite snapshot (via the server's
+own `better-sqlite3`, so it is safe while the container is writing), verifies it
+with `PRAGMA integrity_check`, prunes snapshots older than 7 days, and optionally
+rsyncs the result offsite:
+
+```bash
+cd /Users/malicky/l/DOZO/DOZO-Server
+
+# Default: DB_PATH=./data/dozo.db -> ./data/backups/dozo-<UTC-stamp>.db
+./scripts/backup.sh
+
+# Point it at a specific DB / directory and keep 14 days:
+DB_PATH=/data/dashboard.db BACKUP_DIR=/backups BACKUP_RETENTION_DAYS=14 \
+  ./scripts/backup.sh
+
+# Offsite copy (rsync never uses --delete, so the target keeps its history):
+BACKUP_RSYNC_TARGET=backup@host:/srv/dozo/backups ./scripts/backup.sh
+
+# Preview without touching anything:
+DRY_RUN=1 ./scripts/backup.sh
+```
+
+In Docker the database lives on a named volume, so run the snapshot inside the
+container:
+
+```bash
+docker compose exec dashboard node scripts/backup-snapshot.js \
+  --db /data/dashboard.db --out /data/backups/dozo-manual.db
+docker compose cp dashboard:/data/backups/dozo-manual.db ./dozo-manual.db
+```
+
+**Restore drill** (always rehearse against a temp DB before a real restore):
+
+```bash
+# 1. Pick a snapshot.
+ls -1 ./data/backups/dozo-*.db
+
+# 2. Copy it to a temp database — never overwrite the live file in place.
+cp ./data/backups/dozo-<STAMP>.db /tmp/dozo-restore.db
+
+# 3. Verify integrity and that the data is present.
+sqlite3 /tmp/dozo-restore.db 'PRAGMA integrity_check;'
+sqlite3 /tmp/dozo-restore.db 'SELECT COUNT(*) FROM scans;'
+sqlite3 /tmp/dozo-restore.db 'SELECT terminal_id, active FROM terminals LIMIT 5;'
+
+# 4. Only then, for a real restore, stop the writer and swap the file:
+#    docker compose stop dashboard
+#    docker compose cp /tmp/dozo-restore.db dashboard:/data/dashboard.db
+#    docker compose start dashboard
+```
+
+`backup.sh` also verifies each snapshot before rotation, so a corrupt artifact
+is never kept or shipped.
+
+### Rate limiting & liveness
+
+`GET /r/:terminal_id` is capped at 30 requests/min per client IP and every
+`/api/*` route at 60 requests/min per client IP (`RATE_LIMIT_*`). Over the cap
+returns `429 {"error":"rate_limited"}` and writes no scan row; it is a transient
+backoff, **not** an auth failure, so it never triggers a re-pair. `/health` is
+exempt. Poll it from an external monitor with:
+
+```bash
+BASE_URL=http://130.162.185.144:3000 ./scripts/uptime-check.sh
+```
+
+Deactivating a terminal (operator `PATCH {"active":false}` or a device-swap
+redeem) clears its `api_token_hash` in the same transaction, so the old token
+`401`s on heartbeat/config/registers immediately.
+
+
 ---
 
 ## 3. Android app
@@ -320,6 +393,8 @@ adb logcat -d -s MockPay | tail
 | `check_apk_size` | Build release and enforce the APK size budget. |
 | server `scripts/deploy.sh` | Deploy the server to the VPS. |
 | server `scripts/smoke.sh` | Health + register + pair-status smoke test. |
+| server `scripts/backup.sh` | Snapshot the SQLite DB, rotate 7 days, optional rsync. |
+| server `scripts/uptime-check.sh` | External `/health` liveness probe. |
 | server `scripts/seed.js` | Seed `demo-merchant` / `DEMOTERM01`. |
 
 ---

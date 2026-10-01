@@ -69,7 +69,20 @@ export function registerScanRoutes(app) {
         }
 
         const result = insertScan.run(terminalId, scannedAt, userAgent, eventId);
-        return reply.code(202).send({ status: result.changes ? 'accepted' : 'duplicate' });
+        const status = result.changes ? 'accepted' : 'duplicate';
+        // Hardening I: structured ingest log for accepted/duplicate scans.
+        request.log.info(
+          {
+            event: 'scan.ingested',
+            event_id: eventId,
+            terminal_id: terminalId,
+            merchant_id: merchantId,
+            scanned_at: scannedAt,
+            status,
+          },
+          'scan ingest',
+        );
+        return reply.code(202).send({ status });
       },
     );
   });
