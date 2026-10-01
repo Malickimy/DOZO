@@ -46,6 +46,8 @@ test('offline panel scopes to the active merchant and updates when switching', a
 
   await signIn(page)
   await selectMerchant(page, merchantA.merchantId)
+  // The offline panel lives on the Terminals tab in the redesigned shell.
+  await openTab(page, 'Terminals')
 
   const panel = offlinePanel(page)
   await expect(panel.getByText(merchantA.label)).toBeVisible()
@@ -73,6 +75,7 @@ test('offline panel shows the polished loading copy while the fleet list is in f
 
   try {
     await signIn(page)
+    await openTab(page, 'Terminals')
     await expect(page.getByText('Checking terminals…')).toBeVisible()
   } finally {
     release()
@@ -86,7 +89,7 @@ test('empty scan log and empty trend show the polished empty copy', async ({ pag
 
   await signIn(page)
   await selectMerchant(page, merchant.merchantId)
-  await openTab(page, 'Scans')
+  // The scan log and daily trend render on the default Overview tab.
 
   const scanLog = page
     .locator('.card')
@@ -104,6 +107,7 @@ test('merchant with no offline terminals shows the all-clear empty state', async
 
   await signIn(page)
   await selectMerchant(page, merchant.merchantId)
+  await openTab(page, 'Terminals')
 
   await expect(
     offlinePanel(page).getByText('All terminals are reporting in.'),
@@ -153,9 +157,12 @@ const VIEWPORTS = [
 ] as const
 
 const VIEWS = [
-  ['Overview', 'Terminals'],
-  ['Scans', 'Scans per terminal'],
-  ['Registers & setup codes', 'Registers & setup codes'],
+  { button: 'Overview', heading: 'Overview' },
+  { button: 'Terminals', heading: 'Terminals' },
+  { button: 'Screen after payment', heading: 'After-payment screen' },
+  { button: 'Contacts', heading: 'Contacts' },
+  { button: 'Guide', heading: 'Guide' },
+  { button: 'Subscription', heading: 'Subscription' },
 ] as const
 
 for (const viewport of VIEWPORTS) {
@@ -163,11 +170,11 @@ for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
     await signIn(page)
 
-    for (const [tab, marker] of VIEWS) {
-      await openTab(page, tab)
-      await expect(page.getByRole('heading', { name: marker }).first()).toBeVisible()
+    for (const { button, heading } of VIEWS) {
+      await openTab(page, button)
+      await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
       const overflow = await horizontalOverflow(page)
-      expect(overflow, `${tab} overflows by ${overflow}px at ${viewport.name}`).toBeLessThanOrEqual(0)
+      expect(overflow, `${button} overflows by ${overflow}px at ${viewport.name}`).toBeLessThanOrEqual(0)
     }
   })
 }

@@ -22,6 +22,7 @@ import { API_BASE_URL, API_TOKEN, MERCHANT_ID } from './env'
  */
 const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 const TOKEN_KEY = 'dozo.dashboard.apiToken'
+const LANG_KEY = 'doozo-lang'
 
 /** `GET /api/merchants/:id/registers` */
 const REGISTERS_LIST = '**/api/merchants/*/registers'
@@ -33,25 +34,29 @@ test.beforeEach(async ({ page }) => {
     ({
       baseUrlKey,
       tokenKey,
+      langKey,
       baseUrl,
       token,
     }: {
       baseUrlKey: string
       tokenKey: string
+      langKey: string
       baseUrl: string
       token: string
     }) => {
       window.localStorage.setItem(baseUrlKey, baseUrl)
       window.localStorage.setItem(tokenKey, token)
+      window.localStorage.setItem(langKey, 'en')
     },
-    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
+    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, langKey: LANG_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
   )
-  await page.goto('/')
+  await page.goto('/panel/')
   await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
 })
 
 async function openRegisters(page: Page) {
-  await page.getByRole('button', { name: 'Registers & setup codes' }).click()
+  // Registers & setup codes live on the Terminals tab in the redesigned shell.
+  await page.getByRole('button', { name: 'Terminals' }).click()
   await expect(
     page.getByRole('heading', { name: 'Registers & setup codes' }),
   ).toBeVisible()
@@ -70,6 +75,20 @@ function setupCodeCard(page: Page) {
  */
 function statusCell(row: Locator) {
   return row.getByRole('cell').nth(2)
+}
+
+/** The Registers table, scoped to its card — the Terminals tab also renders a
+ *  `TerminalsTable`, so a bare `getByRole('table')` now matches two tables. */
+function registersTable(page: Page): Locator {
+  return page
+    .locator('.card')
+    .filter({ has: page.getByRole('heading', { name: 'Registers & setup codes' }) })
+    .getByRole('table')
+}
+
+/** A row in the registers table matching the register label. */
+function registerRow(page: Page, label: string): Locator {
+  return registersTable(page).getByRole('row', { name: new RegExp(label) })
 }
 
 function stubRegistersList(page: Page, body: unknown, status = 200) {
@@ -134,8 +153,8 @@ test('occupied register: confirmation gates the POST, then shows code + expiry',
 
   // Scope every assertion to this run's row: the DB accumulates registers
   // across runs, so unscoped cell matches (`Active`, `never`) are ambiguous.
-  await expect(page.getByRole('table')).toBeVisible()
-  const row = page.getByRole('row', { name: new RegExp(label) })
+  await expect(registersTable(page)).toBeVisible()
+  const row = registerRow(page, label)
   await expect(row.getByRole('cell', { name: label })).toBeVisible()
   await expect(row.getByRole('cell', { name: terminalId })).toBeVisible()
   await expect(row.getByRole('cell', { name: 'Active', exact: true })).toBeVisible()
@@ -187,7 +206,7 @@ test('unoccupied register: issues immediately (no confirmation) and shows code +
   await page.reload()
   await openRegisters(page)
 
-  const row = page.getByRole('row', { name: new RegExp(label) })
+  const row = registerRow(page, label)
   await expect(row).toContainText('Unclaimed')
   // R7 #55: an unoccupied register has no terminal, so Status is the muted
   // placeholder — never `Inactive`, even though the derived `active` is false.
@@ -249,7 +268,7 @@ test('new register round-trip: setup code redeems and the row becomes occupied',
   await page.reload()
   await openRegisters(page)
 
-  const row = page.getByRole('row', { name: new RegExp(label) })
+  const row = registerRow(page, label)
   await expect(row).not.toContainText('Unclaimed')
   await expect(row.locator('code')).toHaveText(terminalId)
 })
@@ -288,7 +307,7 @@ test('occupied but inactive register: keeps the Inactive status', async ({
   await page.reload()
   await openRegisters(page)
 
-  const row = page.getByRole('row', { name: new RegExp(label) })
+  const row = registerRow(page, label)
   await expect(row.getByRole('cell', { name: terminalId })).toBeVisible()
   await expect(statusCell(row)).toHaveText('Inactive')
   await expect(row.getByRole('cell', { name: 'Unclaimed', exact: true })).toHaveCount(0)
@@ -321,28 +340,32 @@ test('404 when issuing a code shows issuing is not available', async ({ page }) 
   })
 
   await openRegisters(page)
-  await page.getByRole('button', { name: 'Issue' }).click()
+  await registersTable(page).getByRole('button', { name: 'Issue' }).click()
   await page.getByRole('button', { name: 'Confirm' }).click()
 
   await expect(page.getByText('Issuing setup codes is not available yet.')).toBeVisible()
 })
 
-test('legacy Pair terminal tab still works', async ({ page }) => {
-  await page.getByRole('button', { name: 'Pair terminal' }).click()
+test('legacy Pair terminal still works from the Terminals tab', async ({ page }) => {
+  await page.getByRole('button', { name: 'Terminals' }).click()
   await expect(page.getByRole('heading', { name: 'Pair a terminal' })).toBeVisible()
 
-  const input = page.getByLabel('Pairing code')
-  await input.fill('AB12')
-  await page.getByRole('button', { name: 'Claim terminal' }).click()
-  await expect(page.getByRole('alert')).toContainText(
-    'Enter the 8-character pairing code',
-  )
+  // Clearing the pre-filled suggested name surfaces the validation copy.
+  const input = page.getByLabel('Terminal name')
+  await input.fill('')
+  await page.getByRole('button', { name: 'Generate code' }).click()
+  await expect(page.getByRole('alert')).toContainText('Enter a terminal name.')
 
-  await input.fill('ZZZZZZZZ')
+  await input.fill(`qa-pair-${Date.now()}`)
   const [response] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/terminals/claim')),
-    page.getByRole('button', { name: 'Claim terminal' }).click(),
+    page.waitForResponse((r) => r.url().includes('/setup-code')),
+    page.getByRole('button', { name: 'Generate code' }).click(),
   ])
-  expect(response.status()).toBe(404)
-  await expect(page.getByText(/Pairing is not available yet/)).toBeVisible()
+  expect(response.status()).toBe(201)
+
+  const body = await response.json()
+  expect(body.code).toMatch(/^[A-Z0-9]{8}$/)
+
+  // The single-use code renders and begins its countdown.
+  await expect(page.locator('.setup-code')).toContainText(body.code)
 })

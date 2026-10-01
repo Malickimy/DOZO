@@ -22,6 +22,7 @@ const KNOWN_TERMINAL_ID = 'DEMOTERM01'
 
 const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 const TOKEN_KEY = 'dozo.dashboard.apiToken'
+const LANG_KEY = 'doozo-lang'
 
 const AUTH = { 'X-Api-Token': API_TOKEN }
 const CONNECTOR = { 'X-Connector-Secret': CONNECTOR_SECRET }
@@ -172,23 +173,24 @@ test('scan log renders the event_id column from the read model', async ({
     ({
       baseUrlKey,
       tokenKey,
+      langKey,
       baseUrl,
       token,
     }: {
       baseUrlKey: string
       tokenKey: string
+      langKey: string
       baseUrl: string
       token: string
     }) => {
       window.localStorage.setItem(baseUrlKey, baseUrl)
       window.localStorage.setItem(tokenKey, token)
+      window.localStorage.setItem(langKey, 'en')
     },
-    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
+    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, langKey: LANG_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
   )
-  await page.goto('/')
+  await page.goto('/panel/')
   await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-
-  await page.getByRole('button', { name: 'Scans', exact: true }).click()
 
   const scanLog = page.locator('.card').filter({ hasText: 'Scan log' })
   await expect(scanLog.getByRole('table')).toBeVisible()
