@@ -32,6 +32,10 @@ object DozoConfig {
     fun isAutoCloseEnabled(context: Context): Boolean =
         prefs(context).getBoolean(DozoContract.KEY_AUTO_CLOSE, true)
 
+    /** App-only developer mode: surfaces the [QrSource] behind the review QR. */
+    fun isDeveloperMode(context: Context): Boolean =
+        prefs(context).getBoolean(DozoContract.KEY_DEVELOPER_MODE, false)
+
     fun apiBaseUrl(context: Context): String =
         prefs(context).getString(DozoContract.KEY_API_BASE_URL, null)
             ?.takeIf { it.isNotBlank() }
@@ -138,6 +142,10 @@ object DozoConfig {
 
     fun setAutoCloseEnabled(context: Context, value: Boolean) {
         edit(context).putBoolean(DozoContract.KEY_AUTO_CLOSE, value).apply()
+    }
+
+    fun setDeveloperMode(context: Context, value: Boolean) {
+        edit(context).putBoolean(DozoContract.KEY_DEVELOPER_MODE, value).apply()
     }
 
     fun setRedirectBaseUrl(context: Context, value: String) {

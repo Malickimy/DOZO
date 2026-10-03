@@ -27,6 +27,7 @@ class SettingsPersistenceTest {
             DozoContract.KEY_LANGUAGE to "language",
             DozoContract.KEY_PIN to "pin",
             DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled",
+            DozoContract.KEY_DEVELOPER_MODE to "developer_mode",
             DozoContract.KEY_GOOGLE_PLACE_ID to "google_place_id",
             DozoContract.KEY_STATIC_REVIEW_URL to "static_review_url",
             DozoContract.KEY_LAST_HEARTBEAT_AT to "last_heartbeat_at",

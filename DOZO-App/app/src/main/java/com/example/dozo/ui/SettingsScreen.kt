@@ -60,6 +60,7 @@ fun SettingsScreen(
     initialAutoCloseEnabled: Boolean,
     initialTimeoutSeconds: Int,
     initialLanguage: String,
+    initialDeveloperMode: Boolean = false,
     onApiBaseUrlChange: (String) -> Unit,
     onRedirectBaseUrlChange: (String) -> Unit,
     onMerchantIdChange: (String) -> Unit,
@@ -72,6 +73,7 @@ fun SettingsScreen(
     onAutoCloseEnabledChange: (Boolean) -> Unit,
     onTimeoutSecondsChange: (Int) -> Unit,
     onLanguageChange: (String) -> Unit,
+    onDeveloperModeChange: (Boolean) -> Unit = {},
     manualStatus: String?,
     lastHeartbeat: ConnectionStatus.Snapshot,
     lastConfigSync: ConnectionStatus.Snapshot,
@@ -95,6 +97,7 @@ fun SettingsScreen(
     var autoCloseEnabled by remember { mutableStateOf(initialAutoCloseEnabled) }
     var timeoutSeconds by remember { mutableFloatStateOf(initialTimeoutSeconds.toFloat()) }
     var language by remember { mutableStateOf(initialLanguage) }
+    var developerMode by remember { mutableStateOf(initialDeveloperMode) }
     var selectedTab by remember { mutableIntStateOf(TAB_SCREEN) }
 
     Surface(
@@ -290,6 +293,16 @@ fun SettingsScreen(
                 }
 
                 TAB_SYSTEM -> {
+                    ToggleRow(
+                        title = stringResource(R.string.settings_developer_mode),
+                        subtitle = stringResource(R.string.settings_developer_mode_subtitle),
+                        checked = developerMode,
+                        onCheckedChange = {
+                            developerMode = it
+                            onDeveloperModeChange(it)
+                        }
+                    )
+                    Spacer(Modifier.height(24.dp))
                     Text(
                         text = stringResource(R.string.settings_language),
                         style = MaterialTheme.typography.bodyLarge,

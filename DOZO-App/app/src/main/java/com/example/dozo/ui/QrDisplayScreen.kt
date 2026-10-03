@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.dozo.QrSource
 import com.example.dozo.R
 import kotlinx.coroutines.delay
 
@@ -43,6 +44,8 @@ fun QrDisplayScreen(
     autoClose: Boolean,
     merchantName: String?,
     promptText: String?,
+    developerMode: Boolean = false,
+    qrSource: QrSource? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -84,6 +87,21 @@ fun QrDisplayScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+            if (developerMode && qrSource != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(
+                        if (qrSource.dynamic) {
+                            R.string.qr_source_dynamic
+                        } else {
+                            R.string.qr_source_static_fallback
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
             if (merchantName != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
