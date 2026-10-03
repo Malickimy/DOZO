@@ -88,6 +88,8 @@ class MainActivity : ComponentActivity() {
                             autoClose = DozoConfig.isAutoCloseEnabled(this),
                             merchantName = DozoConfig.merchantName(this),
                             promptText = DozoConfig.promptText(this),
+                            developerMode = DozoConfig.isDeveloperMode(this),
+                            qrSource = state.source,
                             onDismiss = {
                                 applyPendingRemoteConfigIfAny()
                                 closeAndFinish(RESULT_APPROVED)
@@ -120,6 +122,7 @@ class MainActivity : ComponentActivity() {
                         initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
                         initialActivated = DozoConfig.isActivationEnabled(this),
                         initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
+                        initialDeveloperMode = DozoConfig.isDeveloperMode(this),
                         initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
                         initialLanguage = DozoConfig.language(this),
                         onApiBaseUrlChange = { DozoConfig.setApiBaseUrl(this, it) },
@@ -132,6 +135,7 @@ class MainActivity : ComponentActivity() {
                         onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
                         onActivatedChange = { DozoConfig.setActivated(this, it) },
                         onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
+                        onDeveloperModeChange = { DozoConfig.setDeveloperMode(this, it) },
                         onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
                         onLanguageChange = { DozoConfig.setLanguage(this, it) },
                         manualStatus = manualStatus,
@@ -312,8 +316,12 @@ class MainActivity : ComponentActivity() {
             DozoApi(DozoConfig.redirectBaseUrl(this), "")
                 .health(DozoContract.HEALTH_PROBE_TIMEOUT_MS)
         }.getOrDefault(false)
-        val payload = resolveApprovedPayload(paymentIntent, healthy)
-        uiState = UiState.DisplayQr(QrRenderer.render(payload), state.txnId)
+        val resolution = resolveApprovedPayload(paymentIntent, healthy)
+        uiState = UiState.DisplayQr(
+            bitmap = QrRenderer.render(resolution.url),
+            txnId = state.txnId,
+            source = resolution.source
+        )
         approvedPending = false
     }
 
@@ -328,10 +336,13 @@ class MainActivity : ComponentActivity() {
     private fun currentResultCode(): Int =
         if (approvedPending || uiState is UiState.DisplayQr) RESULT_APPROVED else RESULT_CANCELED
 
-    private fun resolveApprovedPayload(paymentIntent: PaymentIntent, serverHealthy: Boolean): String {
+    private fun resolveApprovedPayload(
+        paymentIntent: PaymentIntent,
+        serverHealthy: Boolean
+    ): QrResolution {
         val terminalId = paymentIntent.terminalId?.takeIf { it.isNotBlank() }
         val primaryUrl = terminalId?.let { "${DozoConfig.redirectBaseUrl(this)}/r/$it" }
-        return QrPayloadResolver.resolve(
+        return QrPayloadResolver.resolveWithSource(
             primaryUrl = primaryUrl,
             serverHealthy = serverHealthy,
             staticReviewUrl = DozoConfig.staticReviewUrl(this),
