@@ -18,6 +18,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.dozo.AccentToken
 import com.example.dozo.ConnectionStatus
@@ -201,6 +205,20 @@ fun SettingsScreen(
                         }
                     )
                     Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.settings_accent),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    AccentDropdown(
+                        selected = accent,
+                        onSelect = {
+                            accent = it
+                            onAccentChange(it)
+                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
                     ConfigField(
                         label = stringResource(R.string.settings_merchant_name),
                         value = merchantName,
@@ -327,24 +345,6 @@ fun SettingsScreen(
                             onDeveloperModeChange(it)
                         }
                     )
-                    Spacer(Modifier.height(24.dp))
-                    Text(
-                        text = stringResource(R.string.settings_accent),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    AccentToken.ALL.forEach { token ->
-                        AccentOption(
-                            token = token,
-                            label = stringResource(accentLabelRes(token)),
-                            selected = accent == token,
-                            onSelect = {
-                                accent = token
-                                onAccentChange(token)
-                            }
-                        )
-                    }
                     Spacer(Modifier.height(24.dp))
                     Text(
                         text = stringResource(R.string.settings_language),
@@ -559,33 +559,61 @@ private fun LanguageOption(
 }
 
 @Composable
-private fun AccentOption(
-    token: String,
-    label: String,
-    selected: Boolean,
-    onSelect: () -> Unit,
+private fun AccentDropdown(
+    selected: String,
+    onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, onClick = onSelect),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = onSelect)
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(accentColor(token))
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            AccentSwatch(selected)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(accentLabelRes(selected)),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Start,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "\u25BE",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            AccentToken.ALL.forEach { token ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(accentLabelRes(token))) },
+                    leadingIcon = { AccentSwatch(token) },
+                    trailingIcon = if (token == selected) {
+                        { Text("\u2713", color = MaterialTheme.colorScheme.primary) }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(token)
+                    }
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun AccentSwatch(token: String, size: Dp = 20.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(accentColor(token))
+    )
 }
 
 private fun accentLabelRes(token: String): Int = when (token) {
