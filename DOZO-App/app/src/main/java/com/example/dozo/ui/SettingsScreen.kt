@@ -72,7 +72,6 @@ fun SettingsScreen(
     initialMerchantName: String,
     initialPromptText: String,
     initialDisplayEnabled: Boolean,
-    initialActivated: Boolean,
     initialAutoCloseEnabled: Boolean,
     initialTimeoutSeconds: Int,
     initialLanguage: String,
@@ -87,7 +86,6 @@ fun SettingsScreen(
     onMerchantNameChange: (String) -> Unit,
     onPromptTextChange: (String) -> Unit,
     onDisplayEnabledChange: (Boolean) -> Unit,
-    onActivatedChange: (Boolean) -> Unit,
     onAutoCloseEnabledChange: (Boolean) -> Unit,
     onTimeoutSecondsChange: (Int) -> Unit,
     onLanguageChange: (String) -> Unit,
@@ -113,7 +111,6 @@ fun SettingsScreen(
     var merchantName by remember { mutableStateOf(initialMerchantName) }
     var promptText by remember { mutableStateOf(initialPromptText) }
     var displayEnabled by remember { mutableStateOf(initialDisplayEnabled) }
-    var activated by remember { mutableStateOf(initialActivated) }
     var autoCloseEnabled by remember { mutableStateOf(initialAutoCloseEnabled) }
     var timeoutSeconds by remember { mutableFloatStateOf(initialTimeoutSeconds.toFloat()) }
     var language by remember { mutableStateOf(initialLanguage) }
@@ -167,16 +164,6 @@ fun SettingsScreen(
                         onSelect = {
                             accent = it
                             onAccentChange(it)
-                        }
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    ToggleRow(
-                        title = stringResource(R.string.settings_activated),
-                        subtitle = stringResource(R.string.settings_activated_subtitle),
-                        checked = activated,
-                        onCheckedChange = {
-                            activated = it
-                            onActivatedChange(it)
                         }
                     )
                     Spacer(Modifier.height(16.dp))
