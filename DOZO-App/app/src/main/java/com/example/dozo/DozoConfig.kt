@@ -32,6 +32,22 @@ object DozoConfig {
     fun isAutoCloseEnabled(context: Context): Boolean =
         prefs(context).getBoolean(DozoContract.KEY_AUTO_CLOSE, true)
 
+    /** App-only developer mode: surfaces the [QrSource] behind the review QR. */
+    fun isDeveloperMode(context: Context): Boolean =
+        prefs(context).getBoolean(DozoContract.KEY_DEVELOPER_MODE, false)
+
+    /** QR reveal animation toggle; defaults ON so the reveal plays out of the box. */
+    fun isQrAnimationEnabled(context: Context): Boolean =
+        SettingsPersistence.normalizeQrAnimation(
+            prefs(context).getBoolean(DozoContract.KEY_QR_ANIMATION, true)
+        )
+
+    /** Persisted accent token (see [AccentToken]); always normalised to a preset. */
+    fun accentToken(context: Context): String =
+        SettingsPersistence.normalizeAccent(
+            prefs(context).getString(DozoContract.KEY_ACCENT, null)
+        )
+
     fun apiBaseUrl(context: Context): String =
         prefs(context).getString(DozoContract.KEY_API_BASE_URL, null)
             ?.takeIf { it.isNotBlank() }
@@ -138,6 +154,19 @@ object DozoConfig {
 
     fun setAutoCloseEnabled(context: Context, value: Boolean) {
         edit(context).putBoolean(DozoContract.KEY_AUTO_CLOSE, value).apply()
+    }
+
+    fun setDeveloperMode(context: Context, value: Boolean) {
+        edit(context).putBoolean(DozoContract.KEY_DEVELOPER_MODE, value).apply()
+    }
+
+    fun setQrAnimationEnabled(context: Context, value: Boolean) {
+        edit(context).putBoolean(DozoContract.KEY_QR_ANIMATION, value).apply()
+    }
+
+    fun setAccentToken(context: Context, value: String) {
+        val normalized = SettingsPersistence.normalizeAccent(value)
+        edit(context).putString(DozoContract.KEY_ACCENT, normalized).apply()
     }
 
     fun setRedirectBaseUrl(context: Context, value: String) {

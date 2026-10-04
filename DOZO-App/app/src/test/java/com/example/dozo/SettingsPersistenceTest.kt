@@ -1,6 +1,7 @@
 package com.example.dozo
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,9 @@ class SettingsPersistenceTest {
             DozoContract.KEY_LANGUAGE to "language",
             DozoContract.KEY_PIN to "pin",
             DozoContract.KEY_AUTO_CLOSE to "auto_close_enabled",
+            DozoContract.KEY_DEVELOPER_MODE to "developer_mode",
+            DozoContract.KEY_QR_ANIMATION to "qr_animation_enabled",
+            DozoContract.KEY_ACCENT to "accent_color",
             DozoContract.KEY_GOOGLE_PLACE_ID to "google_place_id",
             DozoContract.KEY_STATIC_REVIEW_URL to "static_review_url",
             DozoContract.KEY_LAST_HEARTBEAT_AT to "last_heartbeat_at",
@@ -68,6 +72,22 @@ class SettingsPersistenceTest {
         assertEquals(Language.SYSTEM, SettingsPersistence.normalizeLanguage("de"))
         assertEquals(Language.PL, SettingsPersistence.normalizeLanguage(Language.PL))
         assertEquals(Language.EN, SettingsPersistence.normalizeLanguage(Language.EN))
+    }
+
+    @Test
+    fun normalizeAccentFallsBackToBrandDefault() {
+        assertEquals(AccentToken.LIME, SettingsPersistence.normalizeAccent(null))
+        assertEquals(AccentToken.LIME, SettingsPersistence.normalizeAccent("magenta"))
+        assertEquals(AccentToken.SKY, SettingsPersistence.normalizeAccent(AccentToken.SKY))
+        assertEquals(AccentToken.DEFAULT, AccentToken.LIME)
+        assertTrue(AccentToken.ALL.contains(AccentToken.DEFAULT))
+    }
+
+    @Test
+    fun normalizeQrAnimationDefaultsOn() {
+        assertTrue(SettingsPersistence.normalizeQrAnimation(null))
+        assertTrue(SettingsPersistence.normalizeQrAnimation(true))
+        assertFalse(SettingsPersistence.normalizeQrAnimation(false))
     }
 
     @Test

@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -92,11 +92,12 @@ class HandoffResultTest {
         )
         assertEquals(Lifecycle.State.RESUMED, scenario.state)
         // The QR render runs behind the async 800 ms health probe, so wait for it.
+        // The screen now leads with the logo/QR (the old title + txn text are gone).
+        val qrDesc = context.getString(R.string.qr_code_content_desc)
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText("Payment approved").fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithContentDescription(qrDesc).fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Payment approved").assertIsDisplayed()
-        composeRule.onNodeWithText("Transaction TXN-QR").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(qrDesc).assertIsDisplayed()
         scenario.close()
     }
 

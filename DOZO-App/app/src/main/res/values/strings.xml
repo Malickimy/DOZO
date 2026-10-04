@@ -12,6 +12,8 @@
     <string name="qr_done">Gotowe</string>
     <string name="qr_logo_content_desc">Logo DOZO</string>
     <string name="qr_code_content_desc">Kod QR do opinii Google</string>
+    <string name="qr_source_dynamic">dynamiczny</string>
+    <string name="qr_source_static_fallback">statyczny</string>
 
     <!-- PIN -->
     <string name="pin_enter">Wprowadź PIN</string>
@@ -42,6 +44,17 @@
     <string name="settings_tab_screen">Ekran</string>
     <string name="settings_tab_connection">Połączenie</string>
     <string name="settings_tab_system">System</string>
+    <string name="settings_developer_mode">Tryb programisty</string>
+    <string name="settings_developer_mode_subtitle">Pokaż źródło kodu QR na ekranie transakcji</string>
+    <string name="settings_qr_animation">Animacja kodu QR</string>
+    <string name="settings_qr_animation_subtitle">Odtwarzaj animację pojawienia się kodu QR</string>
+    <string name="settings_accent">Kolor akcentu</string>
+    <string name="settings_accent_lime">Limonkowy</string>
+    <string name="settings_accent_sky">Błękitny</string>
+    <string name="settings_accent_coral">Koralowy</string>
+    <string name="settings_accent_violet">Fioletowy</string>
+    <string name="settings_accent_amber">Bursztynowy</string>
+    <string name="settings_accent_pink">Różowy</string>
     <string name="settings_close_mode">Tryb zamykania</string>
     <string name="settings_close_mode_subtitle">Zamykaj ekran QR automatycznie</string>
     <string name="settings_language">Język</string>

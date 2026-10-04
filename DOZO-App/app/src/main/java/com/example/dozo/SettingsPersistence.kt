@@ -30,6 +30,13 @@ object SettingsPersistence {
     fun normalizeLanguage(value: String?): String =
         if (Language.isSupported(value)) value!! else Language.DEFAULT
 
+    /** Accent defaults to the brand [AccentToken.DEFAULT]; unknown tokens fall back. */
+    fun normalizeAccent(value: String?): String =
+        if (AccentToken.isSupported(value)) value!! else AccentToken.DEFAULT
+
+    /** QR reveal defaults ON; only an explicit `false` disables it. */
+    fun normalizeQrAnimation(stored: Boolean?): Boolean = stored != false
+
     fun clampTimeoutSeconds(value: Int): Int =
         value.coerceIn(
             DozoContract.MIN_DISPLAY_TIMEOUT_SECONDS,

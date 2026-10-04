@@ -12,6 +12,7 @@ import com.example.dozo.ui.theme.Cream
 import com.example.dozo.ui.theme.DozoTheme
 import com.example.dozo.ui.theme.Ink
 import com.example.dozo.ui.theme.Lime
+import com.example.dozo.ui.theme.Sky
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -48,6 +49,21 @@ class ThemeQaTest {
         assertEquals(Cream.toArgb(), background)
         assertEquals(Ink.toArgb(), onBackground)
         assertEquals(Lime.toArgb(), primary)
+    }
+
+    @Test
+    fun accentOverrideRecolorsPrimaryAndKeepsInkOnPrimary() {
+        var primary = 0
+        var onPrimary = 0
+        composeRule.setContent {
+            DozoTheme(darkTheme = false, accent = Sky) {
+                primary = MaterialTheme.colorScheme.primary.toArgb()
+                onPrimary = MaterialTheme.colorScheme.onPrimary.toArgb()
+            }
+        }
+        composeRule.waitForIdle()
+        assertEquals(Sky.toArgb(), primary)
+        assertEquals(Ink.toArgb(), onPrimary)
     }
 
     @Test

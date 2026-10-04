@@ -118,18 +118,21 @@ private const val GROW_IN_FROM_SCALE = 0.8f
  * the animation; unlike [DozoScreenEnter] it does not slide, so it works for
  * in-place reveals that share the same screen.
  *
- * Honours the reduced-motion gate: under [DozoMotionSpec.Reduced] the duration
- * collapses to zero and the content renders at full size instantly.
+ * [enabled] false renders the child at full size instantly (Settings → Screen
+ * toggle). The reduced-motion gate does the same: under [DozoMotionSpec.Reduced]
+ * the duration collapses to zero and the content renders at full size instantly.
  */
 @Composable
 fun DozoGrowIn(
     key: Any?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val motion = dozoMotion()
-    var appeared by remember(key) { mutableStateOf(motion.isReducedMotion) }
-    LaunchedEffect(key) { appeared = true }
+    val animate = enabled && !motion.isReducedMotion
+    var appeared by remember(key, animate) { mutableStateOf(!animate) }
+    LaunchedEffect(key, animate) { appeared = true }
     val scale by animateFloatAsState(
         targetValue = if (appeared) 1f else GROW_IN_FROM_SCALE,
         animationSpec = tween(motion.growMillis, easing = DozoMotionSpec.Easing),

@@ -5,6 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.graphics.Color
 
 /**
  * Dashboard-aligned light scheme.
@@ -97,21 +100,36 @@ internal val DarkColorScheme = darkColorScheme(
 
 /**
  * DOZO theme. Brand colors always apply — dynamic (Material You) color is
- * intentionally not used so the cream/ink/lime palette is consistent on every
- * terminal.
+ * intentionally not used so the cream/ink palette is consistent on every
+ * terminal. [accent] swaps the lime brand role for a preset pastel at runtime
+ * (Settings → System); the default keeps the dashboard-aligned lime.
  */
 @Composable
 fun DozoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: Color = Lime,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val base = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = base.copy(
+        primary = accent,
+        primaryContainer = accent,
+        inversePrimary = accent,
+        tertiary = accent,
+        tertiaryContainer = accent,
+        surfaceTint = accent,
+    )
     ProvideDozoMotion {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = Typography,
-            shapes = DozoShapes,
-            content = content
-        )
+        CompositionLocalProvider(LocalDozoAccent provides accent) {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = Typography,
+                shapes = DozoShapes,
+                content = content
+            )
+        }
     }
 }
+
+/** Active preset accent, defaulting to the brand [Lime] outside a [DozoTheme]. */
+val LocalDozoAccent = compositionLocalOf { Lime }
