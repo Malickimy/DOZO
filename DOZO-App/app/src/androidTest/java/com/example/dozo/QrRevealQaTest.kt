@@ -154,10 +154,11 @@ class QrRevealQaTest {
         val root = composeRule.onRoot().fetchSemanticsNode()
         val density = context.resources.displayMetrics.density
         val qrWidthDp = qr.size.width / density
-        // Substantially larger than the previous 260dp card: the code area is ~284dp.
+        // The QR is now flush with a card that fills the content width (no inner
+        // padding), so the code is dramatically larger than the old ~284dp.
         assertTrue(
-            "QR width ${qrWidthDp}dp should be at least 280dp",
-            qrWidthDp >= 280f
+            "QR width ${qrWidthDp}dp should be at least 400dp",
+            qrWidthDp >= 400f
         )
         // Bounded: the QR never spans the full screen width.
         assertTrue(
