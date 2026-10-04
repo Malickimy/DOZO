@@ -4,12 +4,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,8 +38,11 @@ import com.example.dozo.ui.theme.DozoGrowIn
 import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
 
-/** Bounded QR card; hugs the rendered code (quiet zone preserved) and stays centered. */
-private val QR_CONTAINER_SIZE = 260.dp
+/** Target QR card size; clamped to the available width so it never clips. */
+private val QR_CONTAINER_SIZE = 300.dp
+
+/** Margin between the card edge and the QR bitmap's own (preserved) quiet zone. */
+private val QR_IMAGE_PADDING = 8.dp
 
 @Composable
 fun QrDisplayScreen(
@@ -116,7 +120,9 @@ fun QrDisplayScreen(
 
             Card(
                 modifier = Modifier
-                    .size(QR_CONTAINER_SIZE)
+                    .widthIn(max = QR_CONTAINER_SIZE)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
                     .limeShadowLarge(MaterialTheme.shapes.large),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
@@ -133,7 +139,7 @@ fun QrDisplayScreen(
                         contentDescription = stringResource(R.string.qr_code_content_desc),
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(12.dp),
+                            .padding(QR_IMAGE_PADDING),
                         contentScale = ContentScale.Fit
                     )
                 }
