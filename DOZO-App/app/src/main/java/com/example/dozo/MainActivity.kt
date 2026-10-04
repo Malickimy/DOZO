@@ -3,6 +3,7 @@ package com.example.dozo
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
 import android.widget.Toast
@@ -35,8 +36,10 @@ import com.example.dozo.ui.theme.DozoScreenEnter
 import com.example.dozo.ui.theme.DozoTheme
 import com.example.dozo.ui.theme.accentColor
 import com.example.dozo.ui.theme.dozoMotion
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private sealed interface AppScreen {
     data object Payment : AppScreen
@@ -61,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private var approvedPending by mutableStateOf(false)
     private var qrAnimationEnabled by mutableStateOf(true)
     private var accentToken by mutableStateOf(AccentToken.DEFAULT)
+    private val connectorHealth = ConnectorHealthCache(CONNECTOR_HEALTH_TTL_MS)
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleManager.wrap(newBase))
@@ -104,6 +108,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         pullRemoteConfigAtLaunch()
+        prefetchConnectorHealth()
     }
 
     @Composable
@@ -351,17 +356,51 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun showApprovedQr(state: MappedState.Approved) {
         val paymentIntent = intent.toPaymentIntent()
-        val healthy = runCatching {
-            DozoApi(DozoConfig.redirectBaseUrl(this), "")
-                .health(DozoContract.HEALTH_PROBE_TIMEOUT_MS)
-        }.getOrDefault(false)
-        val resolution = resolveApprovedPayload(paymentIntent, healthy)
+        // Do not block the first paint on the connector probe. Use the last known
+        // health (prefetched at launch) or assume healthy, show the QR, then verify
+        // in the background and swap to the fallback only if the choice changes.
+        val assumedHealthy = cachedConnectorHealth() ?: true
+        val initial = resolveApprovedPayload(paymentIntent, assumedHealthy)
+        displayQr(initial, state.txnId)
+        approvedPending = false
+
+        val actualHealthy = probeConnectorHealth()
+        cacheConnectorHealth(actualHealthy)
+        if (actualHealthy != assumedHealthy) {
+            val corrected = resolveApprovedPayload(paymentIntent, actualHealthy)
+            val shown = uiState
+            if (corrected.url != initial.url &&
+                shown is UiState.DisplayQr &&
+                shown.txnId == state.txnId
+            ) {
+                displayQr(corrected, state.txnId)
+            }
+        }
+    }
+
+    private suspend fun displayQr(resolution: QrResolution, txnId: String) {
+        val bitmap = withContext(Dispatchers.Default) { QrRenderer.render(resolution.url) }
         uiState = UiState.DisplayQr(
-            bitmap = QrRenderer.render(resolution.url),
-            txnId = state.txnId,
+            bitmap = bitmap,
+            txnId = txnId,
             source = resolution.source
         )
-        approvedPending = false
+    }
+
+    private suspend fun probeConnectorHealth(): Boolean = runCatching {
+        DozoApi(DozoConfig.redirectBaseUrl(this), "")
+            .health(DozoContract.HEALTH_PROBE_TIMEOUT_MS)
+    }.getOrDefault(false)
+
+    private fun cachedConnectorHealth(): Boolean? =
+        connectorHealth.get(SystemClock.elapsedRealtime())
+
+    private fun cacheConnectorHealth(healthy: Boolean) {
+        connectorHealth.put(healthy, SystemClock.elapsedRealtime())
+    }
+
+    private fun prefetchConnectorHealth() {
+        lifecycleScope.launch { cacheConnectorHealth(probeConnectorHealth()) }
     }
 
     private fun onUnauthorized() {
@@ -442,6 +481,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private const val REMOTE_APPLY_OVERLAY_MS = 600L
+private const val CONNECTOR_HEALTH_TTL_MS = 60_000L
 
 private fun MappedState.toUiState(): UiState = when (this) {
     is MappedState.Idle -> UiState.Idle
