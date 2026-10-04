@@ -31,8 +31,6 @@
     <string name="settings_show_qr_subtitle">Wyświetlaj kod QR po zatwierdzonej sprzedaży</string>
     <string name="settings_merchant_name">Nazwa sprzedawcy</string>
     <string name="settings_prompt_text">Tekst zachęty</string>
-    <string name="settings_activated">Aktywowany</string>
-    <string name="settings_activated_subtitle">Przyjmuj przekazania transakcji</string>
     <string name="settings_display_timeout">Czas wyświetlania: %1$d s</string>
     <string name="settings_sync_now">Synchronizuj teraz</string>
     <string name="settings_heartbeat_now">Wyślij sygnał teraz</string>

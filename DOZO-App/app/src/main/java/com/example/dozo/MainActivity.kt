@@ -158,7 +158,6 @@ class MainActivity : ComponentActivity() {
                 initialMerchantName = DozoConfig.merchantName(this).orEmpty(),
                 initialPromptText = DozoConfig.promptText(this).orEmpty(),
                 initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
-                initialActivated = DozoConfig.isActivationEnabled(this),
                 initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
                 initialDeveloperMode = DozoConfig.isDeveloperMode(this),
                 initialQrAnimationEnabled = qrAnimationEnabled,
@@ -173,7 +172,6 @@ class MainActivity : ComponentActivity() {
                 onMerchantNameChange = { DozoConfig.setMerchantName(this, it) },
                 onPromptTextChange = { DozoConfig.setPromptText(this, it) },
                 onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
-                onActivatedChange = { DozoConfig.setActivated(this, it) },
                 onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
                 onDeveloperModeChange = { DozoConfig.setDeveloperMode(this, it) },
                 onQrAnimationEnabledChange = {
