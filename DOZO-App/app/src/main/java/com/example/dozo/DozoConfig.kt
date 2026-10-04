@@ -13,9 +13,6 @@ object DozoConfig {
     fun isDisplayEnabled(context: Context): Boolean =
         prefs(context).getBoolean(DozoContract.KEY_DISPLAY_ENABLED, true)
 
-    fun isActivationEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(DozoContract.KEY_ACTIVATED, true)
-
     fun redirectBaseUrl(context: Context): String =
         prefs(context).getString(DozoContract.KEY_REDIRECT_BASE_URL, null)
             ?.takeIf { it.isNotBlank() }
@@ -136,10 +133,6 @@ object DozoConfig {
             DozoContract.KEY_LAST_CONFIG_SYNC_RESULT,
             outcome
         )
-    }
-
-    fun setActivated(context: Context, value: Boolean) {
-        edit(context).putBoolean(DozoContract.KEY_ACTIVATED, value).apply()
     }
 
     fun setDisplayEnabled(context: Context, value: Boolean) {
