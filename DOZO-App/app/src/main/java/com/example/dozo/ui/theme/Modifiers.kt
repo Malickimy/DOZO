@@ -1,6 +1,7 @@
 package com.example.dozo.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -36,22 +37,25 @@ fun Modifier.hardShadow(
     }
 }
 
-/** Dashboard shadow variants: 8 / 6 / 4 dp, all brand lime. */
+/** Dashboard shadow variants: 8 / 6 / 4 dp, following the active accent. */
 val ShadowOffsetLarge = 8.dp
 val ShadowOffsetMedium = 6.dp
 val ShadowOffsetSmall = 4.dp
 
+@Composable
 fun Modifier.limeShadowLarge(
     shape: Shape = RoundedCornerShape(DozoCornerRadius),
-): Modifier = hardShadow(Lime, ShadowOffsetLarge, ShadowOffsetLarge, shape)
+): Modifier = hardShadow(LocalDozoAccent.current, ShadowOffsetLarge, ShadowOffsetLarge, shape)
 
+@Composable
 fun Modifier.limeShadowMedium(
     shape: Shape = RoundedCornerShape(DozoCornerRadius),
-): Modifier = hardShadow(Lime, ShadowOffsetMedium, ShadowOffsetMedium, shape)
+): Modifier = hardShadow(LocalDozoAccent.current, ShadowOffsetMedium, ShadowOffsetMedium, shape)
 
+@Composable
 fun Modifier.limeShadowSmall(
     shape: Shape = RoundedCornerShape(DozoCornerRadius),
-): Modifier = hardShadow(Lime, ShadowOffsetSmall, ShadowOffsetSmall, shape)
+): Modifier = hardShadow(LocalDozoAccent.current, ShadowOffsetSmall, ShadowOffsetSmall, shape)
 
 /**
  * Dashboard `:focus-visible` metrics (`src/index.css`): a 3dp solid outline

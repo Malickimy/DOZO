@@ -104,10 +104,10 @@ class ThemeContractTest {
     }
 
     @Test
-    fun shadowModifiersBuildWithoutAndroidGraphics() {
-        assertNotNull(Modifier.limeShadowLarge())
-        assertNotNull(Modifier.limeShadowMedium())
-        assertNotNull(Modifier.limeShadowSmall())
+    fun hardShadowBuildsWithAnExplicitColor() {
+        // `limeShadow*` now read LocalDozoAccent and are @Composable; the base
+        // builder stays plain, so it can still be asserted without Android graphics.
+        assertNotNull(Modifier.hardShadow(Lime, ShadowOffsetSmall, ShadowOffsetSmall))
     }
 
     // ---- shapes ----

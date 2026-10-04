@@ -12,6 +12,8 @@
     <string name="qr_done">Done</string>
     <string name="qr_logo_content_desc">Dozo logo</string>
     <string name="qr_code_content_desc">Google review QR code</string>
+    <string name="qr_source_dynamic">dynamic</string>
+    <string name="qr_source_static_fallback">static fallback</string>
 
     <!-- PIN -->
     <string name="pin_enter">Enter PIN</string>
@@ -42,6 +44,17 @@
     <string name="settings_tab_screen">Screen</string>
     <string name="settings_tab_connection">Connection</string>
     <string name="settings_tab_system">System</string>
+    <string name="settings_developer_mode">Developer mode</string>
+    <string name="settings_developer_mode_subtitle">Show the QR source on the transaction screen</string>
+    <string name="settings_qr_animation">QR animation</string>
+    <string name="settings_qr_animation_subtitle">Play the QR reveal animation</string>
+    <string name="settings_accent">Accent color</string>
+    <string name="settings_accent_lime">Lime</string>
+    <string name="settings_accent_sky">Sky</string>
+    <string name="settings_accent_coral">Coral</string>
+    <string name="settings_accent_violet">Violet</string>
+    <string name="settings_accent_amber">Amber</string>
+    <string name="settings_accent_pink">Pink</string>
     <string name="settings_close_mode">Close mode</string>
     <string name="settings_close_mode_subtitle">Auto-close the QR screen</string>
     <string name="settings_language">Language</string>

@@ -1,7 +1,9 @@
 package com.example.dozo
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QrPayloadResolverTest {
@@ -136,4 +138,118 @@ class QrPayloadResolverTest {
         assertNull(QrPayloadResolver.placeIdUrl(""))
         assertNull(QrPayloadResolver.placeIdUrl("   "))
     }
+
+    // --- resolveWithSource: one tag per branch (developer mode) ---
+
+    @Test
+    fun healthyPrimaryIsTaggedPrimaryAndDynamic() {
+        val resolution = resolveWithSource(
+            primaryUrl = primary,
+            serverHealthy = true,
+            staticReviewUrl = staticReview,
+            googlePlaceId = "ChIJ",
+            intentReviewUrl = reviewUrl
+        )
+        assertEquals(primary, resolution.url)
+        assertEquals(QrSource.PRIMARY, resolution.source)
+        assertTrue(resolution.source.dynamic)
+    }
+
+    @Test
+    fun healthyButNoPrimaryIsTaggedStaticReview() {
+        val resolution = resolveWithSource(
+            primaryUrl = null,
+            serverHealthy = true,
+            staticReviewUrl = staticReview,
+            googlePlaceId = "ChIJ",
+            intentReviewUrl = reviewUrl
+        )
+        assertEquals(staticReview, resolution.url)
+        assertEquals(QrSource.STATIC_REVIEW_URL, resolution.source)
+        assertFalse(resolution.source.dynamic)
+    }
+
+    @Test
+    fun staticReviewUrlIsTaggedStaticReview() {
+        val resolution = resolveWithSource(
+            primaryUrl = primary,
+            serverHealthy = false,
+            staticReviewUrl = staticReview,
+            googlePlaceId = "ChIJ",
+            intentReviewUrl = reviewUrl
+        )
+        assertEquals(staticReview, resolution.url)
+        assertEquals(QrSource.STATIC_REVIEW_URL, resolution.source)
+        assertFalse(resolution.source.dynamic)
+    }
+
+    @Test
+    fun persistedPlaceIdIsTaggedPlaceId() {
+        val resolution = resolveWithSource(
+            primaryUrl = primary,
+            serverHealthy = false,
+            staticReviewUrl = null,
+            googlePlaceId = "ChIJ",
+            intentReviewUrl = reviewUrl
+        )
+        assertEquals("${DozoContract.GOOGLE_REVIEW_BASE}?placeid=ChIJ", resolution.url)
+        assertEquals(QrSource.PLACE_ID, resolution.source)
+        assertFalse(resolution.source.dynamic)
+    }
+
+    @Test
+    fun intentReviewUrlIsTaggedIntentReviewUrl() {
+        val resolution = resolveWithSource(
+            primaryUrl = primary,
+            serverHealthy = false,
+            staticReviewUrl = null,
+            googlePlaceId = null,
+            intentReviewUrl = reviewUrl
+        )
+        assertEquals(reviewUrl, resolution.url)
+        assertEquals(QrSource.INTENT_REVIEW_URL, resolution.source)
+        assertFalse(resolution.source.dynamic)
+    }
+
+    @Test
+    fun unhealthyServerBestEffortPrimaryIsTaggedPrimaryFallbackAndDynamic() {
+        val resolution = resolveWithSource(
+            primaryUrl = primary,
+            serverHealthy = false,
+            staticReviewUrl = null,
+            googlePlaceId = null,
+            intentReviewUrl = null
+        )
+        assertEquals(primary, resolution.url)
+        assertEquals(QrSource.PRIMARY_FALLBACK, resolution.source)
+        assertTrue(resolution.source.dynamic)
+    }
+
+    @Test
+    fun nothingAvailableIsTaggedDefault() {
+        val resolution = resolveWithSource(
+            primaryUrl = null,
+            serverHealthy = false,
+            staticReviewUrl = null,
+            googlePlaceId = null,
+            intentReviewUrl = null
+        )
+        assertEquals(DozoContract.DEFAULT_REVIEW_URL, resolution.url)
+        assertEquals(QrSource.DEFAULT, resolution.source)
+        assertFalse(resolution.source.dynamic)
+    }
+
+    private fun resolveWithSource(
+        primaryUrl: String?,
+        serverHealthy: Boolean,
+        staticReviewUrl: String?,
+        googlePlaceId: String?,
+        intentReviewUrl: String?
+    ): QrResolution = QrPayloadResolver.resolveWithSource(
+        primaryUrl = primaryUrl,
+        serverHealthy = serverHealthy,
+        staticReviewUrl = staticReviewUrl,
+        googlePlaceId = googlePlaceId,
+        intentReviewUrl = intentReviewUrl
+    )
 }

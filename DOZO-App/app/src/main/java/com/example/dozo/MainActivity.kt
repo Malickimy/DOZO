@@ -33,6 +33,7 @@ import com.example.dozo.ui.UiState
 import com.example.dozo.ui.UpdatingOverlay
 import com.example.dozo.ui.theme.DozoScreenEnter
 import com.example.dozo.ui.theme.DozoTheme
+import com.example.dozo.ui.theme.accentColor
 import com.example.dozo.ui.theme.dozoMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
     private var remoteApplying by mutableStateOf(false)
     private var pendingRemoteConfig by mutableStateOf<TerminalConfig?>(null)
     private var approvedPending by mutableStateOf(false)
+    private var qrAnimationEnabled by mutableStateOf(true)
+    private var accentToken by mutableStateOf(AccentToken.DEFAULT)
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleManager.wrap(newBase))
@@ -68,6 +71,8 @@ class MainActivity : ComponentActivity() {
         val mapped = handleLaunch() ?: return
         enableEdgeToEdge()
         displayTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this)
+        qrAnimationEnabled = DozoConfig.isQrAnimationEnabled(this)
+        accentToken = DozoConfig.accentToken(this)
         refreshConnectionStatus()
         if (mapped is MappedState.Approved) {
             approvedPending = true
@@ -82,7 +87,7 @@ class MainActivity : ComponentActivity() {
             appScreen = AppScreen.SetupCode
         }
         setContent {
-            DozoTheme {
+            DozoTheme(accent = accentColor(accentToken)) {
                 val motion = dozoMotion()
                 Box(modifier = Modifier.fillMaxSize()) {
                     DozoScreenEnter(key = appScreen) {
@@ -115,6 +120,9 @@ class MainActivity : ComponentActivity() {
                     autoClose = DozoConfig.isAutoCloseEnabled(this),
                     merchantName = DozoConfig.merchantName(this),
                     promptText = DozoConfig.promptText(this),
+                    developerMode = DozoConfig.isDeveloperMode(this),
+                    qrSource = state.source,
+                    qrAnimationEnabled = qrAnimationEnabled,
                     onDismiss = {
                         applyPendingRemoteConfigIfAny()
                         closeAndFinish(RESULT_APPROVED)
@@ -147,6 +155,9 @@ class MainActivity : ComponentActivity() {
                 initialDisplayEnabled = DozoConfig.isDisplayEnabled(this),
                 initialActivated = DozoConfig.isActivationEnabled(this),
                 initialAutoCloseEnabled = DozoConfig.isAutoCloseEnabled(this),
+                initialDeveloperMode = DozoConfig.isDeveloperMode(this),
+                initialQrAnimationEnabled = qrAnimationEnabled,
+                initialAccent = accentToken,
                 initialTimeoutSeconds = DozoConfig.displayTimeoutSeconds(this),
                 initialLanguage = DozoConfig.language(this),
                 onApiBaseUrlChange = { DozoConfig.setApiBaseUrl(this, it) },
@@ -159,6 +170,15 @@ class MainActivity : ComponentActivity() {
                 onDisplayEnabledChange = { DozoConfig.setDisplayEnabled(this, it) },
                 onActivatedChange = { DozoConfig.setActivated(this, it) },
                 onAutoCloseEnabledChange = { DozoConfig.setAutoCloseEnabled(this, it) },
+                onDeveloperModeChange = { DozoConfig.setDeveloperMode(this, it) },
+                onQrAnimationEnabledChange = {
+                    qrAnimationEnabled = it
+                    DozoConfig.setQrAnimationEnabled(this, it)
+                },
+                onAccentChange = {
+                    accentToken = it
+                    DozoConfig.setAccentToken(this, it)
+                },
                 onTimeoutSecondsChange = { DozoConfig.setDisplayTimeoutSeconds(this, it) },
                 onLanguageChange = { DozoConfig.setLanguage(this, it) },
                 manualStatus = manualStatus,
@@ -335,8 +355,12 @@ class MainActivity : ComponentActivity() {
             DozoApi(DozoConfig.redirectBaseUrl(this), "")
                 .health(DozoContract.HEALTH_PROBE_TIMEOUT_MS)
         }.getOrDefault(false)
-        val payload = resolveApprovedPayload(paymentIntent, healthy)
-        uiState = UiState.DisplayQr(QrRenderer.render(payload), state.txnId)
+        val resolution = resolveApprovedPayload(paymentIntent, healthy)
+        uiState = UiState.DisplayQr(
+            bitmap = QrRenderer.render(resolution.url),
+            txnId = state.txnId,
+            source = resolution.source
+        )
         approvedPending = false
     }
 
@@ -351,10 +375,13 @@ class MainActivity : ComponentActivity() {
     private fun currentResultCode(): Int =
         if (approvedPending || uiState is UiState.DisplayQr) RESULT_APPROVED else RESULT_CANCELED
 
-    private fun resolveApprovedPayload(paymentIntent: PaymentIntent, serverHealthy: Boolean): String {
+    private fun resolveApprovedPayload(
+        paymentIntent: PaymentIntent,
+        serverHealthy: Boolean
+    ): QrResolution {
         val terminalId = paymentIntent.terminalId?.takeIf { it.isNotBlank() }
         val primaryUrl = terminalId?.let { "${DozoConfig.redirectBaseUrl(this)}/r/$it" }
-        return QrPayloadResolver.resolve(
+        return QrPayloadResolver.resolveWithSource(
             primaryUrl = primaryUrl,
             serverHealthy = serverHealthy,
             staticReviewUrl = DozoConfig.staticReviewUrl(this),

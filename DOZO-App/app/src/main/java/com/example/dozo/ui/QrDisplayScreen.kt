@@ -4,11 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -31,10 +31,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.dozo.QrSource
 import com.example.dozo.R
 import com.example.dozo.ui.theme.DozoGrowIn
 import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
+
+/** Bounded QR card; hugs the rendered code (quiet zone preserved) and stays centered. */
+private val QR_CONTAINER_SIZE = 260.dp
 
 @Composable
 fun QrDisplayScreen(
@@ -44,6 +48,9 @@ fun QrDisplayScreen(
     autoClose: Boolean,
     merchantName: String?,
     promptText: String?,
+    developerMode: Boolean = false,
+    qrSource: QrSource? = null,
+    qrAnimationEnabled: Boolean = true,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,20 +78,29 @@ fun QrDisplayScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = stringResource(R.string.qr_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
+            Image(
+                painter = painterResource(R.drawable.dozo_logo),
+                contentDescription = stringResource(R.string.qr_logo_content_desc),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.qr_transaction, txnId),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            if (developerMode && qrSource != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        if (qrSource.dynamic) {
+                            R.string.qr_source_dynamic
+                        } else {
+                            R.string.qr_source_static_fallback
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
             if (merchantName != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -98,20 +114,9 @@ fun QrDisplayScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            Image(
-                painter = painterResource(R.drawable.dozo_logo),
-                contentDescription = stringResource(R.string.qr_logo_content_desc),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(Modifier.height(24.dp))
-
             Card(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .size(QR_CONTAINER_SIZE)
                     .limeShadowLarge(MaterialTheme.shapes.large),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
@@ -120,15 +125,15 @@ fun QrDisplayScreen(
             ) {
                 DozoGrowIn(
                     key = txnId,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxSize(),
+                    enabled = qrAnimationEnabled
                 ) {
                     Image(
                         bitmap = bitmap,
                         contentDescription = stringResource(R.string.qr_code_content_desc),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .padding(20.dp),
+                            .fillMaxSize()
+                            .padding(12.dp),
                         contentScale = ContentScale.Fit
                     )
                 }

@@ -2,9 +2,11 @@ package com.example.dozo.ui.theme
 
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.example.dozo.AccentToken
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -93,5 +95,20 @@ class ThemeTokensTest {
         // Dashboard `:focus-visible`: `outline: 3px solid var(--fg); outline-offset: 3px`.
         assertEquals(3.dp, FocusOutlineWidth)
         assertEquals(3.dp, FocusOutlineOffset)
+    }
+
+    @Test
+    fun accentPresetsCoverEveryTokenAndFallBackToLime() {
+        // Default and unknown tokens resolve to the brand lime.
+        assertEquals(Lime, accentColor(null))
+        assertEquals(Lime, accentColor("magenta"))
+        // The preset palette covers exactly the persisted token vocabulary.
+        assertEquals(AccentToken.ALL.toSet(), AccentPresets.keys.toSet())
+        assertEquals(Lime, AccentPresets[AccentToken.LIME])
+        assertEquals(Color(0xFFA9D9FF), AccentPresets[AccentToken.SKY])
+        assertEquals(Color(0xFFFFB3A7), AccentPresets[AccentToken.CORAL])
+        assertEquals(Color(0xFFCDB8FF), AccentPresets[AccentToken.VIOLET])
+        assertEquals(Color(0xFFFFD98A), AccentPresets[AccentToken.AMBER])
+        assertEquals(Color(0xFFFFB8E1), AccentPresets[AccentToken.PINK])
     }
 }
