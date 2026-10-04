@@ -14,10 +14,14 @@ object QrRenderer {
         val modules = (probe.computedSize / probe.squareSize).coerceAtLeast(1)
         val squareSize = (sizePx / (modules + 2 * QUIET_ZONE_MODULES)).coerceAtLeast(1)
         val margin = QUIET_ZONE_MODULES * squareSize
-        val canvasSize = squareSize * (modules + 2 * QUIET_ZONE_MODULES)
+        // withMargin() both offsets the code and grows the canvas by 2 * margin,
+        // so the canvas must be the code-only size. Passing a canvas that already
+        // includes the quiet zone doubles the right/bottom margin and pushes the
+        // code off-center.
+        val qrCanvasSize = squareSize * modules
         val png = QRCode.ofSquares()
             .withSize(squareSize)
-            .withCanvasSize(canvasSize)
+            .withCanvasSize(qrCanvasSize)
             .withMargin(margin)
             .build(url)
             .render()
