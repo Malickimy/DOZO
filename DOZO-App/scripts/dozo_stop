@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# dozo_stop - Stop the running DOZO DX8000 AVD and wait for its port to free.
+#
+# Idempotent: if nothing is connected on $SERIAL, exit 0.
+#
+# Environment overrides:
+#   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
+#   ADB            adb binary        (default: $ANDROID_HOME/platform-tools/adb)
+#   AVD_NAME       AVD to stop       (default: Ingenico_AXIUM_DX8000)
+#   SERIAL         emulator serial   (default: emulator-5554)
+#   STOP_TIMEOUT   seconds to wait for the port to free (default: 30)
+
+set -euo pipefail
+
+ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
+AVD_NAME="${AVD_NAME:-Ingenico_AXIUM_DX8000}"
+SERIAL="${SERIAL:-emulator-5554}"
+STOP_TIMEOUT="${STOP_TIMEOUT:-30}"
+
+usage() {
+    cat <<EOF
+Usage: dozo_stop [-h|--help]
+
+Stop the running AVD "\$AVD_NAME" on \$SERIAL and wait for the port to free.
+
+Environment overrides:
+  ANDROID_HOME   Android SDK root (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
+  ADB            adb binary        (default: \$ANDROID_HOME/platform-tools/adb)
+  AVD_NAME       AVD to stop       (default: Ingenico_AXIUM_DX8000)
+  SERIAL         emulator serial   (default: emulator-5554)
+  STOP_TIMEOUT   seconds to wait  (default: 30)
+EOF
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) usage; exit 0 ;;
+        *) echo "dozo_stop: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [[ ! -x "$ADB" ]]; then
+    echo "ERROR: adb not found or not executable: $ADB" >&2
+    echo "       Set ANDROID_HOME or ADB to the correct location." >&2
+    exit 1
+fi
+
+if ! "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
+    echo "Nothing connected on $SERIAL; nothing to stop."
+    exit 0
+fi
+
+echo "==> stopping emulator on $SERIAL (AVD '$AVD_NAME')"
+"$ADB" -s "$SERIAL" emu kill >/dev/null 2>&1 || true
+
+deadline=$((SECONDS + STOP_TIMEOUT))
+while :; do
+    if ! "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
+        echo "Stopped."
+        exit 0
+    fi
+    if (( SECONDS >= deadline )); then
+        break
+    fi
+    sleep 1
+done
+
+echo "WARNING: $SERIAL still present after ${STOP_TIMEOUT}s; force-killing emulator." >&2
+pkill -f "qemu-system.*-avd ${AVD_NAME}" 2>/dev/null || true
+sleep 2
+if ! "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
+    echo "Stopped (forced)."
+    exit 0
+fi
+echo "ERROR: could not stop emulator on $SERIAL." >&2
+exit 1

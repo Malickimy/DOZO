@@ -73,5 +73,6 @@ adb logcat -d -t 200
 
 ## Notes
 
-- Emulator AVD: `Ingenico_AXIUM_DX8000`; boot with `dozo_boot` if absent.
+- Emulator AVD: `Ingenico_AXIUM_DX8000`; boot with `dozo_boot` if absent
+  (`dozo_boot --window` to make it visible in Android Studio for manual triage).
 - Verify the device is present first: `adb devices`.
