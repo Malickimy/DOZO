@@ -8,6 +8,17 @@ permission:
     githuber: allow
 tools:
   task: true
+  "github_*": false
+  "firecrawl_*": false
+  "context7_*": false
+  "sqlite_*": false
+  "android-mcp-server_*": false
+  "uiautomator2-mcp-server_*": false
+  "android-builder-mcp_*": false
+  "mobile-mcp_*": false
+  "ssh_*": false
+  "docker_*": false
+  "maps_*": false
 ---
 
 # QA Agent — Playwright
@@ -82,6 +93,9 @@ QA work lands in the same PR as the implementation. When the suite is green:
   violation; do not edit any contract file.
 - Prefer the lightest tool that proves the behavior. A trivial dashboard tweak may only
   need a Vitest component test — say so instead of forcing E2E.
+- When driving the Playwright MCP, re-snapshot after every navigation/click before
+  acting on a new ref; refs go stale the moment the page changes. Do not click a
+  ref, or call `wait_for`, before an up-to-date `browser_snapshot`.
 - Never push to `main`. Work on a branch/worktree and open a PR.
 - Commit as `test(<scope>): ...` with scope one of `DOZO-App` / `DOZO-Server` /
   `DOZO-Dashboard` / `root`. Concise title, 1–2 sentence body. Validate with

@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "subagent_depth": 2,
   "references": {
     "dozo-app-agent": {
       "path": "./DOZO-App",
@@ -44,7 +45,7 @@
     },
     "playwright": {
       "type": "local",
-      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "command": ["npx", "-y", "@playwright/mcp@latest", "--browser", "chromium", "--headless"],
       "enabled": false
     },
     "chrome-devtools": {
@@ -107,7 +108,8 @@
       ],
       "enabled": false,
       "environment": {
-        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin",
+        "ANDROID_SERIAL": "emulator-5554"
       }
     },
     "uiautomator2-mcp-server": {
@@ -115,7 +117,8 @@
       "command": ["/Users/malicky/.local/bin/uiautomator2-mcp-server", "stdio"],
       "enabled": false,
       "environment": {
-        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/Users/malicky/Library/Android/sdk/platform-tools:/Users/malicky/.local/bin:/usr/local/bin:/usr/bin:/bin",
+        "ANDROID_SERIAL": "emulator-5554"
       }
     },
     "android-builder-mcp": {
@@ -149,7 +152,7 @@
     "docker_*": false,
     "ssh_*": false,
     "mobile-mcp_*": false,
-    "github_*": true,
+    "github_*": false,
     "maps_*": false,
     "android-mcp-server_*": false,
     "uiautomator2-mcp-server_*": false,
