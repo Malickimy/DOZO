@@ -1,5 +1,6 @@
 package com.example.dozo.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -153,6 +156,20 @@ fun SettingsScreen(
                         }
                     )
                     Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.settings_accent),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    AccentDropdown(
+                        selected = accent,
+                        onSelect = {
+                            accent = it
+                            onAccentChange(it)
+                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
                     ToggleRow(
                         title = stringResource(R.string.settings_activated),
                         subtitle = stringResource(R.string.settings_activated_subtitle),
@@ -202,20 +219,6 @@ fun SettingsScreen(
                         onCheckedChange = {
                             qrAnimationEnabled = it
                             onQrAnimationEnabledChange(it)
-                        }
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(R.string.settings_accent),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    AccentDropdown(
-                        selected = accent,
-                        onSelect = {
-                            accent = it
-                            onAccentChange(it)
                         }
                     )
                     Spacer(Modifier.height(16.dp))
@@ -565,10 +568,15 @@ private fun AccentDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    // The theme's `surface` carries alpha, so composite it over the opaque
+    // background to give both the field and the menu a solid, readable surface.
+    val container = MaterialTheme.colorScheme.surface
+        .compositeOver(MaterialTheme.colorScheme.background)
     Box(modifier = modifier.fillMaxWidth()) {
         OutlinedButton(
             onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = container)
         ) {
             AccentSwatch(selected)
             Spacer(Modifier.width(12.dp))
@@ -585,7 +593,12 @@ private fun AccentDropdown(
         }
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            shape = MaterialTheme.shapes.large,
+            containerColor = container,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
             AccentToken.ALL.forEach { token ->
                 DropdownMenuItem(

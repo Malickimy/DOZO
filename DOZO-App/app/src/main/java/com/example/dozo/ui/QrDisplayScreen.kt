@@ -1,7 +1,7 @@
 package com.example.dozo.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,12 +36,6 @@ import com.example.dozo.R
 import com.example.dozo.ui.theme.DozoGrowIn
 import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
-
-/** Target QR card size; clamped to the available width so it never clips. */
-private val QR_CONTAINER_SIZE = 300.dp
-
-/** Margin between the card edge and the QR bitmap's own (preserved) quiet zone. */
-private val QR_IMAGE_PADDING = 8.dp
 
 @Composable
 fun QrDisplayScreen(
@@ -79,8 +72,7 @@ fun QrDisplayScreen(
                 .fillMaxSize()
                 .systemBarsPadding()
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(R.drawable.dozo_logo),
@@ -116,36 +108,39 @@ fun QrDisplayScreen(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Card(
+            Box(
                 modifier = Modifier
-                    .widthIn(max = QR_CONTAINER_SIZE)
                     .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .limeShadowLarge(MaterialTheme.shapes.large),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                DozoGrowIn(
-                    key = txnId,
-                    modifier = Modifier.fillMaxSize(),
-                    enabled = qrAnimationEnabled
-                ) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.qr_code_content_desc),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(QR_IMAGE_PADDING),
-                        contentScale = ContentScale.Fit
+                Card(
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .limeShadowLarge(MaterialTheme.shapes.large),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
+                ) {
+                    DozoGrowIn(
+                        key = txnId,
+                        modifier = Modifier.fillMaxSize(),
+                        enabled = qrAnimationEnabled
+                    ) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = stringResource(R.string.qr_code_content_desc),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 text = promptText ?: stringResource(R.string.qr_prompt),

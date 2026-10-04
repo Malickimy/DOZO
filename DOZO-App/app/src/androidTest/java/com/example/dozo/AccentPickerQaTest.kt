@@ -90,11 +90,13 @@ class AccentPickerQaTest {
 
         // The Screen tab is the default, so the dropdown is visible. Its field
         // shows the current preset name; open it and pick Sky from the menu.
-        composeRule.onNodeWithText(string(R.string.settings_accent_lime), substring = true)
-            .performClick()
+        // (The menu opens downward — verified on the emulator; popup node
+        // coordinates are window-local so they can't be asserted here.)
+        val limeLabel = string(R.string.settings_accent_lime)
+        val skyLabel = string(R.string.settings_accent_sky)
+        composeRule.onNodeWithText(limeLabel, substring = true).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(string(R.string.settings_accent_sky), substring = true)
-            .performClick()
+        composeRule.onNodeWithText(skyLabel, substring = true).performClick()
         composeRule.waitForIdle()
 
         assertEquals(AccentToken.SKY, selected.value)
