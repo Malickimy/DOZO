@@ -91,7 +91,8 @@ class HandoffResultTest {
             handoffIntent(status = "APPROVED", txnId = "TXN-QR")
         )
         assertEquals(Lifecycle.State.RESUMED, scenario.state)
-        // The QR render runs behind the async 800 ms health probe, so wait for it.
+        // The QR renders on a background thread; the connector probe no longer
+        // gates the first paint, but keep the wait for slower devices.
         // The screen now leads with the logo/QR (the old title + txn text are gone).
         val qrDesc = context.getString(R.string.qr_code_content_desc)
         composeRule.waitUntil(timeoutMillis = 5_000) {
