@@ -57,3 +57,6 @@ rm -f /tmp/dozo_qr.png
   ImageMagick: `magick /tmp/dozo_qr.png -crop 600x600+90+340 +repage /tmp/qr_crop.png`.
 - Ensure the screen is on and unlocked: `adb shell input keyevent KEYCODE_WAKEUP`.
 - A successful decode proves the payload; it does not prove the link is live.
+- For manual verification, the emulator must be visible in Android Studio: boot
+  with `dozo_boot --window` (or `--window --restart` to replace a headless
+  instance) before eyeballing the QR.

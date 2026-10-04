@@ -87,6 +87,19 @@ parsed diagnostics only.
   `DOZO-App/scripts/dozo_boot` if absent.
 - Server from the emulator is `http://10.0.2.2:3000` (`localhost` does not work).
 
+After you build and deploy a change, the result must be **visible in Android
+Studio** so the change can be verified manually. A headless emulator has no
+window and does not show up there, so boot with a window after deploying:
+
+```bash
+DOZO-App/scripts/dozo_clean_deploy
+DOZO-App/scripts/dozo_boot --window --restart   # or: dozo_stop && dozo_boot --window
+```
+
+If a windowed instance is already running on `emulator-5554`, reuse it (don't
+restart). adb and the Android MCPs work identically on a windowed emulator, so
+a visible instance serves both the agent and the human.
+
 ## Commit and hand off
 
 You do not commit or push yourself. After the feature is implemented and

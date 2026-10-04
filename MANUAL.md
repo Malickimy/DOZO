@@ -42,8 +42,29 @@ Merchant dashboard ──token auth──▶ Redirect server API ──▶ SQLit
 Boot the emulator:
 
 ```bash
-dozo_boot                 # headless, idempotent
+dozo_boot                 # headless, idempotent (agents/CI)
+dozo_boot --window        # visible window, for manual testing in Android Studio
 adb devices -l              # expect emulator-5554
+```
+
+### Manual testing with Android Studio
+
+`dozo_boot` boots headless by default (no window), which Android Studio does not
+surface. To test by hand, use **one** of:
+
+1. `dozo_boot --window` (or `dozo_boot --window --restart` to reboot an existing
+   instance). The AVD then appears as a window and in Android Studio's device
+   dropdown; Run/Debug/Apply Changes target `emulator-5554`.
+2. Launch `Ingenico_AXIUM_DX8000` from Android Studio's Device Manager instead.
+   `dozo_boot` is idempotent, so it detects the running AVD on `emulator-5554`
+   and reuses it — agents and you share the one instance.
+
+A running instance can't switch between headless and windowed. To change mode,
+stop it first:
+
+```bash
+dozo_stop
+dozo_boot --window        # or plain dozo_boot for headless
 ```
 
 ---
@@ -383,7 +404,8 @@ adb logcat -d -s MockPay | tail
 
 | Script | What it does |
 | --- | --- |
-| `dozo_boot` | Boot the AVD headlessly and wait for boot. |
+| `dozo_boot` | Boot the AVD and wait for boot (headless by default; `--window` for a visible instance, `--restart` to reboot in the requested mode). |
+| `dozo_stop` | Stop the running AVD and wait for its port to free. |
 | `dozo_clean_deploy` | Clean-build and install the app. |
 | `dozo_trigger_intent` | Fire a synthetic payment-result intent (`--approved/--canceled/--refused`, `--poc`, `--terminal`, `--merchant`, …). |
 | `dozo_verify_qr` | Screencap + zbarimg; assert the QR payload. |

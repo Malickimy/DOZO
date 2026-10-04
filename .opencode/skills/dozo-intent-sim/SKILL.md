@@ -107,3 +107,10 @@ adb shell uiautomator dump /sdcard/ui.xml && adb shell cat /sdcard/ui.xml | grep
   canceled/refused (no QR is rendered).
 - Watch logs: `adb logcat -d -t 100 | grep com.example.dozo`.
 - Confirm device: `adb devices` (AVD `Ingenico_AXIUM_DX8000`, boot `dozo_boot`).
+
+## Visibility in Android Studio
+
+Simulated results only matter if the change is visible for manual testing. Boot
+the emulator with a window (`dozo_boot --window`, or `dozo_boot --window
+--restart` to replace a headless instance) so the outcome screen shows up in
+Android Studio; `adb`/MCP driving works on the windowed emulator too.

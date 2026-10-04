@@ -58,3 +58,7 @@ What matters:
 - `local.properties` supplies `sdk.dir=/Users/malicky/Library/Android/sdk`.
 - If no tests exist yet, `testDebugUnitTest` is a no-op; say so rather than
   treating it as a failure.
+- After building and deploying a change, the result must be visible in Android
+  Studio for manual testing. A headless emulator has no window there, so boot
+  one with a window: `dozo_boot --window` (or `dozo_boot --window --restart` to
+  replace a running headless instance).
