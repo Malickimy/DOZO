@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 #
-# dozo_boot - Boot the DOZO DX8000 AVD headlessly and wait until Android is ready.
+# dozo_boot - Boot the DOZO DX8000 AVD (headless by default) and wait until
+# Android is ready.
 #
-# Idempotent: if the target AVD is already connected on $SERIAL the script
-# reports it and exits 0 without starting another emulator.
+# Headless by default so agents and CI can drive the device via adb/MCP without
+# a GUI. Pass --window (or set WINDOW=1) to boot a visible emulator that shows up
+# in Android Studio for manual testing.
+#
+# Idempotent: if the target AVD is already connected on $SERIAL in the requested
+# mode the script reports it and exits 0. If it is running in a different mode,
+# it fails with instructions (use --restart to stop and reboot in the requested
+# mode).
 #
 # Environment overrides:
 #   ANDROID_HOME   Android SDK root (default: $ANDROID_SDK_ROOT, else ~/Library/Android/sdk)
@@ -11,7 +18,9 @@
 #   EMULATOR       emulator binary   (default: $ANDROID_HOME/emulator/emulator)
 #   AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
 #   SERIAL         emulator serial   (default: emulator-5554)
+#   WINDOW         1 to boot with a window (same as --window)
 #   BOOT_TIMEOUT   seconds to wait for sys.boot_completed (default: 300)
+#   STOP_TIMEOUT   seconds to wait for the port to free on --restart (default: 30)
 #   LOG_FILE       emulator log      (default: /tmp/dozo-emulator.log)
 
 set -euo pipefail
@@ -21,15 +30,26 @@ ADB="${ADB:-$ANDROID_HOME/platform-tools/adb}"
 EMULATOR="${EMULATOR:-$ANDROID_HOME/emulator/emulator}"
 AVD_NAME="${AVD_NAME:-Ingenico_AXIUM_DX8000}"
 SERIAL="${SERIAL:-emulator-5554}"
+WINDOW="${WINDOW:-0}"
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-300}"
+STOP_TIMEOUT="${STOP_TIMEOUT:-30}"
 LOG_FILE="${LOG_FILE:-/tmp/dozo-emulator.log}"
+
+WINDOW_FLAG=0
+RESTART=0
 
 usage() {
     cat <<EOF
-Usage: dozo_boot [-h|--help]
+Usage: dozo_boot [--window] [--restart] [-h|--help]
 
-Boot the AVD "\$AVD_NAME" headlessly (detached) and wait for sys.boot_completed=1.
-If the target AVD is already connected on \$SERIAL, report it and exit 0 (idempotent).
+Boot the AVD "\$AVD_NAME" and wait for sys.boot_completed=1.
+
+Options:
+  --window          boot with a visible window (visible in Android Studio);
+                    default is headless.
+  --restart         stop a running instance of this AVD, then boot in the
+                    requested mode.
+  -h, --help        show this help.
 
 Environment overrides:
   ANDROID_HOME   Android SDK root (default: \$ANDROID_SDK_ROOT or ~/Library/Android/sdk)
@@ -37,46 +57,117 @@ Environment overrides:
   EMULATOR       emulator binary   (default: \$ANDROID_HOME/emulator/emulator)
   AVD_NAME       AVD to boot       (default: Ingenico_AXIUM_DX8000)
   SERIAL         emulator serial   (default: emulator-5554)
+  WINDOW         1 to boot with a window (same as --window)
   BOOT_TIMEOUT   seconds to wait   (default: 300)
+  STOP_TIMEOUT   seconds to wait for the port to free on --restart (default: 30)
   LOG_FILE       emulator log      (default: /tmp/dozo-emulator.log)
 EOF
 }
 
 for arg in "$@"; do
     case "$arg" in
-        -h|--help) usage; exit 0 ;;
+        -h|--help)   usage; exit 0 ;;
+        --window)    WINDOW_FLAG=1 ;;
+        --restart)   RESTART=1 ;;
         *) echo "dozo_boot: unknown argument: $arg" >&2; usage >&2; exit 2 ;;
     esac
 done
+
+if (( WINDOW_FLAG )); then
+    WINDOW=1
+fi
 
 if [[ ! -x "$ADB" ]]; then
     echo "ERROR: adb not found or not executable: $ADB" >&2
     echo "       Set ANDROID_HOME or ADB to the correct location." >&2
     exit 1
 fi
-
-# Idempotency: the target AVD must already be up on $SERIAL to skip booting.
-if "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
-    running_avd="$("$ADB" -s "$SERIAL" emu avd name 2>/dev/null | head -n 1 | tr -d '\r' || true)"
-    if [[ -z "$running_avd" ]]; then
-        running_avd="$("$ADB" -s "$SERIAL" shell getprop ro.kernel.qemu.avd_name 2>/dev/null | tr -d '\r' || true)"
-    fi
-    if [[ "$running_avd" == "$AVD_NAME" ]]; then
-        echo "AVD '$AVD_NAME' already connected on $SERIAL; nothing to boot."
-        "$ADB" devices
-        exit 0
-    fi
-    echo "WARNING: $SERIAL is running AVD '${running_avd:-unknown}', not '$AVD_NAME'; booting a new instance." >&2
-fi
-
 if [[ ! -x "$EMULATOR" ]]; then
     echo "ERROR: emulator not found or not executable: $EMULATOR" >&2
     echo "       Set ANDROID_HOME or EMULATOR to the correct location." >&2
     exit 1
 fi
 
-echo "Booting AVD '$AVD_NAME' headlessly; log: $LOG_FILE"
-nohup "$EMULATOR" -avd "$AVD_NAME" -no-window -no-audio -no-boot-anim >"$LOG_FILE" 2>&1 &
+is_running_headless() {
+    ps -ax -o command= 2>/dev/null | grep -F -- "-avd ${AVD_NAME}" | grep -F -- "-no-window" >/dev/null 2>&1
+}
+
+is_running_windowed() {
+    ps -ax -o command= 2>/dev/null | grep -F -- "-avd ${AVD_NAME}" | grep -vF -- "-no-window" >/dev/null 2>&1
+}
+
+wait_port_free() {
+    local serial="$1" timeout="${2:-30}"
+    local deadline=$((SECONDS + timeout))
+    while :; do
+        if ! "$ADB" -s "$serial" get-state >/dev/null 2>&1; then
+            return 0
+        fi
+        if (( SECONDS >= deadline )); then
+            return 1
+        fi
+        sleep 1
+    done
+}
+
+stop_running() {
+    echo "==> stopping running AVD '$AVD_NAME' on $SERIAL"
+    "$ADB" -s "$SERIAL" emu kill >/dev/null 2>&1 || true
+    if ! wait_port_free "$SERIAL" "$STOP_TIMEOUT"; then
+        echo "WARNING: $SERIAL did not free within ${STOP_TIMEOUT}s; force-killing emulator." >&2
+        pkill -f "qemu-system.*-avd ${AVD_NAME}" 2>/dev/null || true
+        sleep 2
+    fi
+}
+
+# Idempotency / mode handling.
+if "$ADB" -s "$SERIAL" get-state >/dev/null 2>&1; then
+    running_avd="$("$ADB" -s "$SERIAL" emu avd name 2>/dev/null | head -n 1 | tr -d '\r' || true)"
+    if [[ -z "$running_avd" ]]; then
+        running_avd="$("$ADB" -s "$SERIAL" shell getprop ro.kernel.qemu.avd_name 2>/dev/null | tr -d '\r' || true)"
+    fi
+    if [[ "$running_avd" == "$AVD_NAME" ]]; then
+        if (( RESTART )); then
+            stop_running
+        else
+            if is_running_headless; then mode=headless; else mode=windowed; fi
+            if (( WINDOW )) && [[ "$mode" == "windowed" ]]; then
+                echo "AVD '$AVD_NAME' already connected on $SERIAL (windowed); nothing to boot."
+                "$ADB" devices
+                exit 0
+            fi
+            if (( ! WINDOW )) && [[ "$mode" == "headless" ]]; then
+                echo "AVD '$AVD_NAME' already connected on $SERIAL (headless); nothing to boot."
+                "$ADB" devices
+                exit 0
+            fi
+            echo "ERROR: '$AVD_NAME' is already running $mode on $SERIAL." >&2
+            if (( WINDOW )); then
+                echo "       To get a visible window, run: dozo_stop && dozo_boot --window" >&2
+                echo "       Or force a reboot in the requested mode: dozo_boot --window --restart" >&2
+            else
+                echo "       A windowed instance is already running; agents can reuse it, or run:" >&2
+                echo "       dozo_stop && dozo_boot" >&2
+            fi
+            exit 3
+        fi
+    else
+        echo "WARNING: $SERIAL is running AVD '${running_avd:-unknown}', not '$AVD_NAME'; booting a new instance." >&2
+        if (( RESTART )); then
+            stop_running
+        fi
+    fi
+fi
+
+EMU_ARGS=(-avd "$AVD_NAME" -no-boot-anim)
+if (( WINDOW )); then
+    echo "Booting AVD '$AVD_NAME' (windowed); log: $LOG_FILE"
+else
+    echo "Booting AVD '$AVD_NAME' headlessly; log: $LOG_FILE"
+    EMU_ARGS+=(-no-window -no-audio)
+fi
+
+nohup "$EMULATOR" "${EMU_ARGS[@]}" >"$LOG_FILE" 2>&1 &
 disown 2>/dev/null || true
 
 echo "Waiting for device to appear..."
@@ -97,7 +188,7 @@ while :; do
     sleep 2
 done
 
-echo "AVD '$AVD_NAME' booted."
+echo "AVD '$AVD_NAME' booted ($([ "$WINDOW" = 1 ] && echo windowed || echo headless))."
 echo "Serial:  $SERIAL"
 "$ADB" -s "$SERIAL" shell wm size
 "$ADB" -s "$SERIAL" shell wm density
