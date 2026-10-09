@@ -45,6 +45,7 @@ Editing rules:
 | App | `DOZO-App/` | `app/**`, `mockpay/**`, `scripts/dozo_*`, `scripts/mockpay_deploy`, `scripts/check_apk_size`, `contracts/android-*.md` |
 | Server | `DOZO-Server/` | entire directory, `contracts/http-api.md`, `contracts/db-schema.md`, `contracts/env.md` |
 | Dashboard | `DOZO-Dashboard/` | `src/**`, `e2e/**`, SPA build config (frontend only), `contracts/dashboard.md` |
+| Website | `DOZO-Website/` | entire directory (independent public marketing-site project; application toolchain TBD; no shared HTTP contract) |
 | Contract & docs | `.` (repo root) | `CONTRACTS.md`, `contracts/env.md`, `CONTEXT.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |
 | Docs | Papier Obsidian vault (`obsidian` CLI, vault name `Papier`) | vault notes |
 
