@@ -9,7 +9,7 @@ Single-file read/write was replaced by one file per workstream so parallel sprin
 distinct files and merge cleanly. Root (`CONTRACTS.md`, `contracts/env.md`) is owned by
 the `contract` agent; every other contract file is owned by its project agent.
 
-_Last synced from code on 2026-09-29. The workspace is a single monorepo (three projects under one git repo, remote `git@github.com:Malickimy/DOZO.git`; the main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout). Container/runtime env vars (`CONNECTOR_PORT`, `CONNECTOR_SPOOL_PATH`, `DASHBOARD_DIST_PATH`) and per-container `DB_PATH` are documented in [`contracts/env.md`](contracts/env.md)._
+_Last synced from code on 2026-09-29. The repo has four project contexts (App, Server, Dashboard, Website) in a single monorepo under one git repo, remote `git@github.com:Malickimy/DOZO.git`; Website is currently only a scaffold with no application toolchain or shared HTTP contract. The main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout. Container/runtime env vars (`CONNECTOR_PORT`, `CONNECTOR_SPOOL_PATH`, `DASHBOARD_DIST_PATH`) and per-container `DB_PATH` are documented in [`contracts/env.md`](contracts/env.md)._
 
 _Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. The App R3/R4/R6 consumers landed in PR #62 (merged 2026-09-28), and the Dashboard consumer rows were restored in this reconciliation (PR #66); R1–R7 remain server-implemented (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md))._
 
