@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.dozo.R
@@ -21,7 +20,7 @@ import com.example.dozo.R
 fun UpdatingOverlay(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = Color.Black.copy(alpha = 0.72f)
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -33,7 +32,7 @@ fun UpdatingOverlay(modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(R.string.settings_updating),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
+                color = MaterialTheme.colorScheme.background
             )
         }
     }

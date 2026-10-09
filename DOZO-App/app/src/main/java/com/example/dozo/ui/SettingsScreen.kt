@@ -1,6 +1,9 @@
 package com.example.dozo.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,12 +11,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,13 +41,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.dozo.AccentToken
 import com.example.dozo.ConnectionStatus
 import com.example.dozo.DozoContract
 import com.example.dozo.Language
 import com.example.dozo.R
+import com.example.dozo.ui.theme.accentColor
 import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -56,10 +72,12 @@ fun SettingsScreen(
     initialMerchantName: String,
     initialPromptText: String,
     initialDisplayEnabled: Boolean,
-    initialActivated: Boolean,
     initialAutoCloseEnabled: Boolean,
     initialTimeoutSeconds: Int,
     initialLanguage: String,
+    initialDeveloperMode: Boolean = false,
+    initialQrAnimationEnabled: Boolean = true,
+    initialAccent: String = AccentToken.DEFAULT,
     onApiBaseUrlChange: (String) -> Unit,
     onRedirectBaseUrlChange: (String) -> Unit,
     onMerchantIdChange: (String) -> Unit,
@@ -68,10 +86,12 @@ fun SettingsScreen(
     onMerchantNameChange: (String) -> Unit,
     onPromptTextChange: (String) -> Unit,
     onDisplayEnabledChange: (Boolean) -> Unit,
-    onActivatedChange: (Boolean) -> Unit,
     onAutoCloseEnabledChange: (Boolean) -> Unit,
     onTimeoutSecondsChange: (Int) -> Unit,
     onLanguageChange: (String) -> Unit,
+    onDeveloperModeChange: (Boolean) -> Unit = {},
+    onQrAnimationEnabledChange: (Boolean) -> Unit = {},
+    onAccentChange: (String) -> Unit = {},
     manualStatus: String?,
     lastHeartbeat: ConnectionStatus.Snapshot,
     lastConfigSync: ConnectionStatus.Snapshot,
@@ -91,10 +111,12 @@ fun SettingsScreen(
     var merchantName by remember { mutableStateOf(initialMerchantName) }
     var promptText by remember { mutableStateOf(initialPromptText) }
     var displayEnabled by remember { mutableStateOf(initialDisplayEnabled) }
-    var activated by remember { mutableStateOf(initialActivated) }
     var autoCloseEnabled by remember { mutableStateOf(initialAutoCloseEnabled) }
     var timeoutSeconds by remember { mutableFloatStateOf(initialTimeoutSeconds.toFloat()) }
     var language by remember { mutableStateOf(initialLanguage) }
+    var developerMode by remember { mutableStateOf(initialDeveloperMode) }
+    var qrAnimationEnabled by remember { mutableStateOf(initialQrAnimationEnabled) }
+    var accent by remember { mutableStateOf(initialAccent) }
     var selectedTab by remember { mutableIntStateOf(TAB_SCREEN) }
 
     Surface(
@@ -131,13 +153,17 @@ fun SettingsScreen(
                         }
                     )
                     Spacer(Modifier.height(16.dp))
-                    ToggleRow(
-                        title = stringResource(R.string.settings_activated),
-                        subtitle = stringResource(R.string.settings_activated_subtitle),
-                        checked = activated,
-                        onCheckedChange = {
-                            activated = it
-                            onActivatedChange(it)
+                    Text(
+                        text = stringResource(R.string.settings_accent),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    AccentDropdown(
+                        selected = accent,
+                        onSelect = {
+                            accent = it
+                            onAccentChange(it)
                         }
                     )
                     Spacer(Modifier.height(16.dp))
@@ -172,6 +198,16 @@ fun SettingsScreen(
                                 DozoContract.MIN_DISPLAY_TIMEOUT_SECONDS - 1
                         )
                     }
+                    Spacer(Modifier.height(16.dp))
+                    ToggleRow(
+                        title = stringResource(R.string.settings_qr_animation),
+                        subtitle = stringResource(R.string.settings_qr_animation_subtitle),
+                        checked = qrAnimationEnabled,
+                        onCheckedChange = {
+                            qrAnimationEnabled = it
+                            onQrAnimationEnabledChange(it)
+                        }
+                    )
                     Spacer(Modifier.height(16.dp))
                     ConfigField(
                         label = stringResource(R.string.settings_merchant_name),
@@ -290,6 +326,16 @@ fun SettingsScreen(
                 }
 
                 TAB_SYSTEM -> {
+                    ToggleRow(
+                        title = stringResource(R.string.settings_developer_mode),
+                        subtitle = stringResource(R.string.settings_developer_mode_subtitle),
+                        checked = developerMode,
+                        onCheckedChange = {
+                            developerMode = it
+                            onDeveloperModeChange(it)
+                        }
+                    )
+                    Spacer(Modifier.height(24.dp))
                     Text(
                         text = stringResource(R.string.settings_language),
                         style = MaterialTheme.typography.bodyLarge,
@@ -383,6 +429,11 @@ private fun SettingsTabChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+        ),
         modifier = modifier
     )
 }
@@ -495,4 +546,81 @@ private fun LanguageOption(
             color = MaterialTheme.colorScheme.onBackground
         )
     }
+}
+
+@Composable
+private fun AccentDropdown(
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    // The theme's `surface` carries alpha, so composite it over the opaque
+    // background to give both the field and the menu a solid, readable surface.
+    val container = MaterialTheme.colorScheme.surface
+        .compositeOver(MaterialTheme.colorScheme.background)
+    Box(modifier = modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = container)
+        ) {
+            AccentSwatch(selected)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = stringResource(accentLabelRes(selected)),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Start,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "\u25BE",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = MaterialTheme.shapes.large,
+            containerColor = container,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        ) {
+            AccentToken.ALL.forEach { token ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(accentLabelRes(token))) },
+                    leadingIcon = { AccentSwatch(token) },
+                    trailingIcon = if (token == selected) {
+                        { Text("\u2713", color = MaterialTheme.colorScheme.primary) }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(token)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccentSwatch(token: String, size: Dp = 20.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(accentColor(token))
+    )
+}
+
+private fun accentLabelRes(token: String): Int = when (token) {
+    AccentToken.SKY -> R.string.settings_accent_sky
+    AccentToken.CORAL -> R.string.settings_accent_coral
+    AccentToken.VIOLET -> R.string.settings_accent_violet
+    AccentToken.AMBER -> R.string.settings_accent_amber
+    AccentToken.PINK -> R.string.settings_accent_pink
+    else -> R.string.settings_accent_lime
 }

@@ -67,33 +67,35 @@ class MockPayActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MockPayScreen(
-                terminalId = terminalId,
-                onTerminalIdChange = { terminalId = it },
-                merchantId = merchantId,
-                onMerchantIdChange = { merchantId = it },
-                amountCents = amountCents,
-                onAmountCentsChange = { amountCents = it },
-                transactionId = transactionId,
-                onTransactionIdChange = { transactionId = it },
-                reviewUrl = reviewUrl,
-                onReviewUrlChange = { reviewUrl = it },
-                resultText = resultText,
-                onApprove = { launchTransaction(ACTION_APPROVED, STATUS_APPROVED, null) },
-                onCancel = { launchTransaction(ACTION_CANCELED, STATUS_CANCELED, "USER_CANCELED") },
-                onRefuse = { launchTransaction(ACTION_REFUSED, STATUS_REFUSED, "DECLINED") },
-                onManualLaunch = {
-                    launcher.launch(
-                        Intent().setComponent(ComponentName(DOZO_PACKAGE, DOZO_ACTIVITY))
-                    )
-                },
-                onForceStop = {
-                    getSystemService(ActivityManager::class.java)
-                        .killBackgroundProcesses(DOZO_PACKAGE)
-                    resultText = "Force-stopped $DOZO_PACKAGE"
-                    Log.i(TAG, "force-stop requested for $DOZO_PACKAGE")
-                }
-            )
+            DozoTheme {
+                MockPayScreen(
+                    terminalId = terminalId,
+                    onTerminalIdChange = { terminalId = it },
+                    merchantId = merchantId,
+                    onMerchantIdChange = { merchantId = it },
+                    amountCents = amountCents,
+                    onAmountCentsChange = { amountCents = it },
+                    transactionId = transactionId,
+                    onTransactionIdChange = { transactionId = it },
+                    reviewUrl = reviewUrl,
+                    onReviewUrlChange = { reviewUrl = it },
+                    resultText = resultText,
+                    onApprove = { launchTransaction(ACTION_APPROVED, STATUS_APPROVED, null) },
+                    onCancel = { launchTransaction(ACTION_CANCELED, STATUS_CANCELED, "USER_CANCELED") },
+                    onRefuse = { launchTransaction(ACTION_REFUSED, STATUS_REFUSED, "DECLINED") },
+                    onManualLaunch = {
+                        launcher.launch(
+                            Intent().setComponent(ComponentName(DOZO_PACKAGE, DOZO_ACTIVITY))
+                        )
+                    },
+                    onForceStop = {
+                        getSystemService(ActivityManager::class.java)
+                            .killBackgroundProcesses(DOZO_PACKAGE)
+                        resultText = "Force-stopped $DOZO_PACKAGE"
+                        Log.i(TAG, "force-stop requested for $DOZO_PACKAGE")
+                    }
+                )
+            }
         }
     }
 

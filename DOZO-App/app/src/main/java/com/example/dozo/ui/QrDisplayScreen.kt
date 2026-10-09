@@ -1,7 +1,7 @@
 package com.example.dozo.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,7 +31,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.dozo.QrSource
 import com.example.dozo.R
+import com.example.dozo.ui.theme.DozoGrowIn
+import com.example.dozo.ui.theme.limeShadowLarge
 import kotlinx.coroutines.delay
 
 @Composable
@@ -43,6 +45,9 @@ fun QrDisplayScreen(
     autoClose: Boolean,
     merchantName: String?,
     promptText: String?,
+    developerMode: Boolean = false,
+    qrSource: QrSource? = null,
+    qrAnimationEnabled: Boolean = true,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -67,23 +72,31 @@ fun QrDisplayScreen(
                 .fillMaxSize()
                 .systemBarsPadding()
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = stringResource(R.string.qr_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
+            Image(
+                painter = painterResource(R.drawable.dozo_logo),
+                contentDescription = stringResource(R.string.qr_logo_content_desc),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.qr_transaction, txnId),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            if (developerMode && qrSource != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        if (qrSource.dynamic) {
+                            R.string.qr_source_dynamic
+                        } else {
+                            R.string.qr_source_static_fallback
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
             if (merchantName != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -95,38 +108,39 @@ fun QrDisplayScreen(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Image(
-                painter = painterResource(R.drawable.dozo_logo),
-                contentDescription = stringResource(R.string.qr_logo_content_desc),
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = stringResource(R.string.qr_code_content_desc),
+                Card(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .aspectRatio(1f)
-                        .padding(20.dp),
-                    contentScale = ContentScale.Fit
-                )
+                        .limeShadowLarge(MaterialTheme.shapes.large),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                ) {
+                    DozoGrowIn(
+                        key = txnId,
+                        modifier = Modifier.fillMaxSize(),
+                        enabled = qrAnimationEnabled
+                    ) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = stringResource(R.string.qr_code_content_desc),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Text(
                 text = promptText ?: stringResource(R.string.qr_prompt),
@@ -136,8 +150,8 @@ fun QrDisplayScreen(
             )
             Spacer(Modifier.height(12.dp))
             if (autoClose) {
-                LinearProgressIndicator(
-                    progress = { secondsLeft / timeoutSeconds.toFloat() },
+                DozoProgressBar(
+                    progress = secondsLeft / timeoutSeconds.toFloat(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
