@@ -4,13 +4,14 @@ Closes #
 
 ## Workstreams affected
 
-- [ ] `workstream:app`
-- [ ] `workstream:server`
-- [ ] `workstream:dashboard`
-- [ ] `workstream:website`
-- [ ] `workstream:root`
+- [ ] `app`
+- [ ] `server`
+- [ ] `dashboard`
+- [ ] `website`
+- [ ] `root`
 
-Apply every affected `workstream:*` label to this PR. Apply the matching `kind:*` label.
+Apply every affected workstream label to this PR. Apply the matching type label
+(`task`, `bug`, `maintenance`, or `qa`).
 
 ## Change summary
 

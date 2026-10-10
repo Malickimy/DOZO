@@ -2,14 +2,13 @@ name: Bug report
 description: Report a reproducible defect in a DOZO workstream.
 title: "Bug: "
 labels:
-  - "kind:bug"
-  - "state:backlog"
+  - "bug"
 body:
   - type: markdown
     attributes:
       value: >-
-        This form adds the bug and backlog labels. After selecting the workstream and
-        priority, add the matching `workstream:*` and `priority:*` labels to the issue.
+        This form adds the bug label. After selecting the workstream and priority, add the
+        matching workstream and `p0`/`p1`/`p2` labels to the issue.
   - type: dropdown
     id: workstream
     attributes:

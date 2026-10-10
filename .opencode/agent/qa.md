@@ -65,7 +65,7 @@ agent verifies the end-to-end behavior and cross-project failure handling.
 ## Coverage gaps
 
 This agent is read-only. If an integrated acceptance path needs new test code, report the
-gap and ask the coordinator to create a `kind:qa` issue under the capability. The task
+gap and ask the coordinator to create a `qa` issue under the capability. The task
 runner sends that issue to the appropriate module QA agent, which owns test files on the
 task branch. Report failures with the assertion, reproduction, and command so the
 implementation specialist can fix behavior.

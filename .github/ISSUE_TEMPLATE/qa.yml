@@ -2,14 +2,13 @@ name: QA task
 description: Define a verification task for a project or integrated capability.
 title: "QA: "
 labels:
-  - "kind:qa"
-  - "state:backlog"
+  - "qa"
 body:
   - type: markdown
     attributes:
       value: >-
-        This form adds QA and backlog labels. After selecting the workstream and priority,
-        add the matching `workstream:*` and `priority:*` labels to the issue.
+        This form adds the qa label. After selecting the workstream and priority, add the
+        matching workstream and `p0`/`p1`/`p2` labels to the issue.
   - type: dropdown
     id: workstream
     attributes:

@@ -2,14 +2,13 @@ name: Work item
 description: Create one project-owned implementation task.
 title: "Task: "
 labels:
-  - "kind:task"
-  - "state:backlog"
+  - "task"
 body:
   - type: markdown
     attributes:
       value: >-
         One issue should represent one independently verifiable task. Add the matching
-        `workstream:*` and `priority:*` labels after selecting them below. Use native
+        workstream and `p0`/`p1`/`p2` labels after selecting them below. Use native
         GitHub relationships for parent and blocking edges.
   - type: dropdown
     id: workstream
