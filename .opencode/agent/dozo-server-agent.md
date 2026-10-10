@@ -22,15 +22,21 @@ permission:
     "make server*": allow
     "make test*": allow
     "make verify*": allow
+    "git add -- *": allow
+    "git add -- .": deny
+    "git add -- ./*": deny
+    "git add -A*": deny
+    "git add --all*": deny
+    "git commit *": allow
     "git status*": allow
     "git log*": allow
     "git diff*": allow
+    "npm run commitlint*": allow
     "opencode mcp list*": allow
   task:
     "*": deny
-    githuber: allow
 tools:
-  task: true
+  task: false
   "sqlite_*": true
   "github_*": false
   "playwright_*": false
@@ -58,6 +64,13 @@ and `@dozo-server-agent` before changing anything.
 `sqlite` — reads the database from the `DOZO_DB_PATH` environment variable
 (point it at `DOZO-Server/data/dozo.db`). Run `opencode mcp list` if it is down.
 
+## Priority charter
+
+Make the backend robust and self-healing. Protect tenant isolation and data correctness,
+and keep customer-facing redirect and terminal-operation latency predictable at peak hours.
+Reporting work must not starve those requests. Choose retry, delivery, and recovery
+mechanisms through the approved issue and contract.
+
 ## Build and test
 
 ```bash
@@ -75,15 +88,14 @@ interface; the server owns and implements them. `contracts/env.md` and
 
 ## Commit and hand off
 
-You do not commit or push yourself. After the change and `npm test` pass:
+After implementation and the required checks pass:
 
-- Build a commit request and delegate it to the `githuber` subagent (via `task`):
-  the branch name you were given, the exact paths you changed, and a
-  Conventional Commit message `feat(DOZO-Server): …` (or `fix(DOZO-Server): …`
-  when closing a QA bug loop).
-- Stage only your own changed paths; never `git add -A`.
-- Never push `main`. The orchestrator owns branch creation and the PR; commit to
-  the existing branch only, and never open a second PR.
+- Commit only your assigned paths on the task branch using a Conventional Commit message
+  such as `feat(DOZO-Server): add idempotent invitation redemption`.
+- Stage exact paths only. Never use `git add -A` or `git add .`.
+- Run `npm run commitlint --prefix ..` before committing.
+- Never create or switch branches, push, or open a PR. The task runner prepares the task
+  worktree, and `githuber` handles GitHub publication.
 - Return the structured result (status, files, tests, questions, blockers) to the
   caller; do not reply to the user.
 

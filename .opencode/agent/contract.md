@@ -19,12 +19,18 @@ permission:
     "git status*": allow
     "git log*": allow
     "git diff*": allow
+    "git add -- *": allow
+    "git add -- .": deny
+    "git add -- ./*": deny
+    "git add -A*": deny
+    "git add --all*": deny
+    "git commit *": allow
+    "npm run commitlint*": allow
     "opencode mcp list*": allow
   task:
     "*": deny
-    githuber: allow
 tools:
-  task: true
+  task: false
   "sqlite_*": false
   "github_*": false
   "playwright_*": false
@@ -79,13 +85,16 @@ Never edit code in `DOZO-App/`, `DOZO-Server/`, or `DOZO-Dashboard/`.
 
 ## Commit and hand off
 
-You do not commit or push yourself. After the edit:
+After an approved contract edit, follow the caller's commit instruction. If the caller says
+to leave the work uncommitted, return the edit and stop. Never commit or delegate a commit
+in that case.
 
-- Build a commit request and delegate it to the `githuber` subagent (via `task`): the branch
-  name you were given, the exact paths you changed, and a Conventional Commit message
-  `docs(root): …` (or `feat(root): …` / `fix(root): …` when the change alters the interface).
-- Stage only your own changed paths; never `git add -A`.
-- Never push `main`. Commit to the existing branch only; never open a second PR.
+- Commit only the assigned contract paths locally with a Conventional Commit message
+  `docs(root): ...` or the applicable `feat(root): ...` / `fix(root): ...` type.
+- Stage exact paths only. Never use `git add -A` or `git add .`.
+- Run `npm run commitlint` before committing.
+- Never create or switch branches, push, or open a PR. The task runner prepares the task
+  worktree, and `githuber` handles GitHub publication.
 - Return the structured result (status, files, tests, questions, blockers) to the caller;
   do not reply to the user.
 

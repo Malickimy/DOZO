@@ -22,15 +22,21 @@ permission:
     "make dashboard*": allow
     "make test*": allow
     "make verify*": allow
+    "git add -- *": allow
+    "git add -- .": deny
+    "git add -- ./*": deny
+    "git add -A*": deny
+    "git add --all*": deny
+    "git commit *": allow
     "git status*": allow
     "git log*": allow
     "git diff*": allow
+    "npm run commitlint*": allow
     "opencode mcp list*": allow
   task:
     "*": deny
-    githuber: allow
 tools:
-  task: true
+  task: false
   "playwright_*": true
   "chrome-devtools_*": false
   "sqlite_*": false
@@ -58,6 +64,13 @@ portal (`DOZO-Dashboard/`). Work from `DOZO-Dashboard/`; read `AGENTS.md`,
 `playwright` — explore and drive the live UI while authoring tests.
 `chrome-devtools` is off by default; enable it on request.
 
+## Priority charter
+
+Make merchant and operator journeys easy to understand. Keep the current DOZO theme, fully
+support Polish and English, and explain setup with short examples. A merchant should be
+able to set up a terminal in 5-10 minutes. Treat role-aware feedback, empty states, errors,
+accessibility, and safe merchant switching as part of the feature.
+
 ## Build and test
 
 ```bash
@@ -75,16 +88,14 @@ you consume `contracts/http-api.md` but must not change it.
 
 ## Commit and hand off
 
-You do not commit or push yourself. After the change and tests pass:
+After implementation and the required checks pass:
 
-- Build a commit request and delegate it to the `githuber` subagent (via `task`):
-  the branch name you were given, the exact paths you changed, and a
-  Conventional Commit message `feat(DOZO-Dashboard): …` (or
-  `fix(DOZO-Dashboard): …` when closing a QA bug loop; `test(DOZO-Dashboard): …`
-  for tests).
-- Stage only your own changed paths; never `git add -A`.
-- Never push `main`. The orchestrator owns branch creation and the PR; commit to
-  the existing branch only, and never open a second PR.
+- Commit only your assigned paths on the task branch using a Conventional Commit message
+  such as `feat(DOZO-Dashboard): simplify register setup`.
+- Stage exact paths only. Never use `git add -A` or `git add .`.
+- Run `npm run commitlint --prefix ..` before committing.
+- Never create or switch branches, push, or open a PR. The task runner prepares the task
+  worktree, and `githuber` handles GitHub publication.
 - Return the structured result (status, files, tests, questions, blockers) to the
   caller; do not reply to the user.
 
