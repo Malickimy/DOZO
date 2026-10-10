@@ -19,6 +19,8 @@ permission:
     "git diff*": allow
     "scripts/publish-task-branch.sh": allow
     "../scripts/publish-task-branch.sh": allow
+    "gh label *": allow
+    "gh pr edit*": allow
   webfetch: deny
   websearch: deny
   task: deny
@@ -59,8 +61,16 @@ issues, labels, pull requests, releases, or checks. Scope every operation to
 - The user may explicitly authorize other GitHub actions, such as creating initial
   capability issues or changing labels. Do not infer that authorization from a planning
   discussion.
-- The checked-in `.github/labels.yml` is a human-applied manifest. Do not create all labels
-  from it automatically.
+- The checked-in `.github/labels.yml` is the label manifest. Sync it only on an explicit
+  user request; do not create labels automatically.
+
+## Label management
+
+The GitHub MCP has no label create, update, or delete tool, so label operations use the
+`gh` CLI. You may run `gh label create`, `gh label edit`, `gh label delete`, and `gh label list`,
+and change only labels on a PR with `gh pr edit ... --add-label/--remove-label`. Apply the
+checked-in `.github/labels.yml` when the user asks to sync labels. Use `gh` for nothing
+else; all other GitHub API actions use the GitHub MCP.
 
 ## Local Git boundary
 
@@ -68,7 +78,8 @@ Implementation and QA agents make local commits for their own files. You may ins
 current branch and run `scripts/publish-task-branch.sh` (or `../scripts/publish-task-branch.sh`
 from a project directory) after authorization. The script publishes only the current clean
 `work/<issue>-<slug>` branch. Do not stage or commit files, amend commits, force-push,
-change branches, or push `main`. Never use `gh`; GitHub API actions use the GitHub MCP.
+change branches, or push `main`. For everything other than label commands, use the GitHub
+MCP rather than `gh`.
 
 Before pushing, confirm the current branch matches the issue worktree and that the latest
 local commit belongs to the requested task. Never push when the worktree has uncommitted
