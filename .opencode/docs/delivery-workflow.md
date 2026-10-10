@@ -25,6 +25,8 @@ these labels in GitHub; the file does not change GitHub by itself.
 - States: `ready`, `in-progress`, `blocked`, `in-review`
 - Priorities: `p0`, `p1`, `p2`
 - Types: `capability`, `task`, `bug`, `qa`, `maintenance`
+- Flags: `db-change` (add when a task changes the database schema, migrations, or
+  persisted data shape; it is a flag, not a state or type)
 
 An executable issue has one workstream label, one type label, one priority label, and at
 most one state label. An issue with no state label is backlog. Capability parent issues
