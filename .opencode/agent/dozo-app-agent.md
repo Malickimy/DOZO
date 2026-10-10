@@ -22,16 +22,22 @@ permission:
     "make app*": allow
     "make test*": allow
     "make verify*": allow
+    "git add -- *": allow
+    "git add -- .": deny
+    "git add -- ./*": deny
+    "git add -A*": deny
+    "git add --all*": deny
+    "git commit *": allow
     "git status*": allow
     "git log*": allow
     "git diff*": allow
+    "npm run commitlint*": allow
     "opencode mcp list*": allow
     "DOZO-App/scripts/*": allow
   task:
     "*": deny
-    githuber: allow
 tools:
-  task: true
+  task: false
   "android-mcp-server_*": true
   "uiautomator2-mcp-server_*": true
   "android-builder-mcp_*": true
@@ -70,6 +76,13 @@ Load the matching skill with the `skill` tool before improvising:
 `mobile-mcp`. Use them for emulator UI driving, builds, and device control.
 If one is down, check `opencode mcp list` before assuming the code is at fault.
 
+## Priority charter
+
+Keep the payment handoff smooth. Network, configuration, and telemetry work must not delay
+QR presentation or automatic return. Favor correct lifecycle handling and cached operation
+over extra controls. The terminal UI is small, so prioritize responsiveness and visual
+consistency with the current theme.
+
 ## Build and test
 
 ```bash
@@ -102,16 +115,14 @@ a visible instance serves both the agent and the human.
 
 ## Commit and hand off
 
-You do not commit or push yourself. After the feature is implemented and
-`./gradlew :app:testDebugUnitTest` passes:
+After implementation and the required checks pass:
 
-- Build a commit request and delegate it to the `githuber` subagent (via `task`):
-  the branch name you were given, the exact paths you changed, and a
-  Conventional Commit message `feat(DOZO-App): …` (or `fix(DOZO-App): …` when
-  closing a QA bug loop).
-- Stage only your own changed paths; never `git add -A`.
-- Never push `main`. The orchestrator owns branch creation and the PR; commit to
-  the existing branch only, and never open a second PR.
+- Commit only your assigned paths on the task branch using a Conventional Commit message
+  such as `feat(DOZO-App): add durable display events`.
+- Stage exact paths only. Never use `git add -A` or `git add .`.
+- Run `npm run commitlint --prefix ..` before committing.
+- Never create or switch branches, push, or open a PR. The task runner prepares the task
+  worktree, and `githuber` handles GitHub publication.
 - Return the structured result (status, files, tests, questions, blockers) to the
   caller; do not reply to the user.
 
