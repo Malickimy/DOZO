@@ -1,0 +1,64 @@
+name: coordination
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - "CONTRACTS.md"
+      - "contracts/**"
+      - "Makefile"
+      - "README.md"
+      - "commitlint.config.js"
+      - "package.json"
+      - "opencode.json"
+      - "DOZO-*/opencode.json"
+      - "DOZO-Website/**"
+      - ".opencode/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/labels.yml"
+      - ".github/workflows/coordination.yml"
+      - ".github/workflows/*.yml"
+      - "scripts/new-task-worktree.sh"
+      - "scripts/publish-task-branch.sh"
+      - "scripts/update-worktrees.sh"
+      - "scripts/verify-delivery-config.mjs"
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "CONTRACTS.md"
+      - "contracts/**"
+      - "Makefile"
+      - "README.md"
+      - "commitlint.config.js"
+      - "package.json"
+      - "opencode.json"
+      - "DOZO-*/opencode.json"
+      - "DOZO-Website/**"
+      - ".opencode/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/labels.yml"
+      - ".github/workflows/coordination.yml"
+      - ".github/workflows/*.yml"
+      - "scripts/new-task-worktree.sh"
+      - "scripts/publish-task-branch.sh"
+      - "scripts/update-worktrees.sh"
+      - "scripts/verify-delivery-config.mjs"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate OpenCode routing and delivery labels
+        run: node scripts/verify-delivery-config.mjs
+      - name: Check task worktree helper syntax
+        run: bash -n scripts/new-task-worktree.sh
+      - name: Check task branch publisher syntax
+        run: bash -n scripts/publish-task-branch.sh

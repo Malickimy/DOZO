@@ -1,0 +1,93 @@
+name: Capability
+description: Define an end-to-end DOZO outcome and its project-owned tasks.
+title: "Capability: "
+labels:
+  - "kind:capability"
+  - "state:backlog"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Capability issues group independently executable project tasks. Keep detailed
+        planning in the linked Obsidian note and use native GitHub sub-issues and blocking
+        relationships for execution. The form does not apply labels selected in the body.
+        Add each checked `workstream:*` label and one `priority:*` label to this issue.
+  - type: input
+    id: capability_id
+    attributes:
+      label: Capability ID
+      description: Stable roadmap key, such as MVP-03.
+      placeholder: MVP-00
+    validations:
+      required: true
+  - type: input
+    id: obsidian_spec
+    attributes:
+      label: Obsidian capability note
+      description: Note path or vault link containing the approved human-facing brief.
+      placeholder: DOZO/Capabilities/MVP-00 Delivery foundation.md
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: State what a user can do when this capability is complete.
+      placeholder: A merchant owner can...
+    validations:
+      required: true
+  - type: textarea
+    id: required_workstreams
+    attributes:
+      label: Required workstreams
+      description: List App, Server, Dashboard, Website, or root slices required for acceptance.
+      placeholder: "- Server: ...\n- Dashboard: ..."
+    validations:
+      required: true
+  - type: checkboxes
+    id: affected_workstreams
+    attributes:
+      label: Affected workstream labels
+      description: Apply each selected `workstream:*` label to the capability issue.
+      options:
+        - label: "workstream:app"
+        - label: "workstream:server"
+        - label: "workstream:dashboard"
+        - label: "workstream:website"
+        - label: "workstream:root"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Integrated acceptance criteria
+      description: Observable conditions for accepting the whole capability.
+      placeholder: "- Given ... when ... then ..."
+    validations:
+      required: true
+  - type: textarea
+    id: optional_work
+    attributes:
+      label: Optional work
+      description: Independent improvements that do not block the capability.
+      placeholder: "- None, or list optional work"
+    validations:
+      required: false
+  - type: textarea
+    id: contract_rows
+    attributes:
+      label: Release Board contract rows
+      description: List each approved R# row with its owner-approved revision, or state none.
+      placeholder: "R# / approved revision, or none"
+    validations:
+      required: true

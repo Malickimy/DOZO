@@ -17,6 +17,14 @@
     "root": {
       "path": ".",
       "description": "Use for CONTRACTS.md, contracts/*.md, MANUAL.md, AGENTS.md, and repo-wide conventions. Read to ground contract and cross-cutting QA."
+    },
+    "delivery-workflow": {
+      "path": "./.opencode/docs",
+      "description": "Use for GitHub task readiness, labels, worktrees, agent routing, and completion rules."
+    },
+    "dozo-website-agent": {
+      "path": "./DOZO-Website",
+      "description": "Use for the independent public DOZO website, its theme/language priorities, and future build context."
     }
   },
   "agent": {
@@ -26,6 +34,12 @@
           "~/Documents/Papier/Papier/**": "allow"
         }
       }
+    },
+    "explore": {
+      "model": "deepseek/deepseek-flash"
+    },
+    "general": {
+      "model": "deepseek/deepseek-flash"
     }
   },
   "mcp": {

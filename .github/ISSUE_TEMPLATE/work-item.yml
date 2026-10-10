@@ -1,0 +1,109 @@
+name: Work item
+description: Create one project-owned implementation task.
+title: "Task: "
+labels:
+  - "kind:task"
+  - "state:backlog"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        One issue should represent one independently verifiable task. Add the matching
+        `workstream:*` and `priority:*` labels after selecting them below. Use native
+        GitHub relationships for parent and blocking edges.
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Primary workstream
+      options:
+        - App
+        - Server
+        - Dashboard
+        - Website
+        - Root
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Planning classification
+      options:
+        - Required for capability acceptance
+        - Optional for capability acceptance
+        - Standalone
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Parent capability or standalone reason
+      description: Link the capability issue, or explain why this task stands alone.
+      placeholder: "#123, or Standalone: ..."
+    validations:
+      required: true
+  - type: input
+    id: obsidian_spec
+    attributes:
+      label: Obsidian brief
+      description: Link the approved human-facing brief when this task belongs to a capability.
+      placeholder: DOZO/Capabilities/MVP-00 Delivery foundation.md, or none
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome and scope
+      description: State the one result this task must deliver and its exclusions.
+      placeholder: "Outcome:\n\nIn scope:\n\nOut of scope:"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add native blocked-by relationships in GitHub. Record their issue IDs here for readability.
+      placeholder: "None, or blocked by #..."
+    validations:
+      required: true
+  - type: textarea
+    id: contract_impact
+    attributes:
+      label: Contract impact
+      description: Name the approved Release Board row, owner-approved revision, and exact interface, or state none.
+      placeholder: "contract impact: none, or R# / approved revision / endpoint or field"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable success conditions.
+      placeholder: "- [ ] Given ... when ... then ..."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Name the focused tests, build, or manual check expected.
+      placeholder: "- `npm test` ..."
+    validations:
+      required: true
+  - type: textarea
+    id: file_scope
+    attributes:
+      label: Initial file scope and risks
+      description: Add known paths and ownership constraints. The task runner confirms this before edits.
+      placeholder: "- Paths ...\n- Risks ..."
+    validations:
+      required: false

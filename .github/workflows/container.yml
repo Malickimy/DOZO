@@ -6,12 +6,22 @@ on:
     paths:
       - "DOZO-Server/**"
       - "DOZO-Dashboard/**"
+      - "CONTRACTS.md"
+      - "contracts/db-schema.md"
+      - "contracts/http-api.md"
+      - "contracts/dashboard.md"
+      - "contracts/env.md"
       - ".dockerignore"
       - ".github/workflows/container.yml"
   pull_request:
     paths:
       - "DOZO-Server/**"
       - "DOZO-Dashboard/**"
+      - "CONTRACTS.md"
+      - "contracts/db-schema.md"
+      - "contracts/http-api.md"
+      - "contracts/dashboard.md"
+      - "contracts/env.md"
       - ".dockerignore"
       - ".github/workflows/container.yml"
   workflow_dispatch:

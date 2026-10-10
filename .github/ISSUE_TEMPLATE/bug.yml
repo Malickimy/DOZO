@@ -1,0 +1,80 @@
+name: Bug report
+description: Report a reproducible defect in a DOZO workstream.
+title: "Bug: "
+labels:
+  - "kind:bug"
+  - "state:backlog"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This form adds the bug and backlog labels. After selecting the workstream and
+        priority, add the matching `workstream:*` and `priority:*` labels to the issue.
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Primary workstream
+      options:
+        - App
+        - Server
+        - Dashboard
+        - Website
+        - Root
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Related capability
+      description: Add a parent issue if this blocks a planned capability.
+      placeholder: "#123, or standalone"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add native GitHub blocking relationships and list them here, or state none.
+      placeholder: "None, or blocked by #..."
+    validations:
+      required: true
+  - type: textarea
+    id: contract_impact
+    attributes:
+      label: Contract impact
+      description: Name the approved Release Board row and owner-approved revision, or state none.
+      placeholder: "contract impact: none, or R# / approved revision / interface"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. ...\n2. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected and actual behavior
+      placeholder: "Expected:\n\nActual:"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: State how a fix will prove the defect is resolved.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
