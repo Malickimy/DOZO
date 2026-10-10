@@ -133,6 +133,7 @@ if (requireFile(labelsPath)) {
     "bug",
     "maintenance",
     "qa",
+    "db-change",
   ];
 
   for (const label of requiredLabels) {
