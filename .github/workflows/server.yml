@@ -5,10 +5,18 @@ on:
     branches: [main]
     paths:
       - "DOZO-Server/**"
+      - "CONTRACTS.md"
+      - "contracts/db-schema.md"
+      - "contracts/http-api.md"
+      - "contracts/env.md"
       - ".github/workflows/server.yml"
   pull_request:
     paths:
       - "DOZO-Server/**"
+      - "CONTRACTS.md"
+      - "contracts/db-schema.md"
+      - "contracts/http-api.md"
+      - "contracts/env.md"
       - ".github/workflows/server.yml"
   workflow_dispatch:
 

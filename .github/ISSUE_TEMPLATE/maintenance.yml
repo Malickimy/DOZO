@@ -1,0 +1,90 @@
+name: Maintenance
+description: Create a standalone or capability-linked refactoring task.
+title: "Maintenance: "
+labels:
+  - "kind:maintenance"
+  - "state:backlog"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This form adds maintenance and backlog labels. After selecting the workstream and
+        priority, add the matching `workstream:*` and `priority:*` labels to the issue.
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Primary workstream
+      options:
+        - App
+        - Server
+        - Dashboard
+        - Website
+        - Root
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Planning classification
+      options:
+        - Required for capability acceptance
+        - Optional for capability acceptance
+        - Standalone
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Parent capability or standalone reason
+      placeholder: "#123, or Standalone: ..."
+    validations:
+      required: true
+  - type: input
+    id: obsidian_spec
+    attributes:
+      label: Obsidian brief
+      description: Link the approved human-facing capability note, or state none for standalone work.
+      placeholder: DOZO/Capabilities/MVP-00.md, or none
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Maintenance outcome and scope
+      description: State the concrete result and what behavior must remain unchanged.
+      placeholder: "Outcome:\n\nIn scope:\n\nOut of scope:\n\nBehavior to preserve:"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add native GitHub blocking relationships and list them here.
+      placeholder: "None, or blocked by #..."
+    validations:
+      required: true
+  - type: textarea
+    id: contract_impact
+    attributes:
+      label: Contract impact
+      description: Name the approved Release Board row and owner-approved revision, or state none.
+      placeholder: "contract impact: none, or R# / approved revision / interface"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and verification
+      placeholder: "- [ ] ...\n\nVerification commands:"
+    validations:
+      required: true

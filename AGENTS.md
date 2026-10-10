@@ -13,10 +13,14 @@ first when an interface changes.
 | `DOZO-App/` | Android terminal app (`:app`) + mock caller (`:mockpay`) | Gradle, JDK 17 |
 | `DOZO-Server/` | Fastify + SQLite redirect server | Node 22+ |
 | `DOZO-Dashboard/` | Vite + React merchant portal | Node 22+ |
+| `DOZO-Website/` | Independent public marketing site, scaffold only | Toolchain selected by its first implementation task |
 | repo root | `CONTRACTS.md`, `contracts/`, `MANUAL.md`, `README.md`, `Makefile`, CI, `.opencode/` | — |
 
-Each project keeps its own build config (loose monorepo). The root `Makefile` shells
-out to the right one.
+App, Server, and Dashboard keep independent build configs. Website is a planned separate
+build/deployment artifact and has no application toolchain yet. The current backend still
+has connector and dashboard entrypoints; the approved MVP direction is one shared backend
+process with separate code modules. Implement that runtime change only through its approved
+capability issues and contract gates.
 
 ## Obsidian vault (Papier)
 
@@ -26,76 +30,95 @@ agent. Do not read, edit, or create vault files directly — no `read` / `edit` 
 obsidian agent instead. Access is granted to that agent in `opencode.json`;
 other agents stay blocked.
 
-## Planning: the Release Board
+## Planning: Obsidian and GitHub
 
-Cross-project work is planned in the Obsidian vault, not in this repo. The vault root
-note `DOZO/Release Board.md` (vault name `Papier`) is the single source of truth for
-every change that touches a `contracts/*.md` file:
+The Papier Obsidian vault is the human-facing roadmap and design home. GitHub issues are
+the execution tracker for App, Server, Dashboard, Website, and root tasks. Follow
+[`delivery-workflow.md`](.opencode/docs/delivery-workflow.md) for issue readiness, labels,
+dependencies, branches, and task handoffs. Link the Obsidian capability brief from the
+GitHub parent issue instead of copying changing issue status into the vault.
+
+The vault root note `DOZO/Release Board.md` (vault name `Papier`) remains the required
+source of truth for cross-project contract decisions:
 
 - **One row per contract change**, naming the exact endpoint/field and which project
-  sprint does what. Nothing starts until the row exists.
+  tasks implement it. Contract-dependent implementation does not start until the row and
+  owner-approved contract revision exist.
 - **Expand/contract by default:** add the new thing, migrate every consumer, then remove
-  the old thing — each as a separate short-lived PR.
-- **Root grilling** is where contradictions between project sprints get decided.
-  Per-project grilling cannot invent contract changes.
+  the old thing — separate short-lived issues and PRs unless the contract owner approves an
+  atomic change.
+- **Root grilling** decides contradictions between capability plans. Per-project tasks
+  cannot invent shared contract changes.
 
-Read it with the obsidian CLI by vault name (`Papier`) so it works from any worktree.
+The Obsidian agent is the only agent allowed to read or update vault notes. GitHub remains
+authoritative for ticket and PR state; Obsidian carries capability intent, decisions, and
+human progress summaries.
 
 ## Commits
 
 - Use **Conventional Commits**: `type(scope): subject`.
 - `scope` is required and must be one of: `DOZO-App` / `dozo-app` / `app`,
   `DOZO-Server` / `dozo-server` / `server`, `DOZO-Dashboard` / `dozo-dashboard` /
-  `dashboard`, or `root` (repo-wide/docs/CI changes).
-- **Titles are very concise**: imperative mood, no trailing period, max 72 chars.
+  `dashboard`, `DOZO-Website` / `dozo-website` / `website`, or `root`
+  (repo-wide/docs/CI changes).
+- **Titles are concise**: imperative mood, no trailing period, max 72 chars.
 - **Body is 1–2 sentences** explaining *why*. Omit the body when the change is obvious.
-- Validate before committing: `npm run commitlint` (reads the edited message).
+- Keep each commit body line within commitlint's 100-character limit.
+- **Writers make local commits** for their assigned files. The GitHub agent publishes
+  already committed branches and manages issues/PRs after the task runner authorizes it.
+- Validate before committing: `npm run commitlint` at the repo root, or
+  `npm run commitlint --prefix ..` from an App/Server/Dashboard/Website project directory.
   CI (`.github/workflows/commitlint.yml`) rejects non-conforming commits on every PR.
+- Stage exact task-owned paths only. Never use `git add -A` or `git add .`.
 
 Examples:
 
 ```
 feat(DOZO-App): add pairing retry with backoff
 fix(DOZO-Server): debounce duplicate scans within 3s
+feat(DOZO-Website): add Polish product overview
 
 Two register taps could create two rows in the scan log.
 ```
 
-## Merging code: PRs only
+## Branches and pull requests
 
-- **Never push directly to `main`.** Work on a branch, push it, and open a pull
-  request; merge only after review.
-- GitHub operations (PRs, CI runs, issues, releases) are handed off to the GitHub
-  agent — see below. Do local edits and commits yourself; let the agent publish them.
-- One writer per project worktree. If a change touches a `contracts/*.md` file, update that
-  owning contract first (its project agent or the `contract` agent for the index /
-  `contracts/env.md`), add a Release Board row, and ship it expand/contract (see below).
+- **Never push directly to `main`.** Work on a task branch, push it, and open a PR; merge
+  only after review.
+- GitHub operations (issues, PRs, checks, releases, labels) go through `githuber`. Project
+  specialists and QA commit their assigned files locally; `githuber` pushes committed
+  branches and manages PRs.
+- The default unit is **one issue, one task branch, one PR**. A capability has a parent
+  issue and project-owned child issues. A cross-project atomic issue is an exception.
+- One active writer per task worktree. Implementation and QA run sequentially in that
+  worktree.
+- A change to `contracts/*.md` requires the Release Board row and owner-approved contract
+  first. Project agents own their contract files; `contract` owns `CONTRACTS.md` and
+  `contracts/env.md`.
 
-## Worktrees: one window per project
+## Worktrees: one task per worktree
 
-If several agents run concurrently inside one repository folder they collide on
-`.git/index.lock`. Keep **one worktree per project** so each has its own working copy,
-its own `opencode.json`, and its own MCP set:
+Give each active task its own worktree and branch. Two tasks in the same project can run
+in parallel only in separate worktrees. Create a clean worktree from current `origin/main`
+with:
 
 ```bash
-git worktree add ../workspace-android   -b feat/<change>
-git worktree add ../workspace-server    -b feat/<change>
-git worktree add ../workspace-dashboard -b feat/<change>
+scripts/new-task-worktree.sh 123 durable-display-outbox ../workspace-123
 ```
 
-Run each opencode window inside its project subfolder — `../workspace-android/DOZO-App`,
-`../workspace-server/DOZO-Server`, `../workspace-dashboard/DOZO-Dashboard` — so that
-project's `opencode.json` (and its MCPs) applies.
+The helper creates `work/123-durable-display-outbox`. Run OpenCode in the relevant project
+directory inside that worktree, such as `../workspace-123/DOZO-App`, so it loads that
+project's tools. The Website context is `DOZO-Website/`; its application toolchain is
+selected by an approved Website task.
 
-### Branches: short-lived, one per contract change
+### Short-lived task branches
 
-- **Do not keep long-lived `feature-android` / `feature-server` / `feature-dashboard`
-  branches.** Each change gets its own branch, cut from the newest `main`, named after
-  the contract change (`feat/model-b-add`, `feat/model-b-app`, …).
-- Open a PR, merge, delete the branch, then cut the next one from the updated `main`.
-- **Expand/contract** keeps `main` green while the three projects move at different
-  times. An `atomic` change (one branch, one PR, all projects together) is the exception,
-  only when a change cannot be split into add/migrate/retire steps.
+- Do not keep long-lived project feature branches. Create one `work/<issue>-<slug>` branch
+  per GitHub task from the newest `origin/main`.
+- Merge a producer task before creating dependent consumer worktrees, unless an approved
+  integration worktree is used to test compatible branches together.
+- Expand/contract keeps `main` green while workstreams move at different times. An atomic
+  cross-project change is allowed only when the change cannot be split safely.
 
 ### Integration worktree (optional)
 
@@ -121,8 +144,9 @@ from the branch it was created on. Two rules follow:
 
 ## Testing a cross-project change (before merging)
 
-The three projects talk over HTTP, so you do **not** need to merge to test compatibility.
-Run each worktree's artifact as a live piece and wire them over localhost:
+The current code uses separate App, Server, and Dashboard projects that talk over HTTP, so
+you do **not** need to merge to test compatibility. Run each task worktree's artifact as
+a live piece and wire them over localhost:
 
 - **Server + App:** start the server from the server worktree
   (`SEED_DEMO=true DB_PATH=/tmp/dozo-integ.db npm start` → `localhost:3000`), build and
@@ -134,50 +158,52 @@ Run each worktree's artifact as a live piece and wire them over localhost:
   `DASHBOARD_ORIGIN` to the dev origin.
 - **All three:** one window per project, all pointed at `localhost:3000`.
 
-Merge only once each consumer round-trips against the new contract.
+Merge only once each consumer round-trips against the new contract. These commands describe
+the current runtime; update them when the approved shared-process backend capability lands.
 
 ## GitHub: hand off to the GitHub agent
 
 - **All GitHub actions are handed off to the GitHub agent** (subagent `githuber`, via
   the GitHub MCP server). Do not drive GitHub by hand.
 - This covers: opening/updating/merging PRs, inspecting workflow runs and CI failures,
-  re-running checks, filing and triaging issues, releases, and code search.
-- The agent is **read-only on the local filesystem**. Do local edits and commits
-  yourself; hand it the branch or PR to publish, then review what it reports.
+  re-running checks, filing and triaging issues, releases, labels, and code search. The
+  agent may push an already committed task branch; it does not create local code commits
+  unless the user explicitly changes that policy.
+- Issue and PR forms plus `.github/labels.yml` provide the tracking vocabulary. A
+  maintainer applies the label manifest in GitHub; it does not sync itself.
 - Requires the GitHub MCP enabled in `opencode.json` (`github`, `github_*`) and a
   `GITHUB_PERSONAL_ACCESS_TOKEN` in the environment.
 
-## QA: hand off to the QA agent
+## QA: module first, integration second
 
-- **Do not hand-roll Playwright specs.** When a feature branch is ready, hand QA off to
-  the specialized **QA agent** (`.opencode/agent/qa.md`, subagent `qa`).
-- The QA agent is universal across `DOZO-App/`, `DOZO-Server/`, `DOZO-Dashboard/`, and
-  root. It writes Playwright coverage for the newly added feature, runs it, and reports
-  pass/fail plus gaps.
-- Hand off explicitly: state the branch/commit range and the feature to cover. The QA
-  agent commits tests as `test(<scope>): ...` on its own branch/PR.
-- Per-directory context is exposed as references in `opencode.json`
-  (`@dozo-app-agent`, `@dozo-server-agent`, `@dozo-dashboard-agent`, `@root`); the
-  QA agent reads the one matching the project under test.
-- Native Android UI cannot be driven by Playwright — the QA agent covers the
-  server/dashboard surface and flags `androidTest` as the remaining gap.
+- Use `qa-app`, `qa-server`, `qa-dashboard`, or `qa-website` for project-owned issues.
+  Invoke the selected QA from the matching project window; subagents inherit that window's
+  tools.
+- QA starts after implementation stops writing in the worktree. It may add and commit
+  test-only files on the same task branch, never a second PR. The task runner owns the
+  fix/retest loop.
+- Use `qa` for integrated acceptance across a capability's project tasks. Native Android
+  UI requires instrumentation or device checks; Playwright cannot verify it.
+- Hand off explicitly with issue number, branch/PR range, capability outcome, affected
+  paths, and acceptance criteria.
 
 ## MCP servers: enable on demand
 
-MCP servers are **disabled** in the root [`opencode.json`](opencode.json). Each project
-enables just what it needs in its own config, so opening that project brings the right
-servers up automatically:
+Most MCP servers are disabled in the root [`opencode.json`](opencode.json). The GitHub MCP
+is enabled for the GitHub agent; each project enables the additional tools it needs in its
+own config, so opening that project brings the right servers up automatically:
 
 | Window | On by default ("needed") | On request ("heavier") |
 | --- | --- | --- |
 | `DOZO-App/` | `android-mcp-server`, `uiautomator2-mcp-server`, `android-builder-mcp`, `mobile-mcp` | — |
 | `DOZO-Server/` | `sqlite` | `ssh` (deploy only) |
 | `DOZO-Dashboard/` | `playwright` | `chrome-devtools` |
+| `DOZO-Website/` | `playwright` | `chrome-devtools` |
 
 **MCPs are scoped to the opencode window (instance), not to an agent.** A subagent runs
 inside the same window and inherits that window's servers; it cannot reach another
-window's MCPs. So run QA in the project window whose tools it needs rather than enabling
-everything in one window. The `qa` agent is universal and uses whatever the window has.
+window's MCPs. Run each project task and module QA in the project window whose tools it
+needs rather than enabling everything in one window.
 
 - Try built-in tools, the repo skills, and `make` targets first; most tasks need no MCP.
 - Keep the "needed" servers on; enable a "heavier" one only for a concrete task, then
@@ -191,7 +217,7 @@ everything in one window. The `qa` agent is universal and uses whatever the wind
 ## Verify before opening a PR
 
 ```bash
-make verify        # Android build + unit tests, server tests, dashboard build + tests
+make verify        # Android, server, dashboard, and delivery configuration checks
 ```
 
 Or per project:
@@ -202,6 +228,7 @@ make app           # ./gradlew :app:assembleDebug
 make app-test      # ./gradlew :app:testDebugUnitTest
 make server        # npm test in DOZO-Server
 make dashboard     # npm run build in DOZO-Dashboard
+make verify-coordination # OpenCode routing, JSON, and task worktree checks
 make help          # all targets
 ```
 

@@ -1,0 +1,80 @@
+name: QA task
+description: Define a verification task for a project or integrated capability.
+title: "QA: "
+labels:
+  - "kind:qa"
+  - "state:backlog"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This form adds QA and backlog labels. After selecting the workstream and priority,
+        add the matching `workstream:*` and `priority:*` labels to the issue.
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Primary workstream
+      options:
+        - App
+        - Server
+        - Dashboard
+        - Website
+        - Root
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Capability or task being verified
+      placeholder: "#123"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add native GitHub blocking relationships and list them here, or state none.
+      placeholder: "None, or blocked by #..."
+    validations:
+      required: true
+  - type: textarea
+    id: contract_impact
+    attributes:
+      label: Contract impact
+      description: QA-only work usually states none; name an approved row if the task changes an interface.
+      placeholder: "contract impact: none, or R# / approved revision / interface"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the behavior and failure paths to verify.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: test_scope
+    attributes:
+      label: Test scope and environment
+      description: Include branch/PR, test data, required devices, and dependencies.
+      placeholder: "Paths:\n\nEnvironment:\n\nDependencies:"
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Commands and evidence
+      placeholder: "- Command ...\n- Expected evidence ..."
+    validations:
+      required: true
