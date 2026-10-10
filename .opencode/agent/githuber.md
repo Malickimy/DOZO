@@ -50,10 +50,10 @@ issues, labels, pull requests, releases, or checks. Scope every operation to
 - A coordinator may ask you to inspect GitHub tasks and report readiness. This is read-only.
 - A task runner may ask you to update the issue lifecycle label, push an already committed
   task branch, open or update its one PR, apply the required workstream/kind labels, link
-  the issue, and report checks. Set `state:in-progress` after the runner's preflight passes,
-  then set `state:in-review` after implementation and QA pass and a PR exists. The
-  task runner may set `state:blocked` when a named prerequisite or check fails. The
-  coordinator may return a resolved issue to `state:ready` and set `state:done` only after
+  the issue, and report checks. Set `in-progress` after the runner's preflight passes,
+  then set `in-review` after implementation and QA pass and a PR exists. The
+  task runner may set `blocked` when a named prerequisite or check fails. The
+  coordinator may return a resolved issue to `ready` and close it only after
   merge and acceptance. Perform each transition only on an explicit task-runner/coordinator
   request.
 - The user may explicitly authorize other GitHub actions, such as creating initial

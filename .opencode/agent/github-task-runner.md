@@ -60,12 +60,12 @@ readiness, branch, commit, and completion rules. You do not edit application or 
    `DOZO-App`, `DOZO-Server`, `DOZO-Dashboard`, `DOZO-Website`, or an approved root task,
    stop and ask the user to open the correct project context.
 2. If `$ARGUMENTS` contains an issue number, inspect only that issue. Otherwise ask
-   `githuber` for the highest-priority unblocked issue with `state:ready` and the matching
-   `workstream:*` label. Select one issue only.
+   `githuber` for the highest-priority unblocked issue with `ready` and the matching
+   workstream label. Select one issue only.
 3. Verify the required task fields, labels, capability/standalone link, dependencies,
    contract impact, and acceptance criteria. For contract changes, ask `obsidian-1.1` to
    confirm both the Release Board row and owner-approved contract revision. A missing or
-   disputed prerequisite blocks the task. Ask `githuber` to set `state:blocked` and report
+   disputed prerequisite blocks the task. Ask `githuber` to set `blocked` and report
    the missing decision or field.
 4. Check that the working tree is clean and the current branch matches
    `work/<issue>-<slug>`. If it does not, stop and give the user the exact
@@ -88,10 +88,10 @@ readiness, branch, commit, and completion rules. You do not edit application or 
   `qa` as appropriate.
 - A red test returns to the implementation specialist with its assertion, minimal
   reproduction, and command. Allow at most two fix-and-retest cycles. Stop and report a
-  blocker after that, and ask `githuber` to set `state:blocked`.
+  blocker after that, and ask `githuber` to set `blocked`.
 - Once required checks pass, ask `githuber` to publish the already committed task branch
   using `scripts/publish-task-branch.sh`, create/update the single PR for this issue, apply
-  the required workstream/kind labels, set `state:in-review`, link the issue, and report CI.
+  the required workstream/type labels, set `in-review`, link the issue, and report CI.
   The GitHub agent does not make local code commits.
 - A cross-project capability normally has one child issue per project. Stop rather than
   combining multiple ready issues into one invocation. Only use one atomic cross-project

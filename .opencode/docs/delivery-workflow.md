@@ -21,34 +21,32 @@ required or optional in the issue body. Optional work does not block the capabil
 `.github/labels.yml` is the checked-in label manifest. A maintainer applies or updates
 these labels in GitHub; the file does not change GitHub by itself.
 
-- `workstream:app`, `workstream:server`, `workstream:dashboard`,
-  `workstream:website`, `workstream:root`
-- `state:backlog`, `state:ready`, `state:in-progress`, `state:blocked`,
-  `state:in-review`, `state:done`
-- `priority:p0`, `priority:p1`, `priority:p2`
-- `kind:capability`, `kind:task`, `kind:bug`, `kind:maintenance`, `kind:qa`
+- Workstreams: `app`, `server`, `dashboard`, `website`, `root`
+- States: `ready`, `in-progress`, `blocked`, `in-review`
+- Priorities: `p0`, `p1`, `p2`
+- Types: `capability`, `task`, `bug`, `qa`, `maintenance`
 
-An executable issue has one primary `workstream:*` label, one `kind:*` label, one
-`priority:*` label, and one `state:*` label. Capability parent issues carry every affected
-workstream. Pull requests carry every affected workstream and the relevant kind label.
-The coordinator updates the Obsidian capability note at meaningful milestones; GitHub
-remains authoritative for issue and PR status.
+An executable issue has one workstream label, one type label, one priority label, and at
+most one state label. An issue with no state label is backlog. Capability parent issues
+carry every affected workstream. Pull requests carry every affected workstream and the
+relevant type label. The coordinator updates the Obsidian capability note at meaningful
+milestones; GitHub remains authoritative for issue and PR status.
 
 State transitions:
 
 ```text
-state:backlog -> state:ready -> state:in-progress -> state:in-review -> state:done
-                                  \-> state:blocked -> state:ready
+(no state) -> ready -> in-progress -> in-review -> closed
+                        \-> blocked -> ready
 ```
 
-`state:ready` means the issue is complete, approved, unblocked, and has a matching project
+`ready` means the issue is complete, approved, unblocked, and has a matching project
 context. It does not mean merely that someone wrote the ticket.
 
-The task runner changes `state:ready` to `state:in-progress` after worktree and contract
+The task runner changes `ready` to `in-progress` after worktree and contract
 preflight. After implementation and QA pass and a PR exists, it changes the issue to
-`state:in-review`. After the PR is merged and required acceptance passes, the coordinator
-may mark the task `state:done`. A failed prerequisite moves the issue to `state:blocked`;
-the coordinator returns it to `state:ready` only after that prerequisite is resolved.
+`in-review`. The issue closes when the PR merges and required acceptance passes. A failed
+prerequisite moves the issue to `blocked`; the coordinator returns it to `ready` only after
+that prerequisite is resolved.
 
 ## Ready issue requirements
 
@@ -98,11 +96,11 @@ Each `/run-task` invocation handles exactly one issue:
 
 1. Determine the project from the current OpenCode directory. If an issue number was
    supplied, inspect that issue. Otherwise, select the highest-priority unblocked
-   `state:ready` issue for this workstream. Return one issue only.
+   `ready` issue for this workstream. Return one issue only.
 2. Verify issue completeness, approved scope, Release Board prerequisite, current branch,
    clean worktree, and project context. The branch must be `work/<issue>-<slug>`.
 3. Ask `explore` to confirm the file surface and risks. Update the issue to
-   `state:in-progress` through the GitHub agent after this preflight passes. If required
+   `in-progress` through the GitHub agent after this preflight passes. If required
    information or an approved prerequisite is missing, mark the issue blocked and stop.
 4. Delegate implementation to the owning specialist. The specialist edits and tests only
    its assigned scope, then commits only its named files locally.
@@ -113,7 +111,7 @@ Each `/run-task` invocation handles exactly one issue:
    at most two fix-and-retest cycles, then mark the issue blocked and stop with evidence.
 7. After required checks pass, ask the GitHub agent to publish the existing clean task
    branch with `scripts/publish-task-branch.sh`, open or update its PR, apply labels, set
-   `state:in-review`, link the issue, and report CI. The GitHub agent does not create local
+   `in-review`, link the issue, and report CI. The GitHub agent does not create local
    code commits.
 8. Return the issue, branch, PR, changed files, test evidence, contract impact, and
    remaining gaps. Stop. Do not consume a second issue in the same invocation.

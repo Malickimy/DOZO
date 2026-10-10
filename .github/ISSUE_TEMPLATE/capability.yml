@@ -2,8 +2,7 @@ name: Capability
 description: Define an end-to-end DOZO outcome and its project-owned tasks.
 title: "Capability: "
 labels:
-  - "kind:capability"
-  - "state:backlog"
+  - "capability"
 body:
   - type: markdown
     attributes:
@@ -11,7 +10,7 @@ body:
         Capability issues group independently executable project tasks. Keep detailed
         planning in the linked Obsidian note and use native GitHub sub-issues and blocking
         relationships for execution. The form does not apply labels selected in the body.
-        Add each checked `workstream:*` label and one `priority:*` label to this issue.
+        Add each checked workstream label and one `p0`/`p1`/`p2` label to this issue.
   - type: input
     id: capability_id
     attributes:
@@ -48,13 +47,13 @@ body:
     id: affected_workstreams
     attributes:
       label: Affected workstream labels
-      description: Apply each selected `workstream:*` label to the capability issue.
+      description: Apply each selected workstream label to the capability issue.
       options:
-        - label: "workstream:app"
-        - label: "workstream:server"
-        - label: "workstream:dashboard"
-        - label: "workstream:website"
-        - label: "workstream:root"
+        - label: "app"
+        - label: "server"
+        - label: "dashboard"
+        - label: "website"
+        - label: "root"
     validations:
       required: true
   - type: dropdown

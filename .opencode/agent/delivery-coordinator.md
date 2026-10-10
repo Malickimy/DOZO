@@ -68,8 +68,8 @@ from `.github/labels.yml` in GitHub. Create or update issue content only after t
 asks, and keep the Obsidian capability plan as the human-facing planning source.
 
 After a PR merges, ask `githuber` to verify the merged issue/PR state. Once required child
-issues and integrated acceptance are complete, ask `githuber` to set the capability/task
-issue to `state:done`. Ask `obsidian-1.1` to add a concise human progress note when the user
+issues and integrated acceptance are complete, ask `githuber` to close the capability/task
+issue. Ask `obsidian-1.1` to add a concise human progress note when the user
 requests a planning update. Do not copy every GitHub status transition into the vault.
 
 ## Output
