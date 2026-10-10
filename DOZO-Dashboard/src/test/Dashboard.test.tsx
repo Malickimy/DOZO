@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Dashboard } from '../Dashboard'
 import { createApiClient } from '../lib/api'
@@ -73,12 +74,12 @@ const offline: OfflineResult = {
 
 function renderDashboard() {
   return render(
-    <Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} />,
+    <Dashboard client={makeClient()} settings={settings} onOpenSettings={vi.fn()} onLogout={vi.fn()} />,
   )
 }
 
 describe('Dashboard overview states', () => {
-  it('shows summary, terminals and offline loading placeholders', async () => {
+  it('shows overview loading placeholders while data resolves', async () => {
     const pending = deferred<Response>()
     vi.stubGlobal(
       'fetch',
@@ -91,9 +92,8 @@ describe('Dashboard overview states', () => {
 
     renderDashboard()
 
-    expect(await screen.findByText('Loading summary…')).toBeInTheDocument()
-    expect(screen.getByText('Loading terminals…')).toBeInTheDocument()
-    expect(screen.getByText(/checking terminals/i)).toBeInTheDocument()
+    expect(await screen.findByText(/loading chart/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading scans/i)).toBeInTheDocument()
   })
 
   it('prompts for a merchant when none exist', async () => {
@@ -171,7 +171,10 @@ describe('Dashboard overview states', () => {
       }),
     )
 
+    const user = userEvent.setup()
     renderDashboard()
+
+    await user.click(await screen.findByRole('button', { name: /^terminals$/i }))
 
     expect(await screen.findByText('Front')).toBeInTheDocument()
     expect(screen.queryByText('Other shop')).not.toBeInTheDocument()

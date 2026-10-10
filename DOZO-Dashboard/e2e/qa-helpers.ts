@@ -21,6 +21,8 @@ export const DB_PATH = '/tmp/dozo-e2e.db'
 
 export const BASE_URL_KEY = 'dozo.dashboard.apiBaseUrl'
 export const TOKEN_KEY = 'dozo.dashboard.apiToken'
+/** i18n language key shared by the panel and the homepage (`src/lib/i18n.ts`). */
+export const LANG_KEY = 'doozo-lang'
 
 export interface SeededMerchant {
   merchantId: string
@@ -93,34 +95,39 @@ export function cleanupMerchants(merchantIds: string[]): void {
   }
 }
 
-/** Install the localStorage settings and land on the dashboard. */
+/** Install the localStorage settings and land on the panel (`/panel/`). */
 export async function signIn(page: Page): Promise<void> {
   await page.addInitScript(
     ({
       baseUrlKey,
       tokenKey,
+      langKey,
       baseUrl,
       token,
     }: {
       baseUrlKey: string
       tokenKey: string
+      langKey: string
       baseUrl: string
       token: string
     }) => {
       window.localStorage.setItem(baseUrlKey, baseUrl)
       window.localStorage.setItem(tokenKey, token)
+      // The panel is Polish-first; pin English so the assertions below stay
+      // language-stable without coupling every spec to the default locale.
+      window.localStorage.setItem(langKey, 'en')
     },
-    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
+    { baseUrlKey: BASE_URL_KEY, tokenKey: TOKEN_KEY, langKey: LANG_KEY, baseUrl: API_BASE_URL, token: API_TOKEN },
   )
-  await page.goto('/')
+  await page.goto('/panel/')
   await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
 }
 
-/** Pick a merchant from the top-bar picker, waiting for the option to exist. */
+/** Pick a merchant from the header picker, waiting for the option to exist. */
 export async function selectMerchant(page: Page, merchantId: string): Promise<void> {
-  // The picker lives in the top bar; `getByLabel('Merchant')` also matches the
-  // Place ID field and folds the option text into the select's accessible name.
-  const select = page.locator('.topbar__actions select')
+  // The picker lives in the dashboard header; `getByLabel('Merchant')` also
+  // matches other labelled fields, so scope to the header select explicitly.
+  const select = page.locator('.dash-top select')
   await expect(select).toBeVisible()
   await expect(select).toContainText(merchantId)
   await select.selectOption(merchantId)

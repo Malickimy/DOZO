@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { isNotAvailable } from '../lib/api'
 import type { ApiClient, MerchantSummary, Terminal } from '../lib/api'
 import { formatDateTime, terminalName } from '../lib/format'
+import { useT } from '../lib/i18n'
 import type { RangeSelection } from '../lib/range'
 import { useAsync } from '../lib/useAsync'
 import { Empty, ErrorState, Loading, NotAvailable } from './StateMessage'
@@ -27,6 +28,7 @@ export function ScansView({
   summary,
   refreshToken = 0,
 }: ScansViewProps) {
+  const t = useT()
   const [terminalFilter, setTerminalFilter] = useState('')
 
   const scansState = useAsync(
@@ -66,6 +68,9 @@ export function ScansView({
   const maxScans = Math.max(1, ...bars.map((bar) => bar.scan_count))
   const scans = scansState.data ?? []
   const series = seriesState.data ?? []
+  const nameById = new Map(
+    terminals.map((terminal) => [terminal.terminal_id, terminalName(terminal.label, terminal.terminal_id)]),
+  )
 
   return (
     <div className="stack">
@@ -74,13 +79,15 @@ export function ScansView({
       </div>
 
       <div className="card">
-        <h2 className="card__title">Scans per terminal</h2>
+        <h2 className="card__title">{t('Skany według terminala', 'Scans per terminal')}</h2>
         <p className="muted">
-          Scan volume for the selected range — a scan is logged once per device per
-          debounce window. Reviews themselves can’t be attributed.
+          {t(
+            'Liczba skanów w wybranym okresie. Powtórny skan z tego samego telefonu w krótkim czasie liczymy raz, a samych opinii nie da się przypisać.',
+            'Scan volume for the selected range — a scan is logged once per device per debounce window. Reviews themselves can’t be attributed.',
+          )}
         </p>
         {bars.length === 0 ? (
-          <Empty>No terminals paired yet.</Empty>
+          <Empty>{t('Nie połączono jeszcze żadnego terminala.', 'No terminals paired yet.')}</Empty>
         ) : (
           <ul className="bars">
             {bars.map((bar) => (
@@ -102,15 +109,18 @@ export function ScansView({
       </div>
 
       <div className="card">
-        <h2 className="card__title">Daily trend</h2>
+        <h2 className="card__title">{t('Trend dzienny', 'Daily trend')}</h2>
         <p className="muted">
-          Days are bucketed in the merchant’s local timezone (Europe/Warsaw).
+          {t(
+            'Dni liczymy w strefie czasowej sprzedawcy (Europe/Warsaw).',
+            'Days are bucketed in the merchant’s local timezone (Europe/Warsaw).',
+          )}
         </p>
 
-        {seriesState.loading ? <Loading label="Loading trend…" /> : null}
+        {seriesState.loading ? <Loading label={t('Ładowanie trendu…', 'Loading trend…')} /> : null}
 
         {seriesState.error && isNotAvailable(seriesState.error) ? (
-          <NotAvailable label="The daily trend" />
+          <NotAvailable label={t('Trend dzienny', 'The daily trend')} />
         ) : null}
 
         {seriesState.error && !isNotAvailable(seriesState.error) ? (
@@ -118,7 +128,7 @@ export function ScansView({
         ) : null}
 
         {!seriesState.loading && !seriesState.error && series.length === 0 ? (
-          <Empty>No scans in this range yet.</Empty>
+          <Empty>{t('Brak skanów w tym okresie.', 'No scans in this range yet.')}</Empty>
         ) : null}
 
         {!seriesState.error && series.length > 0 ? (
@@ -126,8 +136,8 @@ export function ScansView({
             <table className="table">
               <thead>
                 <tr>
-                  <th>Day</th>
-                  <th className="num">Scans</th>
+                  <th>{t('Dzień', 'Day')}</th>
+                  <th className="num">{t('Skany', 'Scans')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,15 +155,15 @@ export function ScansView({
 
       <div className="card">
         <div className="card__header">
-          <h2 className="card__title">Scan log</h2>
+          <h2 className="card__title">{t('Dziennik skanów', 'Scan log')}</h2>
           <label className="field field--inline">
-            <span className="field__label">Terminal</span>
+            <span className="field__label">{t('Terminal', 'Terminal')}</span>
             <select
               className="input"
               value={terminalFilter}
               onChange={(event) => setTerminalFilter(event.target.value)}
             >
-              <option value="">All terminals</option>
+              <option value="">{t('Wszystkie terminale', 'All terminals')}</option>
               {terminals.map((terminal) => (
                 <option key={terminal.terminal_id} value={terminal.terminal_id}>
                   {terminalName(terminal.label, terminal.terminal_id)}
@@ -163,10 +173,10 @@ export function ScansView({
           </label>
         </div>
 
-        {scansState.loading ? <Loading label="Loading scans…" /> : null}
+        {scansState.loading ? <Loading label={t('Ładowanie skanów…', 'Loading scans…')} /> : null}
 
         {scansState.error && isNotAvailable(scansState.error) ? (
-          <NotAvailable label="The scan log" />
+          <NotAvailable label={t('Dziennik skanów', 'The scan log')} />
         ) : null}
 
         {scansState.error && !isNotAvailable(scansState.error) ? (
@@ -175,8 +185,10 @@ export function ScansView({
 
         {!scansState.loading && !scansState.error && scans.length === 0 ? (
           <Empty>
-            No scans recorded yet. Once a customer scans a terminal’s QR, it will show
-            up here.
+            {t(
+              'Brak skanów. Gdy klient zeskanuje kod z terminala, zobaczysz go tutaj.',
+              'No scans recorded yet. Once a customer scans a terminal’s QR, it will show up here.',
+            )}
           </Empty>
         ) : null}
 
@@ -186,10 +198,10 @@ export function ScansView({
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Event</th>
-                  <th>Terminal</th>
-                  <th>Scanned at</th>
-                  <th>User agent</th>
+                  <th>{t('Zdarzenie', 'Event')}</th>
+                  <th>{t('Terminal', 'Terminal')}</th>
+                  <th>{t('Czas skanu', 'Scanned at')}</th>
+                  <th>{t('Przeglądarka', 'User agent')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,7 +212,7 @@ export function ScansView({
                       <code>{scan.event_id || '—'}</code>
                     </td>
                     <td>
-                      <code>{scan.terminal_id}</code>
+                      {nameById.get(scan.terminal_id) ?? <code>{scan.terminal_id}</code>}
                     </td>
                     <td>{formatDateTime(scan.scanned_at)}</td>
                     <td className="ua">{scan.user_agent || '—'}</td>

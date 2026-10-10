@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { isNotAvailable } from '../lib/api'
 import type { ApiClient } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 interface GooglePlaceIdFormProps {
   client: ApiClient
@@ -10,39 +11,34 @@ interface GooglePlaceIdFormProps {
   onSaved?: () => void
 }
 
+type Outcome = 'saved' | 'empty' | 'unavailable' | { error: string }
+
 export function GooglePlaceIdForm({
   client,
   merchantId,
   currentPlaceId,
   onSaved,
 }: GooglePlaceIdFormProps) {
+  const t = useT()
   const [value, setValue] = useState(currentPlaceId ?? '')
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [unavailable, setUnavailable] = useState(false)
+  const [outcome, setOutcome] = useState<Outcome | null>(null)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const placeId = value.trim()
     if (!placeId) {
-      setError('Enter a Google Place ID (e.g. ChIJ…).')
+      setOutcome('empty')
       return
     }
     setSaving(true)
-    setError(null)
-    setMessage(null)
-    setUnavailable(false)
+    setOutcome(null)
     try {
       await client.setGooglePlaceId(merchantId, placeId)
-      setMessage('Google Place ID saved. Scans will redirect to this review form.')
+      setOutcome('saved')
       onSaved?.()
     } catch (err) {
-      if (isNotAvailable(err)) {
-        setUnavailable(true)
-      } else {
-        setError(err instanceof Error ? err.message : String(err))
-      }
+      setOutcome(isNotAvailable(err) ? 'unavailable' : { error: err instanceof Error ? err.message : String(err) })
     } finally {
       setSaving(false)
     }
@@ -50,15 +46,19 @@ export function GooglePlaceIdForm({
 
   return (
     <div className="card">
-      <h2 className="card__title">Google Place ID</h2>
+      <h2 className="card__title">{t('Wizytówka Google', 'Google Place ID')}</h2>
       <p className="muted">
-        The QR redirects customers to this merchant’s Google review form. Reviews
-        can’t be attributed to a terminal, so the dashboard tracks scan volume instead.
+        {t(
+          'Kod QR prowadzi klientów do formularza opinii tej wizytówki. Opinii nie da się przypisać do terminala, dlatego panel liczy skany.',
+          'The QR redirects customers to this merchant’s Google review form. Reviews can’t be attributed to a terminal, so the dashboard tracks scan volume instead.',
+        )}
       </p>
 
       <form className="form form--row" onSubmit={handleSubmit}>
         <label className="field field--grow">
-          <span className="field__label">Place ID for {merchantId}</span>
+          <span className="field__label">
+            {t('Place ID dla', 'Place ID for')} {merchantId}
+          </span>
           <input
             className="input"
             type="text"
@@ -70,24 +70,32 @@ export function GooglePlaceIdForm({
           />
         </label>
         <button type="submit" className="btn btn--primary" disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('Zapisuję…', 'Saving…') : t('Zapisz', 'Save')}
         </button>
       </form>
 
-      {message ? (
+      {outcome === 'saved' ? (
         <p className="auth__result auth__result--ok" role="status">
-          {message}
+          {t(
+            'Place ID zapisany. Skany będą przekierowywać do tego formularza opinii.',
+            'Google Place ID saved. Scans will redirect to this review form.',
+          )}
         </p>
       ) : null}
-      {error ? (
+      {outcome === 'empty' ? (
         <p className="state state--error" role="alert">
-          {error}
+          {t('Wpisz Place ID z Google (np. ChIJ…).', 'Enter a Google Place ID (e.g. ChIJ…).')}
         </p>
       ) : null}
-      {unavailable ? (
+      {outcome !== null && typeof outcome === 'object' ? (
+        <p className="state state--error" role="alert">
+          {outcome.error}
+        </p>
+      ) : null}
+      {outcome === 'unavailable' ? (
         <p className="state state--muted" role="status">
-          Place ID assignment is not available yet —{' '}
-          <code>/api/merchants/:id/google-place-id</code> returned 404.
+          {t('Zapis Place ID jest jeszcze niedostępny —', 'Place ID assignment is not available yet —')}{' '}
+          <code>/api/merchants/:id/google-place-id</code> {t('zwraca 404.', 'returned 404.')}
         </p>
       ) : null}
     </div>
