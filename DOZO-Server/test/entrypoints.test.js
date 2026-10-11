@@ -229,21 +229,24 @@ test('dashboard app serves the homepage at / and the panel SPA under /panel/', a
   assert.equal(legacy.headers.location, '/panel/', 'legacy deep link redirects to the panel');
 });
 
-test('npm start is the dashboard entrypoint and start:all never runs the combined server', () => {
+test('npm start runs the canonical unified server and start:all keeps the split launcher', () => {
   const pkg = JSON.parse(readFileSync(join(PROJECT_DIR, 'package.json'), 'utf8'));
   const { scripts } = pkg;
 
-  // #50: the operator default is the dashboard split entrypoint.
-  assert.equal(scripts.start, 'node src/dashboard.js');
-  assert.equal(scripts.dev, 'node --watch src/dashboard.js');
+  // #88: the operator default is the canonical unified entrypoint, which serves
+  // the public redirect and the protected API from one process. This reverses
+  // #50's dashboard-only default.
+  assert.equal(scripts.start, 'node src/server.js');
+  assert.equal(scripts.dev, 'node --watch src/server.js');
+  assert.match(scripts.start, /src\/server\.js/, 'npm start runs the unified server');
+  assert.match(scripts.dev, /src\/server\.js/, 'npm run dev runs the unified server');
+
+  // The legacy split entrypoints stay available during the transition.
   assert.equal(scripts['start:dashboard'], 'node src/dashboard.js');
   assert.equal(scripts['start:connector'], 'node src/connector.js');
-  assert.doesNotMatch(scripts.start, /src\/server\.js/, 'npm start must not run the combined server');
-  assert.doesNotMatch(scripts.dev, /src\/server\.js/, 'npm run dev must not run the combined server');
 
-  // Local/demo runs the two entrypoints through the launcher, not src/server.js.
+  // Local/demo still runs the two entrypoints through the launcher.
   assert.equal(scripts['start:all'], 'node scripts/start-all.js');
-  assert.doesNotMatch(scripts['start:all'], /src\/server\.js/, 'start:all must not run the combined server');
   const launcher = readFileSync(join(PROJECT_DIR, 'scripts/start-all.js'), 'utf8');
   assert.match(launcher, /src\/dashboard\.js/, 'launcher spawns the dashboard entrypoint');
   assert.match(launcher, /src\/connector\.js/, 'launcher spawns the connector entrypoint');
