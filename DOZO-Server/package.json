@@ -8,8 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "node --watch src/dashboard.js",
-    "start": "node src/dashboard.js",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
     "dev:connector": "node --watch src/connector.js",
     "dev:dashboard": "node --watch src/dashboard.js",
     "start:connector": "node src/connector.js",
