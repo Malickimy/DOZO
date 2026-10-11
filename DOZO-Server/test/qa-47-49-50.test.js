@@ -8,8 +8,9 @@
  *        merchant isolation is lost, or a no-scan terminal disappears.
  *   #49  seedDemo duplicates / fails to bind an unoccupied register / clobbers
  *        a register that is already bound to a different terminal.
- *   #50  `npm start` still boots the combined server (regression to #50's core
- *        intent) instead of the dashboard-only entrypoint.
+ *   #88  `npm start` points at the canonical unified `src/server.js`, which now
+ *        serves the public redirect AND the protected API on one process; the
+ *        #50 dashboard-only default is intentionally reversed.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -276,19 +277,20 @@ test('#49 seedDemo never re-binds a register already occupied by another termina
 });
 
 // ---------------------------------------------------------------------------
-// #50 — entrypoints
+// #88 — canonical unified entrypoint
 // ---------------------------------------------------------------------------
 
-test('#50 no npm script runs the combined src/server.js and every entrypoint exists', () => {
+test('#88 npm start and dev point at the canonical unified src/server.js and every entrypoint exists', () => {
   const pkg = JSON.parse(readFileSync(join(PROJECT_DIR, 'package.json'), 'utf8'));
   const scripts = pkg.scripts;
-  assert.equal(scripts.start, 'node src/dashboard.js');
-  assert.equal(scripts.dev, 'node --watch src/dashboard.js');
+  // #88 reverses #50: the operator default is the combined entrypoint.
+  assert.equal(scripts.start, 'node src/server.js');
+  assert.equal(scripts.dev, 'node --watch src/server.js');
   assert.equal(scripts['start:all'], 'node scripts/start-all.js');
 
-  for (const [name, command] of Object.entries(scripts)) {
-    assert.doesNotMatch(command, /src\/server\.js/, `scripts.${name} must not run the combined server`);
-  }
+  // The legacy split entrypoints remain available during the transition.
+  assert.equal(scripts['start:connector'], 'node src/connector.js');
+  assert.equal(scripts['start:dashboard'], 'node src/dashboard.js');
 
   // The node entrypoints referenced by the scripts must resolve to real files.
   const entrypoints = readdirSync(join(PROJECT_DIR, 'src'))
@@ -333,7 +335,7 @@ function killTree(child, signal) {
   }
 }
 
-test('#50 npm start boots the dashboard entrypoint only (no redirect surface)', async (t) => {
+test('#88 npm start boots the unified entrypoint: API + redirect + health on one process', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'dozo-qa-npmstart-'));
   const port = await freePort();
 
@@ -367,10 +369,22 @@ test('#50 npm start boots the dashboard entrypoint only (no redirect surface)', 
   const base = `http://127.0.0.1:${port}`;
   assert.ok(await waitForHealth(`${base}/health`), `npm start is healthy on :${port}\n${output}`);
 
-  const api = await fetch(`${base}/api/merchants`, { headers: { 'x-api-token': TEST_TOKEN } });
-  assert.equal(api.status, 200, 'npm start serves the dashboard API');
+  const health = await fetch(`${base}/health`);
+  assert.equal(health.status, 200, 'npm start serves /health');
+  assert.deepEqual(await health.json(), { status: 'ok' });
 
-  // Pre-#50 `npm start` ran src/server.js, the combined app, which mounted /r.
+  const guarded = await fetch(`${base}/api/merchants`);
+  assert.equal(guarded.status, 401, 'npm start guards /api/* without a token');
+
+  const api = await fetch(`${base}/api/merchants`, { headers: { 'x-api-token': TEST_TOKEN } });
+  assert.equal(api.status, 200, 'npm start serves the dashboard API with a token');
+
+  // #88 combines the public redirect surface onto the same process.
   const redirect = await fetch(`${base}/r/DEMOTERM01`, { redirect: 'manual' });
-  assert.equal(redirect.status, 404, 'npm start does not mount the connector redirect');
+  assert.equal(redirect.status, 302, 'npm start mounts the connector redirect');
+  assert.match(
+    redirect.headers.get('location') ?? '',
+    /^https:\/\/search\.google\.com\/local\/writereview\?placeid=/,
+    'the redirect targets the Google review form',
+  );
 });
