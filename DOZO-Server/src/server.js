@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { openDatabase, seedDemo } from './db.js';
 import { buildApp } from './app.js';
+import { registerSpa } from './lib/spa.js';
 
 /**
  * Canonical unified production entrypoint (Release Board R4).
@@ -21,7 +22,9 @@ export async function createServer({ config = loadConfig(), db, logger = true } 
   if (config.seedDemo) {
     seedDemo(database);
   }
-  return buildApp({ db: database, config, logger });
+  const app = buildApp({ db: database, config, logger });
+  registerSpa(app, config);
+  return app;
 }
 
 function openDbPath(config) {
