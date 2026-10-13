@@ -81,8 +81,8 @@ from a project directory) after authorization. The script publishes only the cur
 change branches, or push `main`. For everything other than label commands, use the GitHub
 MCP rather than `gh`.
 
-Before pushing, confirm the current branch matches the issue worktree and that the latest
-local commit belongs to the requested task. Never push when the worktree has uncommitted
+Before pushing, confirm the current branch matches the issue branch and that the latest
+local commit belongs to the requested task. Never push when the workspace has uncommitted
 changes. If a commit message is invalid or a check fails, report the exact problem and stop.
 
 ## Report

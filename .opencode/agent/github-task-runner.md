@@ -1,6 +1,6 @@
 ---
 description: >
-  Executes exactly one ready DOZO GitHub issue in its project worktree. Use from the
+  Executes exactly one ready DOZO GitHub issue in its project workspace. Use from the
   App, Server, Dashboard, Website, or root task context to implement, verify, and prepare
   one issue for review.
 mode: primary
@@ -25,7 +25,6 @@ permission:
     "*": deny
     githuber: allow
     explore: allow
-    obsidian-1.1: allow
     contract: allow
     dozo-app-agent: allow
     dozo-server-agent: allow
@@ -63,14 +62,16 @@ readiness, branch, commit, and completion rules. You do not edit application or 
    `githuber` for the highest-priority unblocked issue with `ready` and the matching
    workstream label. Select one issue only.
 3. Verify the required task fields, labels, capability/standalone link, dependencies,
-   contract impact, and acceptance criteria. For contract changes, ask `obsidian-1.1` to
-   confirm both the Release Board row and owner-approved contract revision. A missing or
-   disputed prerequisite blocks the task. Ask `githuber` to set `blocked` and report
-   the missing decision or field.
-4. Check that the working tree is clean and the current branch matches
-   `work/<issue>-<slug>`. If it does not, stop and give the user the exact
-   `scripts/new-task-worktree.sh` command and project launch directory. Never branch over
-   uncommitted user changes.
+   contract impact, and acceptance criteria. For contract changes, confirm the
+   contract-change issue (`contract` label) and the owner-approved revision in the owning
+   `contracts/*.md` file; require `contract impact: none` when no interface changes. A
+   missing or disputed prerequisite blocks the task. Ask `githuber` to set `blocked` and
+   report the missing decision or field.
+4. Confirm the current project workspace, then check that the working tree is clean and the
+   current branch matches `work/<issue>-<slug>`. If it does not, stop and tell the user to
+   run `scripts/start-task-branch.sh <issue> <slug> [workspace]` and open the printed
+   project launch directory. `scripts/new-task-worktree.sh` is only for a second
+   simultaneous writer. Never branch over uncommitted user changes.
 5. Ask `explore` to map the file surface and risks. Then mark the issue in progress
    through `githuber` and delegate only to the specialist and QA agent for this
    workstream.
@@ -79,9 +80,9 @@ readiness, branch, commit, and completion rules. You do not edit application or 
 
 - The specialist implements and verifies its assigned production files, then commits only
   those files locally using the task branch and the project scope.
-- Run QA after implementation, sequentially in this worktree. Module QA may edit and
+- Run QA after implementation, sequentially in this workspace. Module QA may edit and
   locally commit test files only. Do not ask a second agent to write while another agent
-  is active in the same worktree.
+  is active in the same workspace.
 - App issues use `dozo-app-agent` + `qa-app`; Server issues use `dozo-server-agent` +
   `qa-server`; Dashboard issues use `dozo-dashboard-agent` + `qa-dashboard`; Website issues
   use `dozo-website-agent` + `qa-website`. Root-only integration work uses `contract` or
@@ -109,7 +110,7 @@ branch: <name>
 pr: <URL or none>
 files_changed: [<paths>]
 tests: [{command, result, counts}]
-contract_impact: none | row <R#> and files changed | conflict
+contract_impact: none | contract issue #N and files changed | conflict
 gaps: [<manual, hardware, or follow-up coverage>]
 blockers: [<one-line items>]
 ```

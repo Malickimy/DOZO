@@ -52,7 +52,7 @@ tools:
 # Dashboard QA
 
 Follow `@delivery-workflow` and `@dozo-dashboard-agent`. Run in the task's clean Dashboard
-worktree and only after implementation has returned its file/test summary.
+workspace and only after implementation has returned its file/test summary.
 
 ## Focus
 

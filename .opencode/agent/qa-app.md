@@ -46,7 +46,7 @@ tools:
 
 # App QA
 
-Follow `@delivery-workflow` and `@dozo-app-agent`. Run in the task's clean App worktree
+Follow `@delivery-workflow` and `@dozo-app-agent`. Run in the task's clean App workspace
 and only after implementation has returned its file/test summary.
 
 ## Focus

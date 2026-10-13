@@ -20,7 +20,7 @@ help:
 	@echo "  make dashboard      build the dashboard"
 	@echo "  make dashboard-dev  start the dashboard dev server"
 	@echo "  make dashboard-test run dashboard tests"
-	@echo "  make verify-coordination validate OpenCode routing and task worktree tooling"
+	@echo "  make verify-coordination validate OpenCode routing and task workspace tooling"
 	@echo "  make verify         build + test projects and validate delivery tooling"
 
 app:
@@ -46,6 +46,7 @@ dashboard-test:
 
 verify-coordination:
 	node scripts/verify-delivery-config.mjs
+	bash -n scripts/start-task-branch.sh
 	bash -n scripts/new-task-worktree.sh
 	bash -n scripts/publish-task-branch.sh
 

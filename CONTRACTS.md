@@ -11,7 +11,7 @@ the `contract` agent; every other contract file is owned by its project agent.
 
 _Last synced from code on 2026-10-11. The repo has four project contexts (App, Server, Dashboard, Website) in a single monorepo under one git repo, remote `git@github.com:Malickimy/DOZO.git`; Website is currently only a scaffold with no application toolchain or shared HTTP contract. The main checkout is `/Users/malicky/l/DOZO`, and git worktrees mirror the same layout. The shared runtime env vars (`DASHBOARD_DIST_PATH`, plus the transitional `CONNECTOR_PORT`, `CONNECTOR_SPOOL_PATH`, `DASHBOARD_INGEST_URL`) and the single shared `DB_PATH` datastore are documented in [`contracts/env.md`](contracts/env.md)._
 
-_Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. The App R3/R4/R6 consumers landed in PR #62 (merged 2026-09-28), and the Dashboard consumer rows were restored in this reconciliation (PR #66); R1–R7 remain server-implemented (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md))._
+_Release Board R1–R7 are all implemented on the server side. R2–R7 landed together in PR #36, an atomic server PR that collapsed the planned expand/contract steps. The App R3/R4/R6 consumers landed in PR #62 (merged 2026-09-28), and the Dashboard consumer rows were restored in this reconciliation (PR #66); R1–R7 remain server-implemented (see [`contracts/http-api.md`](contracts/http-api.md) and [`contracts/dashboard.md`](contracts/dashboard.md)). Historical `R#` entries in this file are a ledger of past changes, not a readiness gate._
 
 ---
 
@@ -47,7 +47,7 @@ Editing rules:
 | Dashboard | `DOZO-Dashboard/` | `src/**`, `e2e/**`, SPA build config (frontend only), `contracts/dashboard.md` |
 | Website | `DOZO-Website/` | entire directory (independent public marketing-site project; application toolchain TBD; no shared HTTP contract) |
 | Contract & docs | `.` (repo root) | `CONTRACTS.md`, `contracts/env.md`, `CONTEXT.md`, `MANUAL.md`, `README.md`, `Makefile`, `.github/workflows/` |
-| Docs | Papier Obsidian vault (`obsidian` CLI, vault name `Papier`) | vault notes |
+| Docs | repo Markdown (`CONTEXT.md`, `MANUAL.md`, `README.md`, `docs/`, this index) | documentation home; the Papier Obsidian vault is an optional historical archive |
 
 > Repo root: the monorepo checkout (main `/Users/malicky/l/DOZO`; worktrees such as `/Users/malicky/l/workspace-server` mirror the same layout). Paths in this file are repo-relative so they hold in any worktree. If a path moves again, update this table, the app `scripts/*` `PROJECT_DIR` defaults, `~/.config/opencode/opencode.json` (`ANDROID_PROJECT_DIR`), and the `android-build` skill.
 
@@ -72,7 +72,15 @@ Editing rules:
 
 ## 11. Change process
 
-1. Propose the change in the owning `contracts/*.md` first.
-2. Update the owning repo(s).
-3. Update every consumer (server → app/dashboard → docs).
-4. Bump the "Last synced" line and flag the other owners.
+Contract changes are tracked as GitHub work, not as a Release Board gate.
+
+1. Open a **contract-change issue** (label `contract`) naming the owning `contracts/*.md`
+   file and the exact interface (endpoint, field, message, or schema element) and its old
+   and new shape.
+2. The owning agent lands the **owner-approved revision** in the owning `contracts/*.md`
+   file and records the approving PR or commit on the issue.
+3. Every consumer migrates expand/contract: add the new shape, migrate all consumers, then
+   retire the old one, in separate short-lived issues unless the contract owner approves an
+   atomic change.
+4. Record the approved revision on the contract-change issue and bump the "Last synced" line
+   below, flagging the other owners.

@@ -49,7 +49,7 @@ tools:
 # Server QA
 
 Follow `@delivery-workflow` and `@dozo-server-agent`. Run in the task's clean Server
-worktree and only after implementation has returned its file/test summary.
+workspace and only after implementation has returned its file/test summary.
 
 ## Focus
 

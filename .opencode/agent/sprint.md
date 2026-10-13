@@ -2,7 +2,7 @@
 mode: primary
 description: >
   Deprecated DOZO sprint-agent alias kept during the GitHub workflow transition. Use only
-  to route old numbered Obsidian sprint work into the GitHub delivery process.
+  to route old numbered sprint work into the GitHub delivery process.
 temperature: 0.1
 permission:
   read: deny
@@ -21,15 +21,16 @@ tools:
 # Legacy sprint agent
 
 New DOZO work uses `delivery-coordinator` for capability planning and
-`github-task-runner` for one ready GitHub issue per invocation. Obsidian remains the human
-roadmap and contract-decision home; GitHub issues hold execution state.
+`github-task-runner` for one ready GitHub issue per invocation. GitHub and repository
+Markdown are authoritative for plans, docs, and delivery status; the Papier Obsidian vault
+is an optional historical archive and not part of the required workflow.
 
 This file remains during transition so existing references do not break. It no longer
 reads numbered sprint notes, creates branches, dispatches implementation, or manages PRs.
 
 When asked to continue an old numbered sprint, direct the user to `/coordinate` to map its
 unfinished scope to approved GitHub work, then use `/run-task #<issue>` from the matching
-task worktree. The old sprint note may inform the human capability brief, but it cannot
+project workspace. The old sprint note may inform the capability history, but it cannot
 override issue readiness or contract gates.
 
 Remove this compatibility agent only after the GitHub workflow has been verified in App,

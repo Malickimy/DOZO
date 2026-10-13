@@ -21,6 +21,7 @@ on:
       - ".github/workflows/coordination.yml"
       - ".github/workflows/*.yml"
       - "scripts/new-task-worktree.sh"
+      - "scripts/start-task-branch.sh"
       - "scripts/publish-task-branch.sh"
       - "scripts/update-worktrees.sh"
       - "scripts/verify-delivery-config.mjs"
@@ -43,6 +44,7 @@ on:
       - ".github/workflows/coordination.yml"
       - ".github/workflows/*.yml"
       - "scripts/new-task-worktree.sh"
+      - "scripts/start-task-branch.sh"
       - "scripts/publish-task-branch.sh"
       - "scripts/update-worktrees.sh"
       - "scripts/verify-delivery-config.mjs"
@@ -62,3 +64,5 @@ jobs:
         run: bash -n scripts/new-task-worktree.sh
       - name: Check task branch publisher syntax
         run: bash -n scripts/publish-task-branch.sh
+      - name: Check task branch starter syntax
+        run: bash -n scripts/start-task-branch.sh
