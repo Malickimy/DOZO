@@ -19,12 +19,12 @@ DOZO/
 ├── CONTRACTS.md         # cross-project contract index (source of truth)
 ├── contracts/           # one frozen interface per workstream
 ├── MANUAL.md            # hands-on operator manual
-├── AGENTS.md            # agent/contributor workflow (commits, PRs, worktrees)
+├── AGENTS.md            # agent/contributor workflow (commits, PRs, workspaces)
 ├── Makefile             # root task runner
 ├── commitlint.config.js # commit scope/format rules
 ├── .opencode/agent/     # delivery coordinator, one-task runner, specialists, QA
 ├── .github/             # issue/PR templates, label manifest, path-filtered CI
-└── scripts/             # build, worktree, and validation helpers
+└── scripts/             # build, workspace, and validation helpers
 ```
 
 The coupling between App, Server, and Dashboard is defined by the HTTP API and Android
@@ -56,13 +56,15 @@ affected consumer checks and delivery-configuration validation.
 
 - Agent and contributor workflow lives in [`AGENTS.md`](AGENTS.md) and
   [`.opencode/docs/delivery-workflow.md`](.opencode/docs/delivery-workflow.md).
-- Obsidian holds the human capability roadmap and Release Board decisions. GitHub issues
-  hold executable tasks, dependencies, and delivery status.
+- GitHub holds capability plans, executable issues, dependencies, and delivery status.
+  Repository Markdown (contracts, `CONTRACTS.md`, architecture decisions, runbooks) is
+  authoritative for documentation; the Papier Obsidian vault is an optional historical
+  archive.
 - Commits use Conventional Commits with a `DOZO-App` / `DOZO-Server` /
   `DOZO-Dashboard` / `DOZO-Website` / `root` scope, enforced by commitlint in CI.
 - One writer per contract file; contract changes go through the owning `contracts/*.md`
   and update all consumers.
 - Do **not** run the server `deploy.sh` full rebuild on the 1 GB VPS (it thrashes); use
   the copy-and-commit method in `MANUAL.md`.
-- The Obsidian vault is kept outside this repo (`Papier_Vault` symlink and any local
-  vault copy are gitignored).
+- The optional Papier Obsidian archive is kept outside this repo (`Papier_Vault` symlink
+  and any local vault copy are gitignored); only the `obsidian-1.1` agent may access it.

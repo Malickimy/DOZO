@@ -1,0 +1,90 @@
+name: Contract change
+description: Propose and track one cross-project interface change.
+title: "Contract: "
+labels:
+  - "contract"
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        A contract change updates one interface under `contracts/`. This form adds the
+        `contract` label. Also add the owning workstream label and a `p0`/`p1`/`p2` label,
+        and add `db-change` when the change alters the database schema or persisted data.
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owning workstream
+      options:
+        - App
+        - Server
+        - Dashboard
+        - Website
+        - Root
+    validations:
+      required: true
+  - type: input
+    id: contract_file
+    attributes:
+      label: Contract file
+      description: The owning contracts/*.md file, or CONTRACTS.md / contracts/env.md for root.
+      placeholder: contracts/http-api.md
+    validations:
+      required: true
+  - type: textarea
+    id: interface
+    attributes:
+      label: Exact interface change
+      description: Name the endpoint, field, message, or schema element and its old and new shape.
+      placeholder: "Endpoint/field:\n\nOld:\n\nNew:"
+    validations:
+      required: true
+  - type: textarea
+    id: consumers
+    attributes:
+      label: Affected consumers
+      description: List every project or task that must migrate to the new interface.
+      placeholder: "- App: ...\n- Dashboard: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Expand/contract rollout
+      description: Order the add, migrate, and retire steps. Note any owner-approved atomic change.
+      placeholder: "1. Add ...\n2. Migrate ...\n3. Retire ..."
+    validations:
+      required: true
+  - type: textarea
+    id: revision
+    attributes:
+      label: Owner-approved revision
+      description: Link the approving PR or commit that lands the revised contract file.
+      placeholder: "PR #... or commit <sha>"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add native GitHub blocking relationships and list them here, or state none.
+      placeholder: "None, or blocked by #..."
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: State how the interface change is verified across every consumer.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

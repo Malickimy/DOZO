@@ -35,6 +35,9 @@ labels:
   - name: "bug"
     color: "fecaca"
     description: "Reproducible defect"
+  - name: "contract"
+    color: "64748b"
+    description: "Cross-project contract-change coordination issue"
   # States - shades of purple
   - name: "ready"
     color: "ede9fe"

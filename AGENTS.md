@@ -22,37 +22,27 @@ has connector and dashboard entrypoints; the approved MVP direction is one share
 process with separate code modules. Implement that runtime change only through its approved
 capability issues and contract gates.
 
-## Obsidian vault (Papier)
+## Planning and documentation
 
-The `Papier` vault (`~/Documents/Papier/Papier`) is owned by the `obsidian-1.1`
-agent. Do not read, edit, or create vault files directly — no `read` / `edit` /
-`write` tools and no `obsidian` CLI calls on vault paths. Hand vault work to the
-obsidian agent instead. Access is granted to that agent in `opencode.json`;
-other agents stay blocked.
+GitHub is authoritative for capability plans, executable issues, dependencies, and delivery
+status. Repository Markdown is authoritative for documentation: contract interfaces under
+`contracts/`, the index `CONTRACTS.md`, architecture decisions, and runbooks. The Papier
+Obsidian vault is an optional historical archive and is not part of the required workflow;
+if it is ever used, only the `obsidian-1.1` agent may read or write vault files.
 
-## Planning: Obsidian and GitHub
+Follow [`delivery-workflow.md`](.opencode/docs/delivery-workflow.md) for issue readiness,
+labels, dependencies, branches, and task handoffs.
 
-The Papier Obsidian vault is the human-facing roadmap and design home. GitHub issues are
-the execution tracker for App, Server, Dashboard, Website, and root tasks. Follow
-[`delivery-workflow.md`](.opencode/docs/delivery-workflow.md) for issue readiness, labels,
-dependencies, branches, and task handoffs. Link the Obsidian capability brief from the
-GitHub parent issue instead of copying changing issue status into the vault.
+A contract change is proposed through a GitHub contract-change issue (label `contract`)
+that names the owning `contracts/*.md` file, the exact interface change, its consumers, and
+the expand/contract rollout. The owning agent lands the owner-approved revision in the
+contract file. A task that changes an interface links that contract-change issue and
+approved revision; a task that changes none states `contract impact: none`. Historical `R#`
+entries in `CONTRACTS.md` are a ledger, not a gate.
 
-The vault root note `DOZO/Release Board.md` (vault name `Papier`) remains the required
-source of truth for cross-project contract decisions:
-
-- **One row per contract change**, naming the exact endpoint/field and which project
-  tasks implement it. Contract-dependent implementation does not start until the row and
-  owner-approved contract revision exist.
-- **Expand/contract by default:** add the new thing, migrate every consumer, then remove
-  the old thing — separate short-lived issues and PRs unless the contract owner approves an
-  atomic change.
-- **Root grilling** decides contradictions between capability plans. Per-project tasks
-  cannot invent shared contract changes.
-
-The Obsidian agent is the only agent allowed to read or update vault notes. GitHub remains
-authoritative for ticket and PR state; Obsidian carries capability intent, decisions, and
-human progress summaries.
+Expand/contract is the default: add the new thing, migrate every consumer, then remove the
+old thing — separate short-lived issues and PRs unless the contract owner approves an atomic
+change. Per-project tasks cannot invent shared contract changes.
 
 ## Commits
 
@@ -90,32 +80,43 @@ Two register taps could create two rows in the scan log.
   branches and manages PRs.
 - The default unit is **one issue, one task branch, one PR**. A capability has a parent
   issue and project-owned child issues. A cross-project atomic issue is an exception.
-- One active writer per task worktree. Implementation and QA run sequentially in that
-  worktree.
-- A change to `contracts/*.md` requires the Release Board row and owner-approved contract
-  first. Project agents own their contract files; `contract` owns `CONTRACTS.md` and
-  `contracts/env.md`.
+- One active writer per workspace. Implementation and QA run sequentially in that workspace
+  and task branch; QA never opens a second PR.
+- A change to `contracts/*.md` is proposed through a GitHub contract-change issue (label
+  `contract`) and requires the owner-approved revision in the owning contract file before
+  implementation. Project agents own their contract files; `contract` owns `CONTRACTS.md`
+  and `contracts/env.md`.
 
-## Worktrees: one task per worktree
+## Project workspaces
 
-Give each active task its own worktree and branch. Two tasks in the same project can run
-in parallel only in separate worktrees. Create a clean worktree from current `origin/main`
-with:
+Keep one reusable workspace per project (and per additional writer) outside the repo, for
+example `../workspace-android`, `../workspace-server`, `../workspace-dashboard`, and
+`../workspace-website`. A workspace persists across tasks and keeps toolchains,
+dependencies, and OpenCode context warm. Park an idle workspace detached at the current
+`origin/main`, since Git cannot check out `main` in two worktrees at once.
+
+Start or resume a task branch in a workspace with:
 
 ```bash
-scripts/new-task-worktree.sh 123 durable-display-outbox ../workspace-123
+scripts/start-task-branch.sh 123 durable-display-outbox ../workspace-android
 ```
 
-The helper creates `work/123-durable-display-outbox`. Run OpenCode in the relevant project
-directory inside that worktree, such as `../workspace-123/DOZO-App`, so it loads that
-project's tools. The Website context is `DOZO-Website/`; its application toolchain is
-selected by an approved Website task.
+The helper creates or resumes `work/123-durable-display-outbox` from `origin/main` and
+prints the project launch directory. Run OpenCode in that project directory (for example
+`../workspace-android/DOZO-App`) so it loads that project's tools. The Website context is
+`DOZO-Website/`; its application toolchain is selected by an approved Website task.
+
+One active writer per workspace. Implementation and module QA run sequentially in the same
+workspace and task branch; QA never opens a second PR. When a second writer must work in
+the same project at once, use the exception helper `scripts/new-task-worktree.sh` to create
+a separate workspace.
 
 ### Short-lived task branches
 
-- Do not keep long-lived project feature branches. Create one `work/<issue>-<slug>` branch
-  per GitHub task from the newest `origin/main`.
-- Merge a producer task before creating dependent consumer worktrees, unless an approved
+- Do not keep long-lived project feature branches. A persistent workspace is not a
+  long-lived branch: each task still uses one short-lived `work/<issue>-<slug>` branch from
+  the newest `origin/main`.
+- Merge a producer task before creating dependent consumer workspaces, unless an approved
   integration worktree is used to test compatible branches together.
 - Expand/contract keeps `main` green while workstreams move at different times. An atomic
   cross-project change is allowed only when the change cannot be split safely.
@@ -145,15 +146,15 @@ from the branch it was created on. Two rules follow:
 ## Testing a cross-project change (before merging)
 
 The current code uses separate App, Server, and Dashboard projects that talk over HTTP, so
-you do **not** need to merge to test compatibility. Run each task worktree's artifact as
+you do **not** need to merge to test compatibility. Run each task workspace's artifact as
 a live piece and wire them over localhost:
 
-- **Server + App:** start the server from the server worktree
+- **Server + App:** start the server from the server workspace
   (`SEED_DEMO=true DB_PATH=/tmp/dozo-integ.db npm start` → `localhost:3000`), build and
-  install the app from the app worktree, and point the app's base URL at
+  install the app from the app workspace, and point the app's base URL at
   `http://10.0.2.2:3000` (`10.0.2.2` is the laptop as seen from the emulator; `localhost`
   does not work there). Trigger a sale, scan the QR, confirm the server logs it.
-- **Server + Dashboard:** same server; run the dashboard from its worktree with
+- **Server + Dashboard:** same server; run the dashboard from its workspace with
   `VITE_API_BASE_URL=http://localhost:3000 npm run dev`, and set the server's
   `DASHBOARD_ORIGIN` to the dev origin.
 - **All three:** one window per project, all pointed at `localhost:3000`.
@@ -179,7 +180,7 @@ the current runtime; update them when the approved shared-process backend capabi
 - Use `qa-app`, `qa-server`, `qa-dashboard`, or `qa-website` for project-owned issues.
   Invoke the selected QA from the matching project window; subagents inherit that window's
   tools.
-- QA starts after implementation stops writing in the worktree. It may add and commit
+- QA starts after implementation stops writing in the workspace. It may add and commit
   test-only files on the same task branch, never a second PR. The task runner owns the
   fix/retest loop.
 - Use `qa` for integrated acceptance across a capability's project tasks. Native Android
@@ -228,7 +229,7 @@ make app           # ./gradlew :app:assembleDebug
 make app-test      # ./gradlew :app:testDebugUnitTest
 make server        # npm test in DOZO-Server
 make dashboard     # npm run build in DOZO-Dashboard
-make verify-coordination # OpenCode routing, JSON, and task worktree checks
+make verify-coordination # OpenCode routing, JSON, and task workspace checks
 make help          # all targets
 ```
 

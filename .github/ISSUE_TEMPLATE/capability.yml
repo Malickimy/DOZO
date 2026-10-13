@@ -8,9 +8,9 @@ body:
     attributes:
       value: >-
         Capability issues group independently executable project tasks. Keep detailed
-        planning in the linked Obsidian note and use native GitHub sub-issues and blocking
-        relationships for execution. The form does not apply labels selected in the body.
-        Add each checked workstream label and one `p0`/`p1`/`p2` label to this issue.
+        planning in the linked repository doc or issue and use native GitHub sub-issues and
+        blocking relationships for execution. The form does not apply labels selected in the
+        body. Add each checked workstream label and one `p0`/`p1`/`p2` label to this issue.
   - type: input
     id: capability_id
     attributes:
@@ -20,13 +20,13 @@ body:
     validations:
       required: true
   - type: input
-    id: obsidian_spec
+    id: planning_reference
     attributes:
-      label: Obsidian capability note
-      description: Note path or vault link containing the approved human-facing brief.
-      placeholder: DOZO/Capabilities/MVP-00 Delivery foundation.md
+      label: Planning reference
+      description: Link a repository doc or issue with the capability brief, or state none.
+      placeholder: docs/..., #123, or none
     validations:
-      required: true
+      required: false
   - type: textarea
     id: outcome
     attributes:
@@ -83,10 +83,10 @@ body:
     validations:
       required: false
   - type: textarea
-    id: contract_rows
+    id: contract_changes
     attributes:
-      label: Release Board contract rows
-      description: List each approved R# row with its owner-approved revision, or state none.
-      placeholder: "R# / approved revision, or none"
+      label: Contract changes
+      description: List each contract-change issue and its approved revision, or state none.
+      placeholder: "contract-change issue #N / approved revision, or none"
     validations:
       required: true

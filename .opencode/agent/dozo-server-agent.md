@@ -94,8 +94,8 @@ After implementation and the required checks pass:
   such as `feat(DOZO-Server): add idempotent invitation redemption`.
 - Stage exact paths only. Never use `git add -A` or `git add .`.
 - Run `npm run commitlint --prefix ..` before committing.
-- Never create or switch branches, push, or open a PR. The task runner prepares the task
-  worktree, and `githuber` handles GitHub publication.
+- Never create or switch branches, push, or open a PR. The task runner prepares the project
+  workspace and task branch, and `githuber` handles GitHub publication.
 - Return the structured result (status, files, tests, questions, blockers) to the
   caller; do not reply to the user.
 

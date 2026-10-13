@@ -20,9 +20,9 @@ Apply every affected workstream label to this PR. Apply the matching type label
 ## Contract impact
 
 - [ ] No shared contract change (`contract impact: none`)
-- [ ] Approved Release Board row linked below
+- [ ] Approved contract change (contract-change issue + owner-approved `contracts/*.md` revision)
 
-Release Board row(s):
+Contract-change issue and revision:
 
 ## Verification
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Create one clean task worktree from the latest origin/main.
+# Create one extra task worktree when a second writer must run in the same project
+# at the same time. The default is one persistent project workspace using
+# scripts/start-task-branch.sh.
 
 set -euo pipefail
 
@@ -8,6 +10,8 @@ usage() {
 Usage: scripts/new-task-worktree.sh <issue-number> <slug> <worktree-path>
 
 Create branch work/<issue-number>-<slug> in a new Git worktree based on origin/main.
+This is the exception helper for a second simultaneous writer in the same project;
+the default is one persistent project workspace using scripts/start-task-branch.sh.
 The worktree path must not exist, and its parent directory must already exist.
 
 Example:

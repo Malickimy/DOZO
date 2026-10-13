@@ -134,6 +134,7 @@ if (requireFile(labelsPath)) {
     "maintenance",
     "qa",
     "db-change",
+    "contract",
   ];
 
   for (const label of requiredLabels) {
@@ -143,6 +144,7 @@ if (requireFile(labelsPath)) {
   const templatePaths = [
     ".github/ISSUE_TEMPLATE/config.yml",
     ".github/ISSUE_TEMPLATE/capability.yml",
+    ".github/ISSUE_TEMPLATE/contract.yml",
     ".github/ISSUE_TEMPLATE/work-item.yml",
     ".github/ISSUE_TEMPLATE/bug.yml",
     ".github/ISSUE_TEMPLATE/maintenance.yml",
@@ -164,6 +166,7 @@ for (const relativePath of [
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".opencode/docs/delivery-workflow.md",
   "scripts/new-task-worktree.sh",
+  "scripts/start-task-branch.sh",
   "scripts/publish-task-branch.sh",
   "DOZO-Website/AGENTS.md",
   "DOZO-Website/README.md",

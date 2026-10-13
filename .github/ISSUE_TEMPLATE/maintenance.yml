@@ -38,14 +38,6 @@ body:
       placeholder: "#123, or Standalone: ..."
     validations:
       required: true
-  - type: input
-    id: obsidian_spec
-    attributes:
-      label: Obsidian brief
-      description: Link the approved human-facing capability note, or state none for standalone work.
-      placeholder: DOZO/Capabilities/MVP-00.md, or none
-    validations:
-      required: true
   - type: dropdown
     id: priority
     attributes:
@@ -76,8 +68,8 @@ body:
     id: contract_impact
     attributes:
       label: Contract impact
-      description: Name the approved Release Board row and owner-approved revision, or state none.
-      placeholder: "contract impact: none, or R# / approved revision / interface"
+      description: Name the contract-change issue, owner-approved revision in contracts/*.md, and exact interface, or state none.
+      placeholder: "contract impact: none, or contract-change issue #N / approved revision / contracts/<file> / endpoint or field"
     validations:
       required: true
   - type: textarea
