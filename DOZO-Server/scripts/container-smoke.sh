@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 #
-# container-smoke.sh - Sprint 2 container gate (Release Board R4).
+# container-smoke.sh - one-service container gate (Release Board R4 / issue #90).
 #
-# Boots the per-client Compose stack (dashboard + connector) from
-# DOZO-Server/docker-compose.yml, then proves the public round-trip end to end:
+# Boots the single `server` service from DOZO-Server/docker-compose.yml, then
+# proves the one-origin round-trip end to end:
 #
-#   1. `docker compose config` renders TWO services with DISTINCT per-client
-#      DB_PATH and no shared named volume (structural gate).
-#   2. both containers answer GET /health.
-#   3. GET /r/:terminal_id is hit twice from one client; the connector debounces
-#      the repeat and forwards a single event.
+#   1. `docker compose config` renders ONE service named `server` on ONE named
+#      datastore volume mounted at /data with a single DB_PATH under /data/
+#      (structural gate: no connector service, spool, ingest URL or depends_on).
+#   2. the single origin answers GET /health.
+#   3. GET /r/:terminal_id is hit twice from one client; the debounce records
+#      exactly one scan and still serves the 302 redirect.
 #   4. GET /api/merchants/:id/scans reports EXACTLY ONE scan for that terminal.
-#   5. re-POSTing the same event to the dashboard ingest returns "duplicate" and
-#      does not add a row (event_id idempotency).
-#   6. the dashboard serves the marketing homepage at / and the panel SPA shell
-#      at /panel/ (id="root"), including on a /panel/ deep link.
+#   5. re-POSTing the same event_id to POST /scans returns "duplicate" and does
+#      not add a row (event_id idempotency).
+#   6. the same origin serves the marketing homepage at / and the panel SPA
+#      shell at /panel/ (id="root"), including on a /panel/ deep link.
+#   7. no connector spool file is produced on the datastore volume.
 #
 # Requires Docker + docker compose, curl, and node. CI runs it from
 # .github/workflows/container.yml after the SPA is staged at DOZO-Server/public.
@@ -23,14 +25,13 @@
 # Environment overrides:
 #   COMPOSE_FILE            path to the compose file (default DOZO-Server/docker-compose.yml)
 #   PROJECT_NAME            compose project name (default dozo-container-smoke)
-#   DASHBOARD_URL           dashboard base URL (default http://localhost:3000)
-#   CONNECTOR_URL           connector base URL (default http://localhost:3001)
+#   SERVER_URL              unified base URL (default http://localhost:3000)
 #   MERCHANT_ID             seeded merchant (default demo-merchant)
 #   TERMINAL_ID             seeded terminal (default DEMOTERM01)
 #   API_TOKEN               operator token written to the smoke .env
-#   CONNECTOR_SECRET        connector<->dashboard secret written to the smoke .env
+#   CONNECTOR_SECRET        scan-ingest secret written to the smoke .env
 #   HEALTH_TIMEOUT_SECONDS  boot wait (default 90)
-#   INGEST_TIMEOUT_SECONDS  forward wait (default 30)
+#   SCAN_TIMEOUT_SECONDS    scan-visibility wait (default 30)
 #   CURL                    curl binary (default curl)
 #
 # Usage: container-smoke.sh [-h|--help]
@@ -43,14 +44,14 @@ SERVER_DIR="$ROOT_DIR/DOZO-Server"
 
 COMPOSE_FILE="${COMPOSE_FILE:-$SERVER_DIR/docker-compose.yml}"
 PROJECT_NAME="${PROJECT_NAME:-dozo-container-smoke}"
-DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:3000}"
-CONNECTOR_URL="${CONNECTOR_URL:-http://localhost:3001}"
+SERVER_URL="${SERVER_URL:-http://localhost:3000}"
 MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
 TERMINAL_ID="${TERMINAL_ID:-DEMOTERM01}"
 API_TOKEN="${API_TOKEN:-container-smoke-token}"
 CONNECTOR_SECRET="${CONNECTOR_SECRET:-container-smoke-connector-secret}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-90}"
-INGEST_TIMEOUT_SECONDS="${INGEST_TIMEOUT_SECONDS:-30}"
+# Accept the legacy INGEST_TIMEOUT_SECONDS name so existing overrides keep working.
+SCAN_TIMEOUT_SECONDS="${SCAN_TIMEOUT_SECONDS:-${INGEST_TIMEOUT_SECONDS:-30}}"
 CURL="${CURL:-curl}"
 USER_AGENT="dozo-container-smoke/1.0"
 
@@ -58,8 +59,9 @@ usage() {
   cat <<EOF
 Usage: container-smoke.sh [-h|--help]
 
-Boot the connector + dashboard from compose and assert the /r/:id round-trip
-delivers exactly one deduped scan and that the dashboard serves the SPA.
+Boot the single `server` service from compose and assert the one-origin
+round-trip: /r/:id twice -> exactly one deduped scan on /api/*, POST /scans
+idempotency, the SPA, and no connector spool file.
 EOF
 }
 
@@ -85,10 +87,8 @@ fail() {
   echo "ERROR: $*" >&2
   echo "--- compose ps ---" >&2
   compose ps >&2 || true
-  echo "--- dashboard logs ---" >&2
-  compose logs dashboard >&2 || true
-  echo "--- connector logs ---" >&2
-  compose logs connector >&2 || true
+  echo "--- server logs ---" >&2
+  compose logs server >&2 || true
   exit 1
 }
 
@@ -133,7 +133,7 @@ if [[ ! -f "$SERVER_DIR/public/index.html" ]]; then
   exit 1
 fi
 
-echo "==> structural: docker compose config"
+echo "==> structural: docker compose config (one service, one datastore volume)"
 CONFIG_JSON="$TMP_DIR/compose.json"
 compose config --format json > "$CONFIG_JSON"
 COMPOSE_JSON="$CONFIG_JSON" node --input-type=module <<'NODE' || exit 1
@@ -147,10 +147,11 @@ const problem = (message) => {
   process.exit(1);
 };
 
-if (names.join(',') !== 'connector,dashboard') {
-  problem(`expected services connector+dashboard, got ${names.join(',') || '(none)'}`);
+if (names.join(',') !== 'server') {
+  problem(`expected exactly one service named server, got ${names.join(',') || '(none)'}`);
 }
 
+const server = services.server;
 const environmentOf = (service) => {
   const env = service.environment ?? {};
   if (Array.isArray(env)) {
@@ -164,25 +165,61 @@ const environmentOf = (service) => {
   return env;
 };
 
-const dbPaths = ['dashboard', 'connector'].map((name) => String(environmentOf(services[name]).DB_PATH));
-if (dbPaths.some((value) => !value || value === 'undefined')) {
-  problem(`each service must set DB_PATH, got ${dbPaths.join(', ')}`);
+const env = environmentOf(server);
+const dbPath = String(env.DB_PATH ?? '');
+if (!/^\/data\//.test(dbPath)) {
+  problem(`DB_PATH must live on the datastore volume under /data/, got ${dbPath || '(unset)'}`);
 }
-if (new Set(dbPaths).size !== 2) {
-  problem(`DB_PATH must be distinct per client, got ${dbPaths.join(', ')}`);
+if ('CONNECTOR_SPOOL_PATH' in env) {
+  problem('CONNECTOR_SPOOL_PATH must not be set on the unified service (no spool)');
+}
+if ('DASHBOARD_INGEST_URL' in env) {
+  problem('DASHBOARD_INGEST_URL must not be set on the unified service (no forwarding)');
+}
+if (server.depends_on && Object.keys(server.depends_on).length > 0) {
+  problem(`the single service must not have depends_on, got ${JSON.stringify(server.depends_on)}`);
 }
 
 const volumeSourcesOf = (service) =>
   (service.volumes ?? []).map((volume) =>
     typeof volume === 'string' ? volume.split(':')[0] : volume.source,
   );
-const dashboardVolumes = volumeSourcesOf(services.dashboard);
-const connectorVolumes = volumeSourcesOf(services.connector);
-const shared = dashboardVolumes.filter((name) => connectorVolumes.includes(name));
-if (shared.length > 0) {
-  problem(`dashboard and connector share volume(s): ${shared.join(', ')}`);
+const volumeTargetsOf = (service) =>
+  (service.volumes ?? []).map((volume) =>
+    typeof volume === 'string' ? volume.split(':')[1] : volume.target,
+  );
+const sources = volumeSourcesOf(server);
+const targets = volumeTargetsOf(server);
+const topVolumes = Object.keys(config.volumes ?? {});
+if (
+  sources.length !== 1 ||
+  topVolumes.length !== 1 ||
+  sources[0] !== 'dozo-server-data' ||
+  topVolumes[0] !== 'dozo-server-data'
+) {
+  problem(
+    `expected exactly one datastore volume dozo-server-data, got mounts=${sources.join(',') || '(none)'} top=${topVolumes.join(',') || '(none)'}`,
+  );
 }
-console.log(`    ok: DB_PATH ${dbPaths.join(' | ')}; volumes ${dashboardVolumes.join(',')} | ${connectorVolumes.join(',')}`);
+if (targets[0] !== '/data') {
+  problem(`the datastore volume must mount at /data, got ${targets.join(',') || '(none)'}`);
+}
+
+const published = (server.ports ?? []).map((port) =>
+  typeof port === 'string' ? port : `${port.published ?? ''}:${port.target ?? ''}`,
+);
+if (published.some((mapping) => mapping.split(':')[0] === '3001')) {
+  problem(`the connector port 3001 must not be published, got ${published.join(', ')}`);
+}
+
+const command = Array.isArray(server.command)
+  ? server.command.join(' ')
+  : String(server.command ?? '');
+if (!/src\/server\.js/.test(command)) {
+  problem(`the service command must run src/server.js, got ${command || '(none)'}`);
+}
+
+console.log(`    ok: service server; DB_PATH ${dbPath}; volume ${sources[0]} -> ${targets[0]}`);
 NODE
 
 wait_for_url() {
@@ -199,22 +236,21 @@ wait_for_url() {
 echo "==> docker compose up -d --build"
 compose up -d --build
 
-echo "==> wait for /health"
-wait_for_url "$DASHBOARD_URL/health"
-wait_for_url "$CONNECTOR_URL/health"
-echo "    ok: both containers healthy"
+echo "==> wait for /health on $SERVER_URL"
+wait_for_url "$SERVER_URL/health"
+echo "    ok: the single service is healthy on $SERVER_URL"
 
-echo "==> GET $CONNECTOR_URL/r/$TERMINAL_ID (x2, same client)"
+echo "==> GET $SERVER_URL/r/$TERMINAL_ID (x2, same client)"
 for hit in 1 2; do
   status="$("$CURL" -sS -o /dev/null -w '%{http_code}' -H "User-Agent: $USER_AGENT" \
-    "$CONNECTOR_URL/r/$TERMINAL_ID")"
+    "$SERVER_URL/r/$TERMINAL_ID")"
   echo "    hit $hit -> HTTP $status"
   if [[ "$status" != "302" ]]; then
     fail "expected 302 from /r/$TERMINAL_ID, got $status"
   fi
 done
 
-SCANS_URL="$DASHBOARD_URL/api/merchants/$MERCHANT_ID/scans?terminal_id=$TERMINAL_ID"
+SCANS_URL="$SERVER_URL/api/merchants/$MERCHANT_ID/scans?terminal_id=$TERMINAL_ID"
 
 read_scans() {
   "$CURL" -fsS -H "X-Api-Token: $API_TOKEN" "$SCANS_URL"
@@ -229,21 +265,20 @@ scan_count() {
   '
 }
 
-echo "==> wait for the forwarded scan on $SCANS_URL"
+echo "==> wait for the scan on $SCANS_URL"
 count=0
-deadline=$((SECONDS + INGEST_TIMEOUT_SECONDS))
+deadline=$((SECONDS + SCAN_TIMEOUT_SECONDS))
 while :; do
   count="$(read_scans | scan_count 2>/dev/null || echo 0)"
   [[ "$count" =~ ^[0-9]+$ ]] || count=0
   (( count >= 1 )) && break
   if (( SECONDS >= deadline )); then
-    fail "dashboard recorded no forwarded scan within ${INGEST_TIMEOUT_SECONDS}s"
+    fail "the service recorded no scan within ${SCAN_TIMEOUT_SECONDS}s"
   fi
   sleep 1
 done
 
-# Let the forwarder settle, then require EXACTLY one row: the second /r hit must
-# have been debounced, not written.
+# Require EXACTLY one row: the second /r hit must have been debounced, not written.
 settled="$count"
 for _ in 1 2 3; do
   sleep 1
@@ -256,7 +291,7 @@ if [[ "$settled" != "1" ]]; then
 fi
 echo "    ok: exactly 1 scan after two /r hits (debounced)"
 
-echo "==> re-ingest the same event_id -> duplicate"
+echo "==> re-POST the same event_id to POST /scans -> duplicate"
 meta="$(read_scans | node --input-type=module -e '
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
@@ -285,7 +320,7 @@ DUP_BODY="$TMP_DIR/dup.json"
 DUP_STATUS="$("$CURL" -sS -o "$DUP_BODY" -w '%{http_code}' -X POST \
   -H 'Content-Type: application/json' \
   -H "X-Connector-Secret: $CONNECTOR_SECRET" \
-  --data "$DUP_PAYLOAD" "$DASHBOARD_URL/scans")"
+  --data "$DUP_PAYLOAD" "$SERVER_URL/scans")"
 if [[ "$DUP_STATUS" != "202" ]]; then
   fail "expected 202 from the duplicate ingest, got $DUP_STATUS: $(cat "$DUP_BODY")"
 fi
@@ -298,35 +333,45 @@ if [[ "$after_dup" != "1" ]]; then
 fi
 echo "    ok: same event_id is a duplicate and adds no row"
 
-echo "==> dashboard serves the homepage and the panel SPA"
+echo "==> the single origin serves the homepage and the panel SPA"
 HOME_BODY="$TMP_DIR/home.html"
-HOME_STATUS="$("$CURL" -sS -o "$HOME_BODY" -w '%{http_code}' -H 'Accept: text/html' "$DASHBOARD_URL/")"
+HOME_STATUS="$("$CURL" -sS -o "$HOME_BODY" -w '%{http_code}' -H 'Accept: text/html' "$SERVER_URL/")"
 if [[ "$HOME_STATUS" != "200" ]]; then
-  fail "expected 200 for the dashboard root, got $HOME_STATUS"
+  fail "expected 200 for the homepage, got $HOME_STATUS"
 fi
 if ! grep -q 'data-view="home"' "$HOME_BODY"; then
-  fail "dashboard root did not return the marketing homepage"
+  fail "the root did not return the marketing homepage"
 fi
 
 PANEL_BODY="$TMP_DIR/panel.html"
-PANEL_STATUS="$("$CURL" -sS -o "$PANEL_BODY" -w '%{http_code}' -H 'Accept: text/html' "$DASHBOARD_URL/panel/")"
+PANEL_STATUS="$("$CURL" -sS -o "$PANEL_BODY" -w '%{http_code}' -H 'Accept: text/html' "$SERVER_URL/panel/")"
 if [[ "$PANEL_STATUS" != "200" ]] || ! grep -q 'id="root"' "$PANEL_BODY"; then
   fail "panel SPA shell not served at /panel/ (HTTP $PANEL_STATUS)"
 fi
 
 DEEP_BODY="$TMP_DIR/deep.html"
 DEEP_STATUS="$("$CURL" -sS -o "$DEEP_BODY" -w '%{http_code}' -H 'Accept: text/html' \
-  "$DASHBOARD_URL/panel/merchants/$MERCHANT_ID")"
+  "$SERVER_URL/panel/merchants/$MERCHANT_ID")"
 if [[ "$DEEP_STATUS" != "200" ]] || ! grep -q 'id="root"' "$DEEP_BODY"; then
   fail "panel SPA deep-link fallback failed (HTTP $DEEP_STATUS)"
 fi
 
 LEGACY_STATUS="$("$CURL" -sS -o /dev/null -w '%{http_code}' -H 'Accept: text/html' \
-  "$DASHBOARD_URL/merchants/$MERCHANT_ID")"
+  "$SERVER_URL/merchants/$MERCHANT_ID")"
 if [[ "$LEGACY_STATUS" != "302" ]]; then
   fail "legacy /merchants/:id should redirect to /panel/ (HTTP $LEGACY_STATUS)"
 fi
 echo "    ok: homepage at /, panel shell at /panel/ and /panel/merchants/:id, legacy /merchants/:id redirects"
+
+echo "==> assert no connector spool file is produced"
+if ! compose exec -T server test -f /data/dozo.db; then
+  fail "expected the unified SQLite datastore at /data/dozo.db"
+fi
+SPOOL_HITS="$(compose exec -T server sh -c 'find /data -type f \( -name "*spool*" -o -name "*.jsonl" \) 2>/dev/null' || true)"
+if [[ -n "$SPOOL_HITS" ]]; then
+  fail "unexpected spool file(s) on the datastore volume: $SPOOL_HITS"
+fi
+echo "    ok: /data/dozo.db exists and no spool file was written"
 
 echo
 echo "CONTAINER SMOKE: OK"
