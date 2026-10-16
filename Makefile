@@ -8,7 +8,13 @@ APP_DIR       := DOZO-App
 SERVER_DIR    := DOZO-Server
 DASHBOARD_DIR := DOZO-Dashboard
 
-.PHONY: help test app app-test server server-dev dashboard dashboard-dev dashboard-test verify verify-coordination
+# `make smoke` boots the unified server on a throwaway port/DB so it never
+# collides with a running dev server or touches the working database.
+SMOKE_PORT ?= 39300
+SMOKE_DB   ?= /tmp/dozo-make-smoke.db
+SMOKE_LOG  ?= /tmp/dozo-make-smoke.log
+
+.PHONY: help test app app-test server server-dev smoke dashboard dashboard-dev dashboard-test verify verify-coordination
 
 help:
 	@echo "Targets:"
@@ -16,7 +22,8 @@ help:
 	@echo "  make app            build the Android debug APK"
 	@echo "  make app-test       run Android unit tests"
 	@echo "  make server         run server tests"
-	@echo "  make server-dev     start connector :3001 + dashboard :3000 (SEED_DEMO=true)"
+	@echo "  make server-dev     start the unified server on :3000 (SEED_DEMO=true)"
+	@echo "  make smoke          start the unified server and smoke one origin"
 	@echo "  make dashboard      build the dashboard"
 	@echo "  make dashboard-dev  start the dashboard dev server"
 	@echo "  make dashboard-test run dashboard tests"
@@ -33,7 +40,25 @@ server:
 	cd $(SERVER_DIR) && npm test
 
 server-dev:
-	cd $(SERVER_DIR) && SEED_DEMO=true npm run start:all
+	cd $(SERVER_DIR) && SEED_DEMO=true npm start
+
+# Start the unified runtime on a throwaway port + temp DB, wait for /health,
+# run the one-origin smoke probe, then stop it and remove the temp DB.
+smoke:
+	@( cd $(SERVER_DIR) && exec env PORT=$(SMOKE_PORT) DB_PATH=$(SMOKE_DB) SEED_DEMO=true node src/server.js >$(SMOKE_LOG) 2>&1 ) & \
+	pid=$$!; \
+	trap 'kill $$pid 2>/dev/null; wait $$pid 2>/dev/null; rm -f $(SMOKE_DB) $(SMOKE_DB)-wal $(SMOKE_DB)-shm' EXIT INT TERM; \
+	healthy=0; \
+	for _ in $$(seq 1 50); do \
+	  if curl -fsS http://127.0.0.1:$(SMOKE_PORT)/health >/dev/null 2>&1; then healthy=1; break; fi; \
+	  sleep 0.2; \
+	done; \
+	if [ "$$healthy" != "1" ]; then \
+	  echo "smoke: unified server did not become healthy on :$(SMOKE_PORT)" >&2; \
+	  cat $(SMOKE_LOG) >&2 || true; \
+	  exit 1; \
+	fi; \
+	BASE_URL=http://127.0.0.1:$(SMOKE_PORT) bash $(SERVER_DIR)/scripts/smoke.sh
 
 dashboard:
 	cd $(DASHBOARD_DIR) && npm run build
