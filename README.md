@@ -4,9 +4,11 @@ Monorepo for the DOZO review-QR platform: an Android terminal app, a Fastify bac
 merchant/operator dashboard, and a public marketing site. App, Server, and Dashboard keep
 independent toolchains. Website has a project context but no selected toolchain yet.
 
-The current backend has connector and dashboard entrypoints. The approved MVP target is one
-shared backend process with separate code modules; that runtime refactor belongs to later
-capability tasks.
+The backend is one unified runtime: `DOZO-Server/src/server.js` runs a single Fastify
+instance and one SQLite connection per client, serving `GET /health`, the public
+`GET /r/:terminal_id` redirect, every `/api/*` route and the built SPA from one origin
+(one port, one database). The earlier two-entrypoint connector/dashboard split is
+transitional and retires through the Server runtime-refactor issues.
 
 ## Layout
 
@@ -45,6 +47,8 @@ make test          # Android unit tests + server tests + dashboard tests
 make app           # ./gradlew :app:assembleDebug
 make app-test      # ./gradlew :app:testDebugUnitTest
 make server        # npm test in DOZO-Server
+make server-dev    # start the unified server on :3000 (SEED_DEMO=true)
+make smoke         # start the unified server and smoke one origin
 make dashboard     # npm run build in DOZO-Dashboard
 make help          # all targets
 ```

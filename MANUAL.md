@@ -138,8 +138,8 @@ rsync -az --exclude node_modules --exclude data --exclude .git --exclude .env \
   /Users/malicky/l/DOZO/DOZO-Server/ ubuntu@130.162.185.144:~/dozo-server/
 ssh ubuntu@130.162.185.144 '
   cd ~/dozo-server
-  docker compose cp src/. dozo-server:/app/src
-  docker commit $(docker compose ps -q dozo-server) dozo-server:local
+  docker compose cp src/. server:/app/src
+  docker commit $(docker compose ps -q server) dozo-server:local
   docker compose up -d --force-recreate'
 ```
 
@@ -147,8 +147,8 @@ ssh ubuntu@130.162.185.144 '
 
 ```bash
 cd /Users/malicky/l/DOZO/DOZO-Server
-./scripts/smoke.sh                                   # defaults to the VPS
-BASE_URL=http://127.0.0.1:3000 ./scripts/smoke.sh     # local
+./scripts/smoke.sh                                     # defaults to the local unified origin
+BASE_URL=http://130.162.185.144:3000 ./scripts/smoke.sh # against the VPS
 # from the app repo:
 scripts/dozo_server_check
 ```
@@ -167,7 +167,7 @@ cd /Users/malicky/l/DOZO/DOZO-Server
 ./scripts/backup.sh
 
 # Point it at a specific DB / directory and keep 14 days:
-DB_PATH=/data/dashboard.db BACKUP_DIR=/backups BACKUP_RETENTION_DAYS=14 \
+DB_PATH=/data/dozo.db BACKUP_DIR=/backups BACKUP_RETENTION_DAYS=14 \
   ./scripts/backup.sh
 
 # Offsite copy (rsync never uses --delete, so the target keeps its history):
@@ -181,9 +181,9 @@ In Docker the database lives on a named volume, so run the snapshot inside the
 container:
 
 ```bash
-docker compose exec dashboard node scripts/backup-snapshot.js \
-  --db /data/dashboard.db --out /data/backups/dozo-manual.db
-docker compose cp dashboard:/data/backups/dozo-manual.db ./dozo-manual.db
+docker compose exec server node scripts/backup-snapshot.js \
+  --db /data/dozo.db --out /data/backups/dozo-manual.db
+docker compose cp server:/data/backups/dozo-manual.db ./dozo-manual.db
 ```
 
 **Restore drill** (always rehearse against a temp DB before a real restore):
@@ -201,9 +201,9 @@ sqlite3 /tmp/dozo-restore.db 'SELECT COUNT(*) FROM scans;'
 sqlite3 /tmp/dozo-restore.db 'SELECT terminal_id, active FROM terminals LIMIT 5;'
 
 # 4. Only then, for a real restore, stop the writer and swap the file:
-#    docker compose stop dashboard
-#    docker compose cp /tmp/dozo-restore.db dashboard:/data/dashboard.db
-#    docker compose start dashboard
+#    docker compose stop server
+#    docker compose cp /tmp/dozo-restore.db server:/data/dozo.db
+#    docker compose start server
 ```
 
 `backup.sh` also verifies each snapshot before rotation, so a corrupt artifact
@@ -414,7 +414,7 @@ adb logcat -d -s MockPay | tail
 | `mockpay_deploy` | Build and install the mock payment app. |
 | `check_apk_size` | Build release and enforce the APK size budget. |
 | server `scripts/deploy.sh` | Deploy the server to the VPS. |
-| server `scripts/smoke.sh` | Health + register + pair-status smoke test. |
+| server `scripts/smoke.sh` | One-origin smoke test: health + setup-code + redeem. |
 | server `scripts/backup.sh` | Snapshot the SQLite DB, rotate 7 days, optional rsync. |
 | server `scripts/uptime-check.sh` | External `/health` liveness probe. |
 | server `scripts/seed.js` | Seed `demo-merchant` / `DEMOTERM01`. |
