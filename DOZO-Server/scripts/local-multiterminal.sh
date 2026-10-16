@@ -35,7 +35,7 @@ LOG_FILE="data/local-server.log"
 BASE_URL="http://127.0.0.1:${PORT}"
 
 usage() {
-    sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,21p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 server_pid() {
