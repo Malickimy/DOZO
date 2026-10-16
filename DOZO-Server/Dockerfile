@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# Build context is the monorepo root (see docker-compose.yml). The dashboard SPA
-# is built by CI (or locally) and staged at DOZO-Server/public before this build;
-# this image never runs Vite. See .github/workflows/container.yml.
+# Build context is the monorepo root (see docker-compose.yml). One image runs the
+# unified runtime (src/server.js): the public redirect surface, every /api/* route
+# and the SPA from one SQLite database. The SPA is built by CI (or locally) and
+# staged at DOZO-Server/public before this build; this image never runs Vite. See
+# .github/workflows/container.yml.
 
 # ---- server dependencies (native better-sqlite3) ----
 FROM node:22-bookworm-slim AS deps
@@ -13,7 +15,7 @@ RUN apt-get update \
 COPY DOZO-Server/package.json DOZO-Server/package-lock.json* ./
 RUN npm ci --omit=dev
 
-# ---- runtime ----
+# ---- unified runtime (redirect + API + SPA) ----
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
@@ -33,4 +35,4 @@ ENV PORT=3000 \
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "src/dashboard.js"]
+CMD ["node", "src/server.js"]

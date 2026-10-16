@@ -1,6 +1,6 @@
-# One image, two containers per client (Release Board R4 / Sprint 2 container):
-#   dashboard - owns its SQLite database, every /api/* route and the built SPA
-#   connector - the public /health + /r/:terminal_id surface, its own DB + spool
+# One unified service per client — one image, one container, one datastore:
+#   server - serves the public /health + /r/:terminal_id redirect surface, every
+#            /api/* route and the built SPA from one SQLite database.
 #
 # The build context is the monorepo root. The SPA is NOT built in the image: CI
 # builds DOZO-Dashboard/dist and stages it at DOZO-Server/public first (see
@@ -9,18 +9,18 @@
 # `docker compose -f DOZO-Server/docker-compose.yml up --build`.
 #
 # Per-client isolation (template): run one stack per client with a distinct
-# Compose project name so the named volumes are namespaced and never shared:
+# Compose project name so the named datastore volume is namespaced and never
+# shared:
 #   COMPOSE_PROJECT_NAME=dozo-<client> \
 #     docker compose -f DOZO-Server/docker-compose.yml up -d --build
-# Never run two clients in one Compose project, and never point two services at
-# the same SQLite file.
+# Never run two clients in one Compose project.
 services:
-  dashboard:
+  server:
     build:
       context: ..
       dockerfile: DOZO-Server/Dockerfile
     image: dozo-server:local
-    command: ["node", "src/dashboard.js"]
+    command: ["node", "src/server.js"]
     ports:
       - "3000:3000"
     # Runtime config comes from DOZO-Server/.env (copy .env.production.example).
@@ -29,36 +29,11 @@ services:
       - path: .env
         required: false
     environment:
-      # Must win over DB_PATH in .env: the dashboard owns its own SQLite file.
-      DB_PATH: /data/dashboard.db
+      # The single datastore, on the service's one named volume.
+      DB_PATH: /data/dozo.db
     volumes:
-      - dozo-dashboard-data:/data
-    restart: unless-stopped
-
-  connector:
-    build:
-      context: ..
-      dockerfile: DOZO-Server/Dockerfile
-    image: dozo-server:local
-    command: ["node", "src/connector.js"]
-    ports:
-      - "3001:3000"
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      # The connector never shares the dashboard's SQLite file.
-      DB_PATH: /data/connector.db
-      # Its own spool, on the connector's own volume.
-      CONNECTOR_SPOOL_PATH: /data/spool/scan-spool.jsonl
-      # Forward spooled scans to the dashboard service over the Compose network.
-      DASHBOARD_INGEST_URL: http://dashboard:3000
-    volumes:
-      - dozo-connector-data:/data
-    depends_on:
-      - dashboard
+      - dozo-server-data:/data
     restart: unless-stopped
 
 volumes:
-  dozo-dashboard-data:
-  dozo-connector-data:
+  dozo-server-data:
