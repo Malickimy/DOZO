@@ -1,13 +1,22 @@
 # DOZO Server
 
-Two Fastify entrypoints for the **DOZO** Android app on Ingenico AXIUM DX8000
-terminals, sharing one package and one SQLite database:
+One unified Fastify runtime for the **DOZO** Android app on Ingenico AXIUM
+DX8000 terminals. The canonical entrypoint `src/server.js` serves everything from
+one origin — one Fastify instance, one SQLite connection, one listener:
 
-- **connector** (`src/connector.js`) — the public face: `GET /health` and
-  `GET /r/:terminal_id`. Accepted scans are dual-written to the database and a
-  file-backed spool that is forwarded to the dashboard's `/scans` ingest.
-- **dashboard** (`src/dashboard.js`) — owns the database, every `/api/*` route,
-  `GET /api/connector/config`, and the built SPA.
+- the **public** surface — `GET /health` and `GET /r/:terminal_id`;
+- every protected **`/api/*`** route (`/api/connector/config` and `POST /scans`
+  included);
+- the built **SPA** (homepage + `/panel/`).
+
+There is no separate connector service and no connector port to reach: the
+redirect, the API and the SPA all answer on `PORT` (default `3000`) over the one
+SQLite database at `DB_PATH`.
+
+> **Transitional.** The retired split — `src/connector.js` (public) and
+> `src/dashboard.js` (API + SPA) as two entrypoints, launched together by
+> `npm run start:all` — still lives in the package and is locked by tests, but it
+> is **not** the runtime. The unified `src/server.js` replaces it.
 
 After an approved sale the app shows a QR code. The QR **never** encodes the raw
 Google review URL. It encodes a DOZO URL:
@@ -16,7 +25,7 @@ Google review URL. It encodes a DOZO URL:
 {REDIRECT_DOMAIN}/r/{terminal_id}
 ```
 
-When a customer scans it, the connector resolves the terminal to its merchant's
+When a customer scans it, the server resolves the terminal to its merchant's
 Google Place ID, records at most one scan per device per debounce window, and
 `302`-redirects to the Google review form. Because Google does not expose which
 review came from which scan, **scan volume is the metric**.
@@ -28,24 +37,23 @@ This repository is standalone; the Android app is not required to run it.
 - Node.js 22+ (ESM)
 - Fastify 5 with `@fastify/cors` and `@fastify/static`
 - SQLite via `better-sqlite3` (migrations run on startup)
-- Docker / docker-compose (two services, one image)
+- Docker / docker-compose (one service, one image)
 
 ## Quick start
 
 ```bash
 npm install
-npm start                       # dashboard entrypoint (API + SPA) on :3000
-# or run the pieces separately:
-SEED_DEMO=true npm run start:dashboard   # API + SPA on :3000
-SEED_DEMO=true npm run start:connector   # redirect surface (defaults to :3000)
-# local/demo: both surfaces as two processes (dashboard :3000, connector :3001)
-SEED_DEMO=true npm run start:all
+npm start                 # unified server (redirect + API + SPA) on :3000
+npm run dev               # same, with node --watch
+
+# start with demo data:
+SEED_DEMO=true npm start
 ```
 
-Then (the redirect lives on the connector, the API on the dashboard):
+Both surfaces answer on the one origin:
 
 ```bash
-curl -i http://localhost:3001/r/DEMOTERM01
+curl -i  http://localhost:3000/r/DEMOTERM01
 curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/merchants
 ```
 
@@ -53,25 +61,28 @@ curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/mercha
 
 | Command | Description |
 | --- | --- |
-| `npm start` | Dashboard entrypoint (API + SPA) |
-| `npm run dev` | Dashboard entrypoint with `node --watch` |
-| `npm run start:connector` | Connector entrypoint |
-| `npm run start:dashboard` | Dashboard entrypoint (API + SPA) |
-| `npm run start:all` | Connector (`:3001`) + dashboard (`:3000`) as two processes (local/demo); Ctrl-C stops both |
-| `npm run dev:connector` / `dev:dashboard` | Entrypoints with `node --watch` |
+| `npm start` | Unified server (public redirect + `/api/*` + SPA) on `PORT` |
+| `npm run dev` | Unified server with `node --watch` |
 | `npm test` | Run the `node:test` suite |
 | `npm run seed` | Insert demo merchant/terminal into `DB_PATH` |
+| `npm run seed:demo` | Seed the demo scenario into `DB_PATH` |
+| `scripts/local-multiterminal.sh` | Reset + start one seeded unified server and manage a local 3-emulator test |
+| `scripts/smoke.sh` | Probe one running unified origin (`/health` + setup-code + redeem) |
+| `scripts/container-smoke.sh` | Boot the one-service compose stack and assert the one-origin round-trip |
 | `scripts/backup.sh` | Snapshot `DB_PATH`, apply 7-day rotation, optionally rsync offsite |
 | `scripts/uptime-check.sh` | External liveness probe for `GET /health` |
+
+Legacy/transitional scripts `npm run start:all`, `dev:connector`, `dev:dashboard`,
+`start:connector` and `start:dashboard` still exist for the retired split and are
+not part of the unified runtime.
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PORT` | `3000` | Dashboard HTTP listen port |
-| `CONNECTOR_PORT` | `3001` | Connector HTTP listen port used by `npm run start:all` |
-| `DB_PATH` | `./data/dozo.db` | SQLite file (`:memory:` supported) |
-| `REDIRECT_DOMAIN` | `http://localhost:3000` | Public base used to build `redirect_url` (`start:all` defaults it to the connector port) |
+| `PORT` | `3000` | The unified HTTP listen port |
+| `DB_PATH` | `./data/dozo.db` | The one SQLite file (`:memory:` supported) |
+| `REDIRECT_DOMAIN` | `http://localhost:3000` | Public base used to build `redirect_url`; the same origin that serves `/r/:terminal_id` |
 | `GOOGLE_REVIEW_BASE` | `https://search.google.com/local/writereview` | Google endpoint (no query string) |
 | `API_TOKEN` | `dev-placeholder-token` | Shared operator token guarding `/api/*` |
 | `DEBOUNCE_SECONDS` | `120` | Scan debounce window |
@@ -80,16 +91,16 @@ curl -s -H 'X-Api-Token: dev-placeholder-token' http://localhost:3000/api/mercha
 | `SEED_DEMO` | `false` | Seed a demo merchant + terminal on boot |
 | `DASHBOARD_ORIGIN` | `*` | Comma-separated browser origins allowed by CORS (`*` for the PoC) |
 | `DASHBOARD_CONNECTOR_SECRET` | — | Shared secret validating `X-Connector-Secret` on `/api/connector/config` and `POST /scans` |
-| `DASHBOARD_INGEST_URL` | `http://localhost:3000` | Dashboard base the connector forwards spooled scans to |
-| `CONNECTOR_SPOOL_PATH` | `./data/scan-spool.jsonl` | Connector's file-backed scan spool |
-| `DASHBOARD_DIST_PATH` | `../DOZO-Dashboard/dist` | Built SPA directory served by the dashboard entrypoint |
+| `DASHBOARD_DIST_PATH` | `../DOZO-Dashboard/dist` | Built SPA directory served by the unified runtime |
 | `RATE_LIMIT_REDIRECT_PER_MIN` | `30` | Requests/min per client IP on `GET /r/:terminal_id` |
 | `RATE_LIMIT_API_PER_MIN` | `60` | Requests/min per client IP on every `/api/*` route |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate-limit window length |
 
 ## Endpoints
 
-### Public (connector)
+### Public
+
+Served on the same origin as `/api/*`:
 
 | Method | Path | Behavior |
 | --- | --- | --- |
@@ -106,8 +117,8 @@ off and retries. `/health` is exempt so an external uptime monitor can poll it
 
 `GET /r/:terminal_id` outcomes:
 
-- Known + active terminal → insert a local scan (unless debounced), append it to
-  the spool for forwarding, then `302` `Location: {GOOGLE_REVIEW_BASE}?placeid={google_place_id}`
+- Known + active terminal → insert the scan in the one database (unless
+  debounced), then `302` `Location: {GOOGLE_REVIEW_BASE}?placeid={google_place_id}`
 - Unknown terminal → `404 {"error":"unknown_terminal"}` (no scan row)
 - Inactive terminal → `404 {"error":"inactive_terminal"}` (no scan row)
 
@@ -135,7 +146,11 @@ registers), otherwise `401`.
 | `PUT` | `/api/terminals/:terminal_id/config` | Body `{display_enabled?, display_timeout_seconds?}` (timeout clamped to 5..30) → `config` |
 | `PATCH` | `/api/terminals/:terminal_id` | Body `{active?, label?}` → `config` (400 invalid, 404 unknown terminal) |
 
-### Connector API (`X-Connector-Secret`)
+### Scan ingest API (`X-Connector-Secret`)
+
+Mounted on the same origin. In the unified runtime a redirect writes its scan
+straight to the one database, so nothing forwards over these routes; they remain
+for the transitional split and for external ingest.
 
 | Method | Path | Behavior |
 | --- | --- | --- |
@@ -179,9 +194,8 @@ a token.
   transaction. The old token then `401`s on heartbeat/config/registers, and
   issuance/rotation happens only at redeem. A `429` is *not* a `401` and must
   never trigger a re-pair.
-- **Connector:** the connector (a separate process/container) authenticates as
-  itself with `X-Connector-Secret` on `GET /api/connector/config` and
-  `POST /scans`.
+- **Scan ingest:** `DASHBOARD_CONNECTOR_SECRET` guards `GET /api/connector/config`
+  and `POST /scans` via `X-Connector-Secret` on the same origin.
 
 ## Redirect, debounce and forwarding
 
@@ -190,13 +204,14 @@ a token.
 3. Compute `key = SHA-256(terminal_id + client IP + User-Agent)`.
 4. If `key` was seen within `DEBOUNCE_SECONDS` (default 120s), redirect **without**
    inserting a scan.
-5. Otherwise insert `scans(terminal_id, scanned_at, user_agent, event_id)`,
-   append `{event_id, terminal_id, merchant_id, scanned_at, user_agent}` to the
-   spool, and redirect.
+5. Otherwise insert `scans(terminal_id, scanned_at, user_agent, event_id)` and
+   redirect.
 
-The connector drains the spool to `{DASHBOARD_INGEST_URL}/scans`; ingest is
-idempotent on `event_id`, so dual-writing the same scan locally and remotely
-never duplicates it. The debounce cache is in-memory (per process).
+In the unified runtime that single insert is the source of truth — the same
+process both records the scan and serves the API, so there is no cross-process
+forwarding. The transitional split connector additionally appends a file-backed
+spool and drains it to `POST /scans`; ingest is idempotent on `event_id`, so a
+retried event never duplicates. The debounce cache is in-memory (per process).
 
 ## Database schema
 
@@ -221,16 +236,16 @@ Europe/Warsaw calendar day.
 
 ## Docker
 
-The image runs the two Node entrypoints — it **never runs Vite**. Build the SPA
-first, stage it into the server build context, then build the image with the
-monorepo root as the context:
+One service, one image, one container, one datastore. The image runs the unified
+Node runtime — it **never runs Vite**. Build the SPA first, stage it into the
+server build context, then build the image with the monorepo root as the context:
 
 ```bash
 # 1. Build the SPA and stage it at DOZO-Server/public (context = repo root).
 cd DOZO-Dashboard && npm ci && npm run build && cd ..
 rm -rf DOZO-Server/public && cp -R DOZO-Dashboard/dist DOZO-Server/public
 
-# 2. Build the image and start the two containers.
+# 2. Build the image and start the one container.
 docker build -f DOZO-Server/Dockerfile -t dozo-server .
 docker compose -f DOZO-Server/docker-compose.yml up --build
 ```
@@ -240,20 +255,17 @@ CI does exactly this (see [`.github/workflows/container.yml`](../.github/workflo
 is the staged copy the Dockerfile copies to `/app/public`, served via
 `DASHBOARD_DIST_PATH`.
 
-`docker-compose.yml` runs **two services from one image**:
+`docker-compose.yml` runs **one service from one image**:
 
-- `dashboard` on `:3000` (API + SPA), SQLite at `/data/dashboard.db` on the
-  `dozo-dashboard-data` volume.
-- `connector` on `:3001` (redirect surface), its own SQLite at `/data/connector.db`
-  on the `dozo-connector-data` volume, its own spool at
-  `/data/spool/scan-spool.jsonl`, forwarding to `http://dashboard:3000`.
+- `server` on `:3000` (redirect + API + SPA), the one SQLite file at
+  `/data/dozo.db` on the `dozo-server-data` volume.
 
-Both read `DOZO-Server/.env` (copy `.env.production.example`); `docker-compose.yml`
-overrides `DB_PATH` per service so the two containers never share one SQLite file.
+It reads `DOZO-Server/.env` (copy `.env.production.example`); `docker-compose.yml`
+sets `DB_PATH=/data/dozo.db` so the datastore lives on the service's volume.
 
 ### Per-client isolation
 
-Each client gets its own stack with its own pair of named volumes. Namespace them
+Each client gets its own stack with its own named datastore volume. Namespace it
 with a distinct Compose project name:
 
 ```bash
@@ -261,9 +273,9 @@ COMPOSE_PROJECT_NAME=dozo-<client> \
   docker compose -f DOZO-Server/docker-compose.yml up -d --build
 ```
 
-`COMPOSE_PROJECT_NAME` prefixes the volume names (e.g.
-`dozo-acme_dozo-dashboard-data`), so a second client with a different project name
-and host ports is fully isolated. Do **not** run two clients in one Compose
+`COMPOSE_PROJECT_NAME` prefixes the volume name (e.g.
+`dozo-acme_dozo-server-data`), so a second client with a different project name
+and host port is fully isolated. Do **not** run two clients in one Compose
 project.
 
 ## Deployment
@@ -272,8 +284,7 @@ project.
 
 - Docker Engine + Compose plugin (`docker compose version`) and `rsync`.
 - SSH access as `ubuntu@130.162.185.144` (or your own `SERVER_HOST`).
-- Inbound TCP `3000` open (dashboard); open `3001` too if the connector must be
-  reachable directly.
+- Inbound TCP `3000` open (the one unified origin).
 
 ### Configuration
 
@@ -286,7 +297,7 @@ $EDITOR DOZO-Server/.env   # set REDIRECT_DOMAIN, API_TOKEN and DASHBOARD_CONNEC
 
 ```bash
 ./DOZO-Server/scripts/deploy.sh   # rsync repo root + docker compose up -d --build
-./DOZO-Server/scripts/smoke.sh    # BASE_URL defaults to the public host
+./DOZO-Server/scripts/smoke.sh    # BASE_URL defaults to the local origin
 ```
 
 `deploy.sh` builds the dashboard SPA, stages it into `DOZO-Server/public`, and
@@ -300,12 +311,12 @@ rebuild on the 1 GB VPS; use the copy-and-commit method in
 ### Seeding a demo merchant + terminal
 
 - On boot: `SEED_DEMO=true`.
-- One-off: `docker compose exec dashboard node scripts/seed.js`.
-- Bare Node: `SEED_DEMO=true npm run start:all` or `npm run seed`.
+- One-off: `docker compose exec server node scripts/seed.js`.
+- Bare Node: `SEED_DEMO=true npm start` or `npm run seed`.
 
 This inserts merchant `demo-merchant`, terminal `DEMOTERM01`, and a register
-bound to it. Under `npm run start:all` the operator API is on `:3000` and the
-redirect on `:3001`. A model-B round-trip works:
+bound to it. The operator API and the redirect share the same origin, so a
+model-B round-trip works:
 
 ```bash
 curl -s -X POST \
@@ -317,7 +328,8 @@ curl -s -X POST http://localhost:3000/api/terminals/redeem \
   -d '{"code":"<CODE>","device_serial":"DX8000-SN-000123"}'
 ```
 
-`scripts/smoke.sh` runs exactly this setup-code + redeem round-trip.
+`scripts/smoke.sh` runs exactly this setup-code + redeem round-trip against the
+one origin.
 
 ### Production hardening
 
@@ -325,8 +337,8 @@ curl -s -X POST http://localhost:3000/api/terminals/redeem \
   load balancer and set `REDIRECT_DOMAIN=https://...`. Only set
   `TRUST_PROXY=true` behind a trusted proxy (it feeds client-IP debounce keys).
 - **Change `API_TOKEN`** from the placeholder to a long random secret.
-- **Set `DASHBOARD_CONNECTOR_SECRET`** to a long random secret shared by the
-  connector and dashboard.
+- **Set `DASHBOARD_CONNECTOR_SECRET`** to a long random secret guarding the scan
+  ingest routes.
 - **Schedule backups.** `scripts/backup.sh` writes an integrity-checked SQLite
   snapshot into `BACKUP_DIR`, prunes snapshots older than
   `BACKUP_RETENTION_DAYS` (default 7), and rsyncs offsite when
@@ -336,7 +348,7 @@ curl -s -X POST http://localhost:3000/api/terminals/redeem \
   (which is never rate-limited) and exits non-zero on failure.
 - **Keep the logs.** Accepted scans emit a structured JSON line
   (`event: "scan.recorded"` on the redirect, `event: "scan.ingested"` on the
-  connector ingest), so a log shipper can build scan metrics.
+  ingest route), so a log shipper can build scan metrics.
 
 ## Tests
 
@@ -349,10 +361,11 @@ inactive terminals, auth rejection, per-terminal token issuance/rotation and
 cross-terminal rejection, heartbeat/offline, setup-code + redeem (register
 binding, device swap, TTL, single-use), merchant listing/summary/scans/series,
 terminal display config (defaults, clamping, validation), lifecycle `PATCH`,
-register listing (unoccupied registers), connector entrypoint isolation,
-`/api/connector/config` and `POST /scans` (secret, idempotency, malformed,
-unknown terminal), spool dual-write and forwarding, the two-process `start:all`
-launcher, and CORS. Hardening I adds: rate limits (redirect/api/`/health`
+register listing (unoccupied registers), the unified `src/server.js` entrypoint
+(one connection, combined surface, clean shutdown), `/api/connector/config` and
+`POST /scans` (secret, idempotency, malformed, unknown terminal), the
+transitional split entrypoints and `start:all` launcher, the one-service compose
+topology, and CORS. Hardening I adds: rate limits (redirect/api/`/health`
 exemption/`TRUST_PROXY`), revocation on both deactivation paths, structured scan
 logs, `scripts/backup.sh` (snapshot/rotation/restore drill/rsync), and the
 uptime probe.
@@ -361,12 +374,11 @@ uptime probe.
 
 ### Decisions
 
-- **Two entrypoints, one database.** The connector keeps the public redirect
-  surface and a spool; the dashboard owns `/api/*` and the DB. `npm start` runs
-  the dashboard entrypoint on `:3000`; `npm run start:all` runs both as two
-  processes via `scripts/start-all.js` (dashboard `:3000`, connector `:3001`).
-  The combined `src/server.js` remains only for local single-process use and
-  tests.
+- **One unified runtime.** `src/server.js` serves the public redirect surface,
+  every `/api/*` route and the SPA from one Fastify instance, one listener and
+  one SQLite connection per client. `npm start` runs it. The earlier two-entrypoint
+  split (`src/connector.js` + `src/dashboard.js`, `npm run start:all`) is
+  **transitional** and retires through the Server runtime-refactor issues.
 - **Unknown/inactive terminals → `404`** on the redirect, with no scan row.
 - **`terminal_id` format.** URL-safe `[A-Za-z0-9_-]{8,64}` (stored uppercase). If
   redeem omits it, it is derived from `device_serial` (uppercase, non-alphanumerics
@@ -376,14 +388,15 @@ uptime probe.
 - **Registers are first-class (R7).** A register can be unoccupied; setup-code
   finds-or-creates it and redeem binds the terminal.
 - **Per-terminal tokens (R6)** are hashed at rest and rotated on every redeem.
-- **Scan ingest is idempotent** on `event_id`; the connector spools and retries.
+- **Scan ingest is idempotent** on `event_id`; the transitional connector spools
+  and retries.
 
 ### Open questions
 
 1. **Retention/GDPR.** `scans.user_agent` is personal data. Define a retention
    window and a purge job.
 2. **Debounce scope under horizontal scaling.** The in-memory cache is per
-   replica; move to Redis/SQLite if multiple connectors run.
+   replica; move to Redis/SQLite if multiple instances run.
 3. **Inactive-terminal UX.** Decide between `404`, a branded page, or a redirect
    to a fallback Google review URL.
 4. **`pairing_codes` cleanup.** The table is unused after the model-A retire and
