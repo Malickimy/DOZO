@@ -2,17 +2,23 @@
 #
 # smoke.sh - Smoke-test a running DOZO server over HTTP.
 #
+# The unified runtime (src/server.js) serves everything from ONE origin on one
+# port: `/health`, the public `/r/:terminal_id` redirect and every `/api/*` route.
+# There is no separate connector origin to probe, so this script talks to a
+# single `BASE_URL`.
+#
 # Sequence (model-B pairing):
 #   1. GET  /health
 #   2. POST /api/merchants/{merchant}/registers/{label}/setup-code
 #   3. POST /api/terminals/redeem           (consumes the code, provisions the terminal)
 #
 # Prints the HTTP status and body of each call and exits non-zero if any check
-# fails. Seed the server first (SEED_DEMO=true on boot, or `npm run seed`) so
-# the demo merchant exists.
+# fails. It does NOT start a server: start the unified server first
+# (`npm start`, `npm run dev`, or `make server-dev`/`make smoke`) and seed it
+# (SEED_DEMO=true on boot, or `npm run seed`) so the demo merchant exists.
 #
 # Environment overrides:
-#   BASE_URL       server base URL   (default: http://130.162.185.144:3000)
+#   BASE_URL       unified server origin (default: http://127.0.0.1:3000)
 #   API_TOKEN      shared API token  (default: dev-placeholder-token)
 #   MERCHANT_ID    seeded merchant   (default: demo-merchant)
 #   REGISTER_LABEL register label    (default: smoke-till)
@@ -24,7 +30,9 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://130.162.185.144:3000}"
+# Default to the local unified origin; point BASE_URL at a real deployment
+# (e.g. http://130.162.185.144:3000) to smoke a remote one.
+BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
 API_TOKEN="${API_TOKEN:-dev-placeholder-token}"
 MERCHANT_ID="${MERCHANT_ID:-demo-merchant}"
 REGISTER_LABEL="${REGISTER_LABEL:-smoke-till}"
@@ -36,11 +44,12 @@ usage() {
     cat <<EOF
 Usage: smoke.sh [-h|--help]
 
-Curl \$BASE_URL/health, issue a register setup code, then redeem it.
-Exits non-zero on the first failing check.
+Probe the one unified origin (\$BASE_URL): curl /health, issue a register setup
+code, then redeem it. Exits non-zero on the first failing check. The script does
+not start a server; start the unified runtime first.
 
 Environment overrides:
-  BASE_URL       server base URL   (default: http://130.162.185.144:3000)
+  BASE_URL       unified server origin (default: http://127.0.0.1:3000)
   API_TOKEN      shared API token  (default: dev-placeholder-token)
   MERCHANT_ID    seeded merchant   (default: demo-merchant)
   REGISTER_LABEL register label    (default: smoke-till)
@@ -62,6 +71,10 @@ if ! command -v "$CURL" >/dev/null 2>&1; then
     exit 1
 fi
 
+# The unified runtime is one origin: health, the redirect and the API all answer
+# on $BASE_URL. Reject a trailing slash so paths join cleanly.
+BASE_URL="${BASE_URL%/}"
+
 BODY_FILE="$(mktemp)"
 trap 'rm -f "$BODY_FILE"' EXIT
 
@@ -81,6 +94,8 @@ request() {
 
 fail=0
 
+echo "==> one unified origin: $BASE_URL"
+echo
 echo "==> GET $BASE_URL/health"
 status="$(request GET /health)" || { echo "ERROR: curl failed for /health" >&2; exit 1; }
 echo "HTTP $status"
