@@ -19,5 +19,7 @@ contract decision through root planning before implementing consumers.
   packaging are out of scope until approved in an issue.
 - Preserve a separate build and deployment path.
 
-The implementation stack and deploy provider remain undecided. The first Website
-implementation task must settle them in its issue before adding application code.
+The site uses Astro with TypeScript and static output, built with Node 22 LTS and npm.
+`npm ci && npm run build` in this directory produces `dist/`; deployment is an
+independent static-file artifact on the DOZO VPS served by the existing reverse proxy.
+The public origin remains undecided.
