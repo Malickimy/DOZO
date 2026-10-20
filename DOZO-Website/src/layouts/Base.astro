@@ -1,0 +1,67 @@
+---
+import Logo from '../components/Logo.astro';
+import '../styles/global.css';
+
+interface Props {
+  lang: 'pl' | 'en';
+  title: string;
+  description: string;
+}
+
+const { lang, title, description } = Astro.props;
+
+const isPolish = lang === 'pl';
+const skipLabel = isPolish ? 'Przejdź do treści' : 'Skip to content';
+const homeLabel = isPolish ? 'DooZo — strona główna' : 'DooZo — home';
+const languageLabel = isPolish ? 'Wybór języka' : 'Language';
+const homePath = isPolish ? '/' : '/en/';
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0f1115" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate" hreflang="pl" href="/" />
+    <link rel="alternate" hreflang="en" href="/en/" />
+    <link rel="alternate" hreflang="x-default" href="/" />
+  </head>
+  <body>
+    <a class="skip" href="#main">{skipLabel}</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href={homePath} aria-label={homeLabel}>
+          <Logo />
+        </a>
+        <nav class="lang" aria-label={languageLabel}>
+          <a href="/" lang="pl" hreflang="pl" aria-current={isPolish ? 'page' : undefined}>
+            Polski
+          </a>
+          <a href="/en/" lang="en" hreflang="en" aria-current={isPolish ? undefined : 'page'}>
+            English
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <slot />
+    </main>
+    <footer class="foot">
+      <div class="wrap">
+        <p>DooZo</p>
+        <nav class="lang" aria-label={languageLabel}>
+          <a href="/" lang="pl" hreflang="pl" aria-current={isPolish ? 'page' : undefined}>
+            Polski
+          </a>
+          <a href="/en/" lang="en" hreflang="en" aria-current={isPolish ? undefined : 'page'}>
+            English
+          </a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
