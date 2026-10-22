@@ -49,7 +49,7 @@ object DozoContract {
     const val KEY_LAST_CONFIG_SYNC_AT = "last_config_sync_at"
     const val KEY_LAST_CONFIG_SYNC_RESULT = "last_config_sync_result"
 
-    const val DEFAULT_REDIRECT_BASE_URL = "http://130.162.185.144:3001"
+    const val DEFAULT_REDIRECT_BASE_URL = "http://130.162.185.144:3000"
     const val DEFAULT_DISPLAY_TIMEOUT_SECONDS = 15
     const val MIN_DISPLAY_TIMEOUT_SECONDS = 5
     const val MAX_DISPLAY_TIMEOUT_SECONDS = 30
