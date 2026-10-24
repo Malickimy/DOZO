@@ -27,6 +27,7 @@ accounts(account_id PK, email NOT NULL UNIQUE, display_name NULL,
          created_at NOT NULL, updated_at NOT NULL)
 sessions(session_id PK, account_id FK NOT NULL, token_hash NOT NULL UNIQUE,
          csrf_hash NULL, auth_level NOT NULL DEFAULT 'password',
+         mfa_failed_count INT NOT NULL DEFAULT 0,
          created_at NOT NULL, last_seen_at NOT NULL, idle_expires_at NOT NULL,
          absolute_expires_at NOT NULL, revoked_at NULL, ip NULL, user_agent NULL)
 merchant_members(merchant_id FK, account_id FK, role NOT NULL, created_at NOT NULL,
@@ -60,9 +61,11 @@ Seed (`SEED_DEMO=true` / `npm run seed`): merchant `demo-merchant` (Place ID `Ch
 unique. `invited_by_account_id` is null when the legacy operator token performed the action.
 `merchant_members.role` is `owner|read_only`; `accounts.status` is `active|disabled`;
 `sessions.auth_level` is `password|mfa|pending_mfa`; `audit_events.actor_type` is
-`account|operator|legacy_token|terminal|system`. A `pending_mfa` row holds the login
-`challenge_token` (never a cookie) and becomes a `mfa` row on verify. Token, challenge, and
-reset values are stored hashed; `mfa_totp.secret_ciphertext` is encrypted at rest. Indexes:
+`account|operator|legacy_token` and `audit_events.target_type` is
+`account|merchant|invite|terminal|register` (each row pairs it with `target_id`). A
+`pending_mfa` row holds the login `challenge_token` (never a cookie), tracks failed verifies in
+`sessions.mfa_failed_count`, and becomes a `mfa` row on verify. Token, challenge, and reset
+values are stored hashed; `mfa_totp.secret_ciphertext` is encrypted at rest. Indexes:
 `sessions(account_id)`, `sessions(idle_expires_at)`, `merchant_members(account_id)`,
 `invites(token_hash)`, `invites(expires_at)`, `password_resets(account_id)`,
 `mfa_recovery_codes(account_id)`, `identity_link_tokens(account_id)`,
