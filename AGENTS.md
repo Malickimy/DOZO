@@ -35,10 +35,12 @@ labels, dependencies, branches, and task handoffs.
 
 A contract change is proposed through a GitHub contract-change issue (label `contract`)
 that names the owning `contracts/*.md` file, the exact interface change, its consumers, and
-the expand/contract rollout. The owning agent lands the owner-approved revision in the
-contract file. A task that changes an interface links that contract-change issue and
-approved revision; a task that changes none states `contract impact: none`. Historical `R#`
-entries in `CONTRACTS.md` are a ledger, not a gate.
+the expand/contract rollout. A **contract-design** task — a `task` whose deliverable is the
+revision itself — may open and run while that revision is `drafting`; it is not gated on an
+already-approved revision. The owning agent lands the owner-approved revision in the
+contract file. Consumer or implementation work that depends on the interface still requires
+that approved revision before implementation starts. A task that changes no interface states
+`contract impact: none`. Historical `R#` entries in `CONTRACTS.md` are a ledger, not a gate.
 
 Expand/contract is the default: add the new thing, migrate every consumer, then remove the
 old thing — separate short-lived issues and PRs unless the contract owner approves an atomic
@@ -83,8 +85,9 @@ Two register taps could create two rows in the scan log.
 - One active writer per workspace. Implementation and QA run sequentially in that workspace
   and task branch; QA never opens a second PR.
 - A change to `contracts/*.md` is proposed through a GitHub contract-change issue (label
-  `contract`) and requires the owner-approved revision in the owning contract file before
-  implementation. Project agents own their contract files; `contract` owns `CONTRACTS.md`
+  `contract`). A contract-design task may draft that revision on its own branch; consumer or
+  implementation work requires the owner-approved revision in the owning contract file
+  before it starts. Project agents own their contract files; `contract` owns `CONTRACTS.md`
   and `contracts/env.md`.
 
 ## Project workspaces

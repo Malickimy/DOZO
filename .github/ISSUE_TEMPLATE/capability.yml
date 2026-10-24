@@ -86,7 +86,7 @@ body:
     id: contract_changes
     attributes:
       label: Contract changes
-      description: List each contract-change issue and its approved revision, or state none.
-      placeholder: "contract-change issue #N / approved revision, or none"
+      description: List each contract-change issue with its revision status — drafting for contract design, owner-approved for consumers — or state none.
+      placeholder: "contract-change issue #N / drafting | approved revision, or none"
     validations:
       required: true
