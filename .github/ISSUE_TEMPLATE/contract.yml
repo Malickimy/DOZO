@@ -57,9 +57,9 @@ body:
   - type: textarea
     id: revision
     attributes:
-      label: Owner-approved revision
-      description: Link the approving PR or commit that lands the revised contract file.
-      placeholder: "PR #... or commit <sha>"
+      label: Revision status or owner approval
+      description: State drafting while the owning agent prepares the revision; a consumer or implementation task links the approving PR or commit that lands it.
+      placeholder: "drafting, or PR #... / commit <sha>"
     validations:
       required: true
   - type: textarea

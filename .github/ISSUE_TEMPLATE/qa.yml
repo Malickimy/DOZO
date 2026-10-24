@@ -40,8 +40,8 @@ body:
     id: contract_impact
     attributes:
       label: Contract impact
-      description: QA-only work usually states none; name a contract-change issue and its approved revision if the task changes an interface.
-      placeholder: "contract impact: none, or contract-change issue #N / approved revision / contracts/<file> / endpoint or field"
+      description: QA-only work usually states none. Name a contract-change issue with a drafting revision for contract design, or the owner-approved revision in contracts/*.md for consumer work.
+      placeholder: "contract impact: none, or contract-change issue #N / drafting | approved revision / contracts/<file> / interface"
     validations:
       required: true
   - type: dropdown

@@ -6,9 +6,11 @@
   pull requests, reviews, checks, and delivery status.
 - **Repository Markdown** holds documentation: `contracts/*.md`, the `CONTRACTS.md` index,
   architecture decisions, and runbooks such as `MANUAL.md`.
-- **Contracts** define interfaces. A contract-changing task links its contract-change issue
-  (`contract` label) and the owner-approved revision in the owning `contracts/*.md` file.
-  `contract impact: none` is required when a task changes no shared interface.
+- **Contracts** define interfaces. A contract-design task (`task` whose deliverable is the
+  revision) names its contract-change issue (`contract` label) and the owning
+  `contracts/*.md` file, and may run while that revision is `drafting`. A consumer or
+  implementation task that depends on the interface links the owner-approved revision landed
+  in that file. `contract impact: none` is required when a task changes no shared interface.
 - **Obsidian** is an optional historical archive, not part of the required workflow.
 
 One capability can contain project-owned issues for App, Server, Dashboard, Website, or
@@ -59,9 +61,10 @@ Before dispatch, confirm that an issue includes:
 2. Scope and exclusions, acceptance criteria, and the verification expected.
 3. Its capability parent or an explicit standalone reason.
 4. Native GitHub blocking relationships for prerequisites, not only prose links.
-5. For a contract change, the contract-change issue (label `contract`) and the owner-approved
-   revision in the owning `contracts/*.md` file. For no interface change,
-   `contract impact: none`.
+5. For a contract change, the contract-change issue (label `contract`) and the owning
+   `contracts/*.md` file. A contract-design task marks the revision `drafting`; a consumer or
+   implementation task links the owner-approved revision in that file. For no interface
+   change, `contract impact: none`.
 
 If any field is missing or contradictory, leave the issue unstarted and report what must
 be resolved. Do not infer product decisions from source code or a neighboring task.
@@ -105,6 +108,8 @@ Each `/run-task` invocation handles exactly one issue:
    `ready` issue for this workstream. Return one issue only.
 2. Verify issue completeness, approved scope, the contract-change prerequisite, current
    branch, clean workspace, and project context. The branch must be `work/<issue>-<slug>`.
+   A contract-design task passes with its contract-change issue and a `drafting` revision; a
+   consumer or implementation task needs the owner-approved revision landed first.
 3. Ask `explore` to confirm the file surface and risks. Update the issue to
    `in-progress` through the GitHub agent after this preflight passes. If required
    information or an approved prerequisite is missing, mark the issue blocked and stop.
